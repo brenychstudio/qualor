@@ -44,7 +44,7 @@ The frontend displays the bootstrap shell. Non-secret defaults are documented in
 .\scripts\preflight.ps1
 ```
 
-Verification includes a clean Git worktree gate, so commit intended changes before the final run. Preflight performs separate read-only AWS metadata checks; missing access is reported as blocked. Its detailed output stays in ignored `.qualor/local/`. The doctor and CI do not contact AWS.
+Verification includes a clean Git worktree gate, so commit intended changes before the final run. Stop the frontend dev server first on Windows: `npm ci` reinstalls native packages that the running server can lock. Preflight performs separate read-only AWS metadata checks; missing access is reported as blocked. Its detailed output stays in ignored `.qualor/local/`. The doctor and CI do not contact AWS.
 
 ## Safety boundaries
 
