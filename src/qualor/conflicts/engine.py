@@ -75,6 +75,7 @@ def _disagreement(category, project, submissions):
     fields = {
         ConflictCategory.NEW_PROJECT: (
             ("code_provenance", "code_origin"),
+            ("project_lineage", "project_lineage"),
             ("reused_components", "reused_components"),
         ),
         ConflictCategory.LICENSE: (("license_intent", "license"),),

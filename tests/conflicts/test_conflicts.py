@@ -322,3 +322,17 @@ def test_confirmed_violation_outranks_same_project_fact_disagreement():
         ).status
         == BLOCK
     )
+
+
+def test_same_project_nonempty_active_lineage_requires_review_for_new_project():
+    active = submission(project_id="project", project_lineage=fact(("old-project",)))
+    result = assess(r=rules("NEW_PROJECT"), s=(active,))
+    assert result.status == REVIEW
+    assert (opportunity().id, ConflictCategory.NEW_PROJECT) in result.missing_rule_categories
+
+
+def test_explicit_new_project_violation_outranks_lineage_disagreement():
+    active = submission(project_id="project", project_lineage=fact(("old-project",)))
+    assert (
+        assess(project(is_new_project=fact(False)), rules("NEW_PROJECT"), (active,)).status == BLOCK
+    )
