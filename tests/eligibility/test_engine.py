@@ -301,3 +301,106 @@ def test_required_technology_membership(scenario, stack, expected):
         operands=[dict(kind="text", value="Python")],
     )
     assert aggregate_eligibility(rules, context).state == expected
+
+
+@pytest.mark.parametrize("unresolved", ["stale", "conflict"])
+def test_confirmed_and_fail_dominates_unresolved_alternative(scenario, unresolved):
+    from qualor.eligibility import aggregate_eligibility
+
+    context, rules = scenario()
+    failing = replace(
+        legal_rule(rules), id="confirmed_failure", operands=[dict(kind="text", value="NONPROFIT")]
+    )
+    other = replace(legal_rule(rules), id="unresolved", contradiction=unresolved == "conflict")
+    if unresolved == "stale":
+        evidence = next(e for e in context.evidence if e.normalized_field == Category.LEGAL_ENTITY)
+        stale = replace(
+            evidence, id="stale_legal", retrieved_at=context.evaluated_at - timedelta(days=2)
+        )
+        context = replace(context, evidence=(*context.evidence, stale))
+        other = replace(other, evidence_ids=["stale_legal"])
+    rules = change_rule(
+        rules, operator="AND", operands=[], subject_reference=None, children=[failing, other]
+    )
+    assert aggregate_eligibility(rules, context).state == "FAIL"
+
+
+@pytest.mark.parametrize("metadata_present", [True, False])
+def test_deadline_rule_bounds_constrain_freshness(scenario, metadata_present):
+    from qualor.eligibility import aggregate_eligibility
+
+    context, rules = scenario()
+    if not metadata_present:
+        context = replace(context, opportunity=replace(context.opportunity, deadlines=[]))
+    context = replace(
+        context,
+        evidence=tuple(
+            replace(e, retrieved_at=context.evaluated_at - timedelta(hours=8))
+            for e in context.evidence
+        ),
+    )
+    rules = change_rule(
+        rules,
+        Category.DEADLINE,
+        not_applicable_reason=None,
+        subject_reference="context.evaluated_at",
+        operator="DATE_BETWEEN",
+        operands=[
+            dict(kind="instant", value=context.evaluated_at - timedelta(days=1)),
+            dict(kind="instant", value=context.evaluated_at + timedelta(days=1)),
+        ],
+    )
+    gate = aggregate_eligibility(rules, context)
+    assert gate.state == "REVIEW_REQUIRED"
+    assert "STALE_EVIDENCE" in gate.reason_codes
+
+
+def test_unknown_deadline_cannot_relax_freshness(scenario):
+    from qualor.eligibility import aggregate_eligibility
+
+    context, rules = scenario()
+    context = replace(
+        context,
+        opportunity=replace(context.opportunity, deadlines=[]),
+        evidence=tuple(
+            replace(e, retrieved_at=context.evaluated_at - timedelta(hours=8))
+            for e in context.evidence
+        ),
+    )
+    assert aggregate_eligibility(rules, context).state == "REVIEW_REQUIRED"
+
+
+@pytest.mark.parametrize("unresolved", ["stale", "conflict"])
+def test_nested_or_of_confirmed_failures_remains_fail(scenario, unresolved):
+    from qualor.eligibility import aggregate_eligibility
+
+    context, rules = scenario()
+    failing = replace(
+        legal_rule(rules), id="inner_fail", operands=[dict(kind="text", value="NONPROFIT")]
+    )
+    other = replace(legal_rule(rules), id="inner_unknown", contradiction=unresolved == "conflict")
+    if unresolved == "stale":
+        evidence = next(e for e in context.evidence if e.normalized_field == Category.LEGAL_ENTITY)
+        stale = replace(
+            evidence, id="stale_legal", retrieved_at=context.evaluated_at - timedelta(days=2)
+        )
+        context = replace(context, evidence=(*context.evidence, stale))
+        other = replace(other, evidence_ids=["stale_legal"])
+    inner = replace(
+        legal_rule(rules),
+        id="inner_and",
+        operator="AND",
+        operands=[],
+        subject_reference=None,
+        children=[failing, other],
+    )
+    outer_fail = replace(failing, id="outer_fail")
+    rules = change_rule(
+        rules, operator="OR", operands=[], subject_reference=None, children=[inner, outer_fail]
+    )
+    gate = aggregate_eligibility(rules, context)
+    assert gate.state == "FAIL"
+    assert all(
+        child.status == "FAIL"
+        for child in next(e for e in gate.evaluations if e.rule_id == "r_LEGAL_ENTITY").children
+    )

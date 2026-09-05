@@ -1,6 +1,7 @@
 """Deterministic rule and aggregate authority. No external calls or supplied verdicts."""
 
 import hashlib
+from datetime import date, datetime
 
 from qualor.domain.enums import (
     CoverageState,
@@ -15,20 +16,23 @@ from qualor.domain.fixture import EvaluationContext
 from qualor.domain.rules import EligibilityGate, RuleCandidate, RuleEvaluation
 
 from .coverage import evaluate_coverage
-from .evidence import evidence_issues
+from .evidence import effective_deadlines, evidence_issues
 from .operators import evaluate_operator
 from .subjects import resolve_subject
 
 ELIGIBILITY_POLICY_VERSION = 1
 
 
-def _evaluate(rule: RuleCandidate, context: EvaluationContext) -> RuleEvaluation:
-    children = tuple(_evaluate(child, context) for child in rule.children)
-    issues = list(evidence_issues(rule, context))
+def _evaluate(
+    rule: RuleCandidate, context: EvaluationContext, deadlines: tuple[date | datetime, ...]
+) -> RuleEvaluation:
+    children = tuple(_evaluate(child, context, deadlines) for child in rule.children)
+    issues = list(evidence_issues(rule, context, deadlines))
     if rule.contradiction:
         issues.append(ReasonCode.CONFLICT)
     if not rule.supported:
         issues.append(ReasonCode.UNSUPPORTED)
+    own_issues = bool(issues)
     if rule.operator in {Operator.AND, Operator.OR}:
         # Uncertainty can be resolved by an alternative; stale/conflicting critical evidence cannot.
         for child in children:
@@ -52,10 +56,18 @@ def _evaluate(rule: RuleCandidate, context: EvaluationContext) -> RuleEvaluation
         status = evaluate_operator(rule.operator, actual, rule.operands)
         if status == RuleStatus.UNKNOWN and not rule.not_applicable_reason:
             issues.append(reason if actual is None else ReasonCode.INVALID_OPERANDS)
-    if issues:
+    confirmed_composite_fail = (
+        rule.operator in {Operator.AND, Operator.OR}
+        and status == RuleStatus.FAIL
+        and not own_issues
+        and ReasonCode.INVALID_OPERANDS not in issues
+    )
+    if issues and not confirmed_composite_fail:
         status = RuleStatus.UNKNOWN
     elif rule.not_applicable_reason:
         status = RuleStatus.NOT_APPLICABLE
+    if confirmed_composite_fail and issues:
+        issues.insert(0, ReasonCode.MISMATCH)
     if not issues:
         issues.append(
             {
@@ -113,7 +125,9 @@ def evaluate_rules(
     rules: tuple[RuleCandidate, ...], context: EvaluationContext
 ) -> tuple[RuleEvaluation, ...]:
     context = EvaluationContext.model_validate(context)
-    return tuple(_evaluate(rule, context) for rule in _validated_rules(rules))
+    rules = _validated_rules(rules)
+    deadlines = effective_deadlines(rules, context)
+    return tuple(_evaluate(rule, context, deadlines) for rule in rules)
 
 
 def aggregate_eligibility(
@@ -121,7 +135,8 @@ def aggregate_eligibility(
 ) -> EligibilityGate:
     context = EvaluationContext.model_validate(context)
     rules = _validated_rules(rules)
-    evaluations = tuple(_evaluate(rule, context) for rule in rules)
+    deadlines = effective_deadlines(rules, context)
+    evaluations = tuple(_evaluate(rule, context, deadlines) for rule in rules)
     coverage = evaluate_coverage(rules, evaluations)
     critical = tuple(
         e for r, e in zip(rules, evaluations, strict=True) if r.criticality == Criticality.CRITICAL

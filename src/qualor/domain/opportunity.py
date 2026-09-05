@@ -13,10 +13,15 @@ from .enums import OpportunityStatus
 from .money import Reward
 
 
-def normalize_url(value: str) -> str:
+def validate_source_url(value: str) -> str:
     parts = urlsplit(value)
     if parts.scheme not in {"http", "https"} or not parts.hostname or parts.username:
         raise ValueError("Only credential-free HTTP(S) source URLs are supported")
+    return value
+
+
+def normalize_url(value: str) -> str:
+    parts = urlsplit(validate_source_url(value))
     query = [
         (k, v)
         for k, v in parse_qsl(parts.query, keep_blank_values=True)
@@ -26,6 +31,7 @@ def normalize_url(value: str) -> str:
 
 
 SourceUrl = Annotated[NonEmpty, AfterValidator(normalize_url)]
+OriginalSourceUrl = Annotated[NonEmpty, AfterValidator(validate_source_url)]
 
 
 def opportunity_identity(organizer: str, program_name: str, edition: str) -> str:

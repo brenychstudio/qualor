@@ -6,12 +6,12 @@ from pydantic import StringConstraints
 
 from .base import NonEmpty, Record, UtcInstant
 from .enums import Category, ExtractionState, SourceType
-from .opportunity import SourceUrl
+from .opportunity import OriginalSourceUrl
 
 
 class EvidenceRecord(Record):
-    original_url: SourceUrl
-    final_url: SourceUrl
+    original_url: OriginalSourceUrl
+    final_url: OriginalSourceUrl
     retrieved_at: UtcInstant
     source_type: SourceType
     content_hash: Annotated[str, StringConstraints(pattern=r"^[a-fA-F0-9]{64}$")]

@@ -11,12 +11,16 @@ NEAR_DEADLINE_WINDOW = timedelta(hours=72)
 
 
 def evaluate_freshness(
-    retrieved_at: datetime, evaluated_at: datetime, deadline: date | datetime | None = None
+    retrieved_at: datetime,
+    evaluated_at: datetime,
+    deadline: date | datetime | None = None,
+    *,
+    unknown_deadline: bool = False,
 ) -> FreshnessStatus:
     for instant in (retrieved_at, evaluated_at):
         if not isinstance(instant, datetime) or instant.utcoffset() is None:
             raise ValueError("Freshness requires timezone-aware instants")
-    ttl = DEFAULT_TTL
+    ttl = NEAR_DEADLINE_TTL if unknown_deadline else DEFAULT_TTL
     if isinstance(deadline, datetime):
         if deadline.utcoffset() is None:
             raise ValueError("An exact deadline requires a timezone")
