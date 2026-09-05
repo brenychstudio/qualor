@@ -50,6 +50,8 @@ EvaluationContext contains founder, project, opportunity, evidence, evaluated_at
 
 The task's conceptual `operand` is represented by the typed `operands` tuple: one item for EQ/BOOL_IS/GTE/LTE, two ordered bounds for BETWEEN/DATE_BETWEEN, one or more alternatives for IN. Logical candidates use `children`. For a declared technology stack, IN requires at least one stack member among the permitted technologies; AND of single-technology IN rules expresses an all-required condition. Empty or incompatible values remain UNKNOWN. N/A cannot coexist with an executable expression. Composite nodes preserve criticality and category. A confirmed composite FAIL remains FAIL even with inherited stale/conflict reasons; a would-be PASS with critical stale/conflict evidence becomes UNKNOWN.
 
+QUALOR-01M correction: executable deadline leaves support DATE_BETWEEN only, ensuring their bounds participate in freshness. Other deadline comparison shapes return UNKNOWN/UNSUPPORTED. AND/OR of supported deadline intervals preserves the existing composition contract. Regression cases cover EQ/IN with eight-hour-old evidence and a misleading later metadata deadline.
+
 Create `src/qualor/schemas/{__init__,export}.py`, `scripts/export-schemas.ps1`, eight public `schemas/*.schema.json` files. `export_schemas(output_dir: Path) -> tuple[Path, ...]` writes sorted, deterministic JSON; `python -m qualor.schemas.export --check` verifies committed output without rewriting it.
 
 Modify `src/qualor/{api,cli}.py` only for fixture adapters. Modify `scripts/verify.ps1` to check schemas. Create `docs/status/QUALOR-01.md`; update README with the implemented development commands. No canonical or AWS bridge edits.

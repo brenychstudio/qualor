@@ -91,3 +91,9 @@ Eligibility PASS means conformity to supplied reviewed facts and rules under pol
 No strategy score, recommendation, conflict checker, agent, Strands behavior, inference, search, fetching, persistence, approval, submission or real product UI exists in this task. The JSON-only development route is disabled outside development and has no side effects. Domain schemas support future persistence but do not implement it.
 
 No new ADR is required: the canonical architecture remains unchanged. Exact final HEAD, PR URL, CI and worktree results are recorded in the Result Packet and Git/PR evidence. PR is to remain unmerged; QUALOR-02 requires a separate task.
+
+## QUALOR-01M protected merge correction
+
+Fresh protected review reproduced a deadline-policy gap: EQ/IN comparisons against the evaluation instant could return PASS without supplying a bound to the near-deadline freshness policy. Two regression cases first returned false PASS. V1 deadline leaves now accept only DATE_BETWEEN; other temporal shapes return UNKNOWN/UNSUPPORTED. Logical AND/OR of supported deadline intervals remains available. The scalar operator API and other rule categories are unchanged.
+
+After this correction, the full suite contains 180 passing tests. The original 178-test checkpoint above is historical. Complete pre/post-merge gates and CI must be verified against the corrected HEAD under QUALOR-01M before reporting merge completion. No canonical, schema, AWS configuration or feature-scope changes are needed.

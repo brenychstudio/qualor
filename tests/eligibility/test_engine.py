@@ -404,3 +404,30 @@ def test_nested_or_of_confirmed_failures_remains_fail(scenario, unresolved):
         child.status == "FAIL"
         for child in next(e for e in gate.evaluations if e.rule_id == "r_LEGAL_ENTITY").children
     )
+
+
+@pytest.mark.parametrize("operator", ["EQ", "IN"])
+def test_unbound_deadline_shapes_cannot_bypass_near_deadline_freshness(scenario, operator):
+    from qualor.eligibility import aggregate_eligibility
+
+    context, rules = scenario()
+    context = replace(
+        context,
+        evidence=tuple(
+            replace(e, retrieved_at=context.evaluated_at - timedelta(hours=8))
+            for e in context.evidence
+        ),
+    )
+    rules = change_rule(
+        rules,
+        Category.DEADLINE,
+        not_applicable_reason=None,
+        subject_reference="context.evaluated_at",
+        operator=operator,
+        operands=[dict(kind="instant", value=context.evaluated_at)],
+    )
+    gate = aggregate_eligibility(rules, context)
+    assert gate.state == "REVIEW_REQUIRED"
+    deadline = next(e for e in gate.evaluations if e.rule_id == "r_DEADLINE")
+    assert deadline.status == "UNKNOWN"
+    assert deadline.reason_code == "UNSUPPORTED"

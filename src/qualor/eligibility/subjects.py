@@ -1,6 +1,13 @@
 """Enumerated subject resolution; no arbitrary attributes or inferred profile facts."""
 
-from qualor.domain.enums import Category, CodeProvenance, Provenance, ReasonCode, SubjectReference
+from qualor.domain.enums import (
+    Category,
+    CodeProvenance,
+    Operator,
+    Provenance,
+    ReasonCode,
+    SubjectReference,
+)
 from qualor.domain.fixture import EvaluationContext
 from qualor.domain.rules import RuleCandidate
 from qualor.domain.values import BoolValue, DateValue, InstantValue, NumberValue, Scalar, TextValue
@@ -25,6 +32,10 @@ def resolve_subject(
     if subject not in ALLOWED_SUBJECTS[rule.rule_type]:
         return None, ReasonCode.UNSUPPORTED
     if subject == SubjectReference.EVALUATED_AT:
+        # V1 deadline bounds must also participate in evidence freshness.
+        # Other temporal shapes have no supported deadline-policy binding.
+        if rule.operator != Operator.DATE_BETWEEN:
+            return None, ReasonCode.UNSUPPORTED
         return InstantValue(value=context.evaluated_at), ReasonCode.MATCH
     founder, project = context.founder, context.project
     if subject == SubjectReference.NEW_PROJECT:
