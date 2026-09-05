@@ -10,6 +10,11 @@ __pycache__/
 .coverage
 htmlcov/
 .qualor/
+.aws/
+*.pem
+*.key
+*.pfx
+*.p12
 node_modules/
 apps/web/node_modules/
 apps/web/dist/
