@@ -1,0 +1,110 @@
+{
+  "$defs": {
+    "StrategyContribution": {
+      "additionalProperties": false,
+      "properties": {
+        "contribution": {
+          "anyOf": [
+            {
+              "ge": 0,
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Contribution"
+        },
+        "factor": {
+          "minLength": 1,
+          "title": "Factor",
+          "type": "string"
+        },
+        "rating": {
+          "anyOf": [
+            {
+              "maximum": 4,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Rating"
+        },
+        "weight": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Weight",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "factor",
+        "weight",
+        "rating",
+        "contribution"
+      ],
+      "title": "StrategyContribution",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "breakdown": {
+      "items": {
+        "$ref": "#/$defs/StrategyContribution"
+      },
+      "title": "Breakdown",
+      "type": "array"
+    },
+    "evaluated_at": {
+      "format": "date-time",
+      "title": "Evaluated At",
+      "type": "string"
+    },
+    "missing_strategy_factors": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Missing Strategy Factors",
+      "type": "array"
+    },
+    "policy_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Policy Version",
+      "type": "integer"
+    },
+    "score": {
+      "anyOf": [
+        {
+          "maximum": 100,
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Score"
+    },
+    "semantics": {
+      "const": "PRIORITIZATION_NOT_WIN_PROBABILITY",
+      "default": "PRIORITIZATION_NOT_WIN_PROBABILITY",
+      "title": "Semantics",
+      "type": "string"
+    }
+  },
+  "required": [
+    "score",
+    "breakdown",
+    "missing_strategy_factors",
+    "evaluated_at"
+  ],
+  "title": "StrategyAssessment",
+  "type": "object"
+}

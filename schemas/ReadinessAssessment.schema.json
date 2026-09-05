@@ -1,0 +1,132 @@
+{
+  "$defs": {
+    "FactorResult": {
+      "additionalProperties": false,
+      "properties": {
+        "fact_refs": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Fact Refs",
+          "type": "array"
+        },
+        "factor": {
+          "minLength": 1,
+          "title": "Factor",
+          "type": "string"
+        },
+        "rating": {
+          "anyOf": [
+            {
+              "maximum": 4,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Rating"
+        },
+        "reasons": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "requirement_refs": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Requirement Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "factor",
+        "rating",
+        "reasons",
+        "requirement_refs",
+        "fact_refs"
+      ],
+      "title": "FactorResult",
+      "type": "object"
+    },
+    "MaterialKind": {
+      "enum": [
+        "REPOSITORY",
+        "LICENSE",
+        "DEMO",
+        "ARCHITECTURE_DIAGRAM",
+        "TECHNICAL_INTEGRATION",
+        "NARRATIVE",
+        "PUBLIC_AVAILABILITY",
+        "OTHER"
+      ],
+      "title": "MaterialKind",
+      "type": "string"
+    },
+    "ReadinessState": {
+      "enum": [
+        "READY",
+        "GAPS_EXECUTABLE",
+        "NOT_READY",
+        "UNKNOWN"
+      ],
+      "title": "ReadinessState",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "evaluated_at": {
+      "format": "date-time",
+      "title": "Evaluated At",
+      "type": "string"
+    },
+    "factor_results": {
+      "items": {
+        "$ref": "#/$defs/FactorResult"
+      },
+      "title": "Factor Results",
+      "type": "array"
+    },
+    "gaps": {
+      "items": {
+        "$ref": "#/$defs/MaterialKind"
+      },
+      "title": "Gaps",
+      "type": "array"
+    },
+    "missing_information": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Missing Information",
+      "type": "array"
+    },
+    "policy_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Policy Version",
+      "type": "integer"
+    },
+    "state": {
+      "$ref": "#/$defs/ReadinessState"
+    }
+  },
+  "required": [
+    "state",
+    "gaps",
+    "missing_information",
+    "factor_results",
+    "evaluated_at"
+  ],
+  "title": "ReadinessAssessment",
+  "type": "object"
+}

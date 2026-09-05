@@ -1,0 +1,167 @@
+{
+  "$defs": {
+    "Confidence": {
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH",
+        "UNKNOWN"
+      ],
+      "title": "Confidence",
+      "type": "string"
+    },
+    "EffortCategory": {
+      "enum": [
+        "INTEGRATION",
+        "EVIDENCE",
+        "REPO_LICENSE_CLEANUP",
+        "DEMO",
+        "NARRATIVE",
+        "SUBMISSION"
+      ],
+      "title": "EffortCategory",
+      "type": "string"
+    },
+    "EffortItem": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "$ref": "#/$defs/EffortCategory"
+        },
+        "confidence": {
+          "$ref": "#/$defs/Confidence"
+        },
+        "hours": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HourRange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "category",
+        "hours",
+        "confidence",
+        "reason"
+      ],
+      "title": "EffortItem",
+      "type": "object"
+    },
+    "HourRange": {
+      "additionalProperties": false,
+      "properties": {
+        "max_hours": {
+          "ge": 0,
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "title": "Max Hours",
+          "type": "string"
+        },
+        "min_hours": {
+          "ge": 0,
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "title": "Min Hours",
+          "type": "string"
+        }
+      },
+      "required": [
+        "min_hours",
+        "max_hours"
+      ],
+      "title": "HourRange",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "adaptation_range": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/HourRange"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "breakdown": {
+      "items": {
+        "$ref": "#/$defs/EffortItem"
+      },
+      "title": "Breakdown",
+      "type": "array"
+    },
+    "evaluated_at": {
+      "format": "date-time",
+      "title": "Evaluated At",
+      "type": "string"
+    },
+    "max_total": {
+      "anyOf": [
+        {
+          "ge": 0,
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Max Total"
+    },
+    "min_total": {
+      "anyOf": [
+        {
+          "ge": 0,
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Min Total"
+    },
+    "missing_information": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Missing Information",
+      "type": "array"
+    },
+    "policy_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Policy Version",
+      "type": "integer"
+    },
+    "reasons": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Reasons",
+      "type": "array"
+    }
+  },
+  "required": [
+    "breakdown",
+    "adaptation_range",
+    "min_total",
+    "max_total",
+    "reasons",
+    "missing_information",
+    "evaluated_at"
+  ],
+  "title": "EffortEstimate",
+  "type": "object"
+}

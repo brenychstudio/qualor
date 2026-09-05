@@ -1,0 +1,348 @@
+{
+  "$defs": {
+    "CodeProvenance": {
+      "enum": [
+        "ORIGINAL",
+        "REUSED",
+        "MIXED",
+        "UNKNOWN"
+      ],
+      "title": "CodeProvenance",
+      "type": "string"
+    },
+    "ConflictCategory": {
+      "enum": [
+        "NEW_PROJECT",
+        "EXCLUSIVE_SUBMISSION",
+        "LICENSE",
+        "SPONSOR_SUPPORT",
+        "SAME_PROJECT",
+        "EXISTING_PROJECT",
+        "DISCLOSURE"
+      ],
+      "title": "ConflictCategory",
+      "type": "string"
+    },
+    "ConflictRule": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_licenses": {
+          "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "applies": {
+          "$ref": "#/$defs/Fact_Annotated_bool__Strict_strict_True___",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "category": {
+          "$ref": "#/$defs/ConflictCategory"
+        },
+        "evidence_ids": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "supported": {
+          "title": "Supported",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "supported"
+      ],
+      "title": "ConflictRule",
+      "type": "object"
+    },
+    "Fact_Annotated_bool__Strict_strict_True___": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_refs": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "default": "UNKNOWN"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "title": "Fact[Annotated[bool, Strict(strict=True)]]",
+      "type": "object"
+    },
+    "Fact_Annotated_str__StringConstraints__": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_refs": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "default": "UNKNOWN"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "title": "Fact[Annotated[str, StringConstraints]]",
+      "type": "object"
+    },
+    "Fact_CodeProvenance_": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_refs": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "default": "UNKNOWN"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CodeProvenance"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "Fact[CodeProvenance]",
+      "type": "object"
+    },
+    "Fact_tuple_Annotated_str__StringConstraints___________": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_refs": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "default": "UNKNOWN"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "items": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "title": "Fact[tuple[Annotated[str, StringConstraints], ...]]",
+      "type": "object"
+    },
+    "Provenance": {
+      "enum": [
+        "USER_ASSERTED",
+        "DOCUMENTED",
+        "UNKNOWN"
+      ],
+      "title": "Provenance",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "code_origin": {
+      "$ref": "#/$defs/Fact_CodeProvenance_",
+      "default": {
+        "evidence_refs": [],
+        "provenance": "UNKNOWN",
+        "value": null
+      }
+    },
+    "conflict_rules": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ConflictRule"
+      },
+      "title": "Conflict Rules",
+      "type": "array"
+    },
+    "contest": {
+      "minLength": 1,
+      "title": "Contest",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "facts_provenance": {
+      "$ref": "#/$defs/Provenance"
+    },
+    "id": {
+      "minLength": 1,
+      "title": "Id",
+      "type": "string"
+    },
+    "license": {
+      "$ref": "#/$defs/Fact_Annotated_str__StringConstraints__",
+      "default": {
+        "evidence_refs": [],
+        "provenance": "UNKNOWN",
+        "value": null
+      }
+    },
+    "project_id": {
+      "minLength": 1,
+      "title": "Project Id",
+      "type": "string"
+    },
+    "project_lineage": {
+      "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+      "default": {
+        "evidence_refs": [],
+        "provenance": "UNKNOWN",
+        "value": null
+      }
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    },
+    "reused_components": {
+      "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+      "default": {
+        "evidence_refs": [],
+        "provenance": "UNKNOWN",
+        "value": null
+      }
+    },
+    "rules_evidence_refs": {
+      "default": [],
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Rules Evidence Refs",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "sponsor_support": {
+      "$ref": "#/$defs/Fact_Annotated_bool__Strict_strict_True___",
+      "default": {
+        "evidence_refs": [],
+        "provenance": "UNKNOWN",
+        "value": null
+      }
+    },
+    "submission_dates": {
+      "default": [],
+      "items": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "format": "date-time",
+            "type": "string"
+          }
+        ]
+      },
+      "title": "Submission Dates",
+      "type": "array"
+    },
+    "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "version",
+    "created_at",
+    "updated_at",
+    "provenance",
+    "contest",
+    "project_id",
+    "facts_provenance"
+  ],
+  "title": "ActiveSubmission",
+  "type": "object"
+}
