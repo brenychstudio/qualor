@@ -1,0 +1,1 @@
+"""QUALOR bootstrap foundation."""
