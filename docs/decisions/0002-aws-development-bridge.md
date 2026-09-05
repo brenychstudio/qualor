@@ -52,8 +52,36 @@ public knowledge only. This isolation matters: `--skip-auth` alone still signs
 when a credential provider finds credentials. Root authentication is never
 treated as permission for routine agent automation.
 
+QUALOR-00B1 adds a process-local direct IPv4 HTTPS transport in
+`scripts/aws_mcp_proxy.py`. The guarded launcher uses
+`uvx --from mcp-proxy-for-aws-cli==1.6.5 python scripts/aws_mcp_proxy.py` with the
+same endpoint, profile, region and read-only arguments. The adapter supplies
+HTTPX's [documented transport option](https://www.python-httpx.org/advanced/transports/)
+`local_address="0.0.0.0"` through the pinned proxy's existing SigV4 client factory.
+It keeps certificate/hostname verification enabled, the upstream signing hooks,
+connection limits and read-only middleware. No installed package is edited.
+
+Evidence: proxy stderr traced empty JSON-RPC `-32603` failures to
+`httpx.ConnectError` during TLS. Per-address probes found resets on some IPv6
+addresses while every probed IPv4 address negotiated TLS 1.3. A direct IPv4 HTTPS
+request reached the same endpoint. This one transport change then made the exact
+launcher and both fresh Codex knowledge smokes pass. Codex configuration and
+timeouts were not changed, and no Agent Toolkit plugin was installed.
+
+The adapter depends on the inspected 1.6.5 factory symbol and fails closed on
+another proxy version. An upgrade must recheck this integration. Explicit HTTPX
+transport uses direct connections and does not inherit HTTP proxy environment
+settings; none were configured in the diagnosed environment. This is not a
+system-wide IPv6, DNS, firewall or TLS-policy change.
+
 `scripts/aws-preflight.ps1` emits sanitized statuses and returns nonzero when
-required gates are blocked. Its CLI allowlist contains only STS identity, Bedrock
+required gates are blocked. QUALOR-00B1 explicitly permits a recorded AgentCore
+read-permission gap: exit 0 requires non-root temporary authentication, STS,
+Bedrock and local MCP configuration gates, with exact denied AgentCore actions.
+The individual capabilities remain `BLOCKED_PERMISSION`. Unknown/network failures
+still return nonzero. Live MCP knowledge success is verified separately in fresh
+Codex processes; the CLI preflight does not claim it from configuration alone.
+Its CLI allowlist contains only STS identity, Bedrock
 model/profile listing and AgentCore runtime/gateway listing. Local CLI skeleton
 generation checks supported AgentCore operations without contacting AWS.
 Discovery does not prove deployment, invocation permission or account entitlement.

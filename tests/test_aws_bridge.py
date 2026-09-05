@@ -3,6 +3,7 @@
 import importlib.util
 import os
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -91,6 +92,7 @@ def test_control_plane_blocker_fails_preflight():
             "AWS_CLI",
             "AWS_PROFILE",
             "AWS_AUTH",
+            "AWS_STS",
             "CODEX_MCP",
             "MCP_PROXY",
             "BEDROCK_CONTROL_PLANE",
@@ -102,6 +104,8 @@ def test_control_plane_blocker_fails_preflight():
         MCP_AUTHENTICATED_MODE="READ_ONLY",
         AWS_PROFILE_REGION="us-east-1",
         SONNET_4_6_DISCOVERY="PASS",
+        PRINCIPAL_TYPE="IAM_USER",
+        TEMPORARY_CREDENTIALS="YES",
     )
     assert bridge.preflight_passed(report)
     report["BEDROCK_CONTROL_PLANE"] = "BLOCKED"
@@ -109,6 +113,71 @@ def test_control_plane_blocker_fails_preflight():
     report["BEDROCK_CONTROL_PLANE"] = "PASS"
     report["SONNET_4_6_DISCOVERY"] = "BLOCKED"
     assert not bridge.preflight_passed(report)
+
+
+def test_preflight_accepts_only_explicit_agentcore_permission_gaps():
+    report = dict.fromkeys(
+        [
+            "AWS_CLI",
+            "AWS_PROFILE",
+            "AWS_AUTH",
+            "AWS_STS",
+            "CODEX_MCP",
+            "MCP_PROXY",
+            "BEDROCK_CONTROL_PLANE",
+            "SONNET_4_6_DISCOVERY",
+        ],
+        "PASS",
+    )
+    report.update(
+        MCP_AUTHENTICATED_MODE="READ_ONLY",
+        AWS_PROFILE_REGION="us-east-1",
+        PRINCIPAL_TYPE="IAM_USER",
+        TEMPORARY_CREDENTIALS="YES",
+        AGENTCORE_CONTROL_PLANE="BLOCKED_PERMISSION",
+        AGENTCORE_RUNTIME_DISCOVERY="BLOCKED_PERMISSION",
+        AGENTCORE_GATEWAY_DISCOVERY="BLOCKED_PERMISSION",
+        AGENTCORE_DENIED_ACTIONS=(
+            "bedrock-agentcore:ListAgentRuntimes,bedrock-agentcore:ListGateways"
+        ),
+    )
+    assert bridge.preflight_passed(report)
+    for key, value in [
+        ("AGENTCORE_DENIED_ACTIONS", "NONE"),
+        ("AGENTCORE_RUNTIME_DISCOVERY", "BLOCKED"),
+        ("PRINCIPAL_TYPE", "ROOT"),
+        ("AWS_STS", "BLOCKED_SESSION"),
+    ]:
+        assert not bridge.preflight_passed({**report, key: value})
+
+
+def test_read_permission_error_records_only_allowlisted_action(monkeypatch):
+    action = "bedrock-agentcore:ListGateways"
+    private_identity = ":".join(["arn", "aws", "iam", "", "1" * 12, "user/fixture"])
+    stderr = (
+        "An error occurred (AccessDeniedException) when calling ListGateways: "
+        f"User {private_identity} is not authorized to perform: {action} on resource"
+    )
+    monkeypatch.setattr(
+        bridge, "run", lambda *args: SimpleNamespace(returncode=254, stdout="", stderr=stderr)
+    )
+    error = {}
+    assert bridge.aws_read("aws", "bedrock-agentcore-control", "list-gateways", {}, error) is None
+    assert error == {"status": "BLOCKED_PERMISSION", "action": action}
+    assert private_identity not in str(error)
+
+
+def test_transport_failure_is_not_misclassified_as_permission_gap(monkeypatch):
+    monkeypatch.setattr(
+        bridge,
+        "run",
+        lambda *args: SimpleNamespace(
+            returncode=255, stdout="", stderr="Could not connect to endpoint"
+        ),
+    )
+    error = {}
+    assert bridge.aws_read("aws", "bedrock-agentcore-control", "list-gateways", {}, error) is None
+    assert error == {"status": "BLOCKED", "action": "NONE"}
 
 
 def test_profile_requires_login_and_rejects_custom_or_static_providers(tmp_path):
@@ -142,7 +211,8 @@ def test_auth_failure_prevents_control_plane_calls(monkeypatch, tmp_path):
 
 def test_proxy_contract_is_pinned_read_only_and_single_profile():
     args = bridge.proxy_arguments()
-    assert args[:2] == ["uvx", "mcp-proxy-for-aws-cli==1.6.5"]
+    assert args[:4] == ["uvx", "--from", "mcp-proxy-for-aws-cli==1.6.5", "python"]
+    assert Path(args[4]).name == "aws_mcp_proxy.py"
     assert args.count("--read-only") == 1
     assert args[args.index("--profile") + 1] == "qualor-dev"
     assert args[args.index("--region") + 1] == "us-east-1"

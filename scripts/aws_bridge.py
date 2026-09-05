@@ -22,6 +22,13 @@ READ_OPERATIONS = {
     ("bedrock-agentcore-control", "list-agent-runtimes"),
     ("bedrock-agentcore-control", "list-gateways"),
 }
+READ_ACTIONS = {
+    ("sts", "get-caller-identity"): "sts:GetCallerIdentity",
+    ("bedrock", "list-foundation-models"): "bedrock:ListFoundationModels",
+    ("bedrock", "list-inference-profiles"): "bedrock:ListInferenceProfiles",
+    ("bedrock-agentcore-control", "list-agent-runtimes"): "bedrock-agentcore:ListAgentRuntimes",
+    ("bedrock-agentcore-control", "list-gateways"): "bedrock-agentcore:ListGateways",
+}
 
 
 def run(args, env=None, timeout=90):
@@ -131,7 +138,7 @@ def profile_state(directory):
         return "BLOCKED_CONFIG", "UNKNOWN", "UNKNOWN"
 
 
-def aws_read(executable, service, operation, env):
+def aws_read(executable, service, operation, env, error=None):
     if (service, operation) not in READ_OPERATIONS:
         raise ValueError("Operation is not allowed")
     result = run(
@@ -154,6 +161,21 @@ def aws_read(executable, service, operation, env):
         env,
     )
     if result is None or result.returncode:
+        if error is not None:
+            action = READ_ACTIONS[(service, operation)]
+            denied = bool(
+                result
+                and re.search(
+                    r"An error occurred \("
+                    r"(?:AccessDeniedException|AccessDenied|UnauthorizedOperation)\)",
+                    result.stderr,
+                )
+                and re.search(rf"(?<![\w:-]){re.escape(action)}(?![\w:-])", result.stderr)
+            )
+            error.update(
+                status="BLOCKED_PERMISSION" if denied else "BLOCKED",
+                action=action if denied else "NONE",
+            )
         return None
     try:
         return json.loads(result.stdout)
@@ -230,7 +252,10 @@ def proxy_state():
 def proxy_arguments():
     return [
         "uvx",
+        "--from",
         f"mcp-proxy-for-aws-cli=={PROXY_VERSION}",
+        "python",
+        str(ROOT / "scripts" / "aws_mcp_proxy.py"),
         ENDPOINT,
         "--profile",
         PROFILE,
@@ -305,6 +330,7 @@ def preflight():
         "AGENTCORE_RUNTIME_DISCOVERY": "BLOCKED_AUTH",
         "AGENTCORE_GATEWAY_DISCOVERY": "BLOCKED_AUTH",
         "AGENTCORE_WEB_SEARCH_DISCOVERY": "UNVERIFIED",
+        "AGENTCORE_DENIED_ACTIONS": "NONE",
         "CODEX_MCP": mcp_state(),
         "AWS_MCP_SERVER": "UNVERIFIED",
         "AWS_MCP_MODE": "READ_ONLY",
@@ -342,11 +368,14 @@ def preflight():
         statuses["PRINCIPAL_TYPE"], provider
     ):
         return statuses
-    models = aws_read(executable, "bedrock", "list-foundation-models", env)
-    profiles = aws_read(executable, "bedrock", "list-inference-profiles", env)
+    model_error, profile_error = {}, {}
+    models = aws_read(executable, "bedrock", "list-foundation-models", env, model_error)
+    profiles = aws_read(executable, "bedrock", "list-inference-profiles", env, profile_error)
     models = models if valid_list(models, "modelSummaries") else None
     profiles = profiles if valid_list(profiles, "inferenceProfileSummaries") else None
-    statuses["BEDROCK_CONTROL_PLANE"] = "PASS" if models is not None else "BLOCKED"
+    statuses["BEDROCK_CONTROL_PLANE"] = (
+        "PASS" if models is not None else model_error.get("status", "BLOCKED")
+    )
     found = sonnet_discovered(
         (models or {}).get("modelSummaries", []),
         (profiles or {}).get("inferenceProfileSummaries", []),
@@ -356,8 +385,11 @@ def preflight():
         if found
         else "NOT_FOUND"
         if models is not None and profiles is not None
+        else "BLOCKED_PERMISSION"
+        if "BLOCKED_PERMISSION" in [model_error.get("status"), profile_error.get("status")]
         else "BLOCKED"
     )
+    denied_actions = []
     for operation, key, response_key in [
         ("list-agent-runtimes", "AGENTCORE_RUNTIME_DISCOVERY", "agentRuntimes"),
         ("list-gateways", "AGENTCORE_GATEWAY_DISCOVERY", "items"),
@@ -376,14 +408,22 @@ def preflight():
         if not support or support.returncode:
             statuses[key] = "UNAVAILABLE"
         else:
-            result = aws_read(executable, "bedrock-agentcore-control", operation, env)
-            statuses[key] = "PASS" if valid_list(result, response_key) else "BLOCKED"
+            error = {}
+            result = aws_read(executable, "bedrock-agentcore-control", operation, env, error)
+            statuses[key] = (
+                "PASS" if valid_list(result, response_key) else error.get("status", "BLOCKED")
+            )
+            if error.get("status") == "BLOCKED_PERMISSION":
+                denied_actions.append(error["action"])
+    statuses["AGENTCORE_DENIED_ACTIONS"] = ",".join(sorted(denied_actions)) or "NONE"
     results = [statuses["AGENTCORE_RUNTIME_DISCOVERY"], statuses["AGENTCORE_GATEWAY_DISCOVERY"]]
     statuses["AGENTCORE_CONTROL_PLANE"] = (
         "PASS"
         if all(value == "PASS" for value in results)
         else "UNAVAILABLE"
         if all(value == "UNAVAILABLE" for value in results)
+        else "BLOCKED_PERMISSION"
+        if all(value in {"PASS", "BLOCKED_PERMISSION"} for value in results)
         else "BLOCKED"
     )
     return statuses
@@ -413,13 +453,34 @@ def preflight_passed(report):
         "AWS_CLI",
         "AWS_PROFILE",
         "AWS_AUTH",
+        "AWS_STS",
         "CODEX_MCP",
         "MCP_PROXY",
         "BEDROCK_CONTROL_PLANE",
-        "AGENTCORE_CONTROL_PLANE",
     ]
+    # QUALOR-00B1 explicitly permits these documented read-only IAM gaps.
+    agentcore = report["AGENTCORE_CONTROL_PLANE"] == "PASS"
+    if report["AGENTCORE_CONTROL_PLANE"] == "BLOCKED_PERMISSION":
+        expected_denials = {
+            READ_ACTIONS[("bedrock-agentcore-control", operation)]
+            for operation, key in [
+                ("list-agent-runtimes", "AGENTCORE_RUNTIME_DISCOVERY"),
+                ("list-gateways", "AGENTCORE_GATEWAY_DISCOVERY"),
+            ]
+            if report.get(key) == "BLOCKED_PERMISSION"
+        }
+        agentcore = bool(expected_denials) and (
+            set(report.get("AGENTCORE_DENIED_ACTIONS", "").split(",")) == expected_denials
+            and all(
+                report.get(key) in {"PASS", "BLOCKED_PERMISSION"}
+                for key in ["AGENTCORE_RUNTIME_DISCOVERY", "AGENTCORE_GATEWAY_DISCOVERY"]
+            )
+        )
     return (
         all(report[key] == "PASS" for key in required)
+        and agentcore
+        and authentication_allowed(report.get("PRINCIPAL_TYPE"), "login")
+        and report.get("TEMPORARY_CREDENTIALS") == "YES"
         and report["MCP_AUTHENTICATED_MODE"] == "READ_ONLY"
         and report["AWS_PROFILE_REGION"] == REGION
         and report["SONNET_4_6_DISCOVERY"] in {"PASS", "NOT_FOUND"}

@@ -1,126 +1,152 @@
-# QUALOR-00B status
+# QUALOR-00B status, updated by QUALOR-00B1
 
-Date: 2026-09-05. Status: PARTIAL. Infrastructure enablement only.
+Date: 2026-09-05. Blocker-resolution checkpoint: PASS with explicit AgentCore
+read-permission gaps permitted by QUALOR-00B1 Phase H. No QUALOR-01 work.
 
 ## Repository checkpoint
 
-- Base: `main`, `021f9b85b9cee26020b6e2217218f4655d2a0f75`.
-- Task branch: `qualor-00b-aws-development-bridge`.
-- Repository: `brenychstudio/qualor`, PRIVATE.
+- Repository: `brenychstudio/qualor`, PRIVATE; existing PR #2 remains unmerged.
+- Branch: `qualor-00b-aws-development-bridge`.
+- QUALOR-00B1 starting HEAD: `94c583c2f4bc4e9090e7c6ba24d3fa4c1e261eb3`.
+- Main baseline: `021f9b85b9cee26020b6e2217218f4655d2a0f75`.
 - Canonical SHA-256: `440db7b600d6ec170778035e39d93ce8cd5b8f20d49fd99bccf3174978536829`.
-- Canonical size: 62438 bytes; unchanged.
-- Baseline verification passed on the exact clean main tree before branch creation.
-- Delivery uses an unmerged PR. Exact delivery HEAD and final clean-tree verification
-  are reported in the PR and Result Packet to avoid a self-referential commit hash.
+- Canonical size: 62438 bytes, unchanged. Exact delivery HEAD and final clean-tree
+  verification are reported in PR #2 and the Result Packet.
 
-## Installed bridge and authentication
+## Root identity resolved
+
+The owner provisioned `qualor-dev-user` in `qualor-dev-readonly`, with
+`SignInLocalDevelopmentAccess` and `AmazonBedrockReadOnly`. Codex did not modify
+IAM, broaden permissions, or create access keys.
+
+Phase A logged out the named profile and completed browser `aws login`, replacing
+its previous root login-session reference with the owner's IAM login. STS verified
+the expected user and temporary credentials. Phase A was not repeated during the
+Phase B continuation. Later read-only preflight again verified non-root identity.
 
 ```text
 AWS_CLI_VERSION=2.36.40
-AWS_LOGIN_COMMAND=PASS
-AWS_AGENT_TOOLKIT_COMMAND=PASS
-CODEX_INSTALLED_VERSION=0.151.0
-CODEX_FRESH_SMOKE_VERSION=0.153.4
+CODEX_VERSION=0.153.4
 UV_VERSION=0.12.5
 UVX_VERSION=0.12.5
-MCP_PROXY_VERSION=1.6.5
+MCP_PROXY_VERSION=1.6.5_PINNED
 AWS_PROFILE=qualor-dev
 AWS_REGION=us-east-1
 AWS_AUTH=PASS
 AWS_STS=PASS
-PRINCIPAL_TYPE=ROOT
+PRINCIPAL_TYPE=IAM_USER
+ROOT_IDENTITY=NO
 TEMPORARY_CREDENTIALS=YES
 ROOT_AGENT_ACCESS=NO
-MCP_AUTHENTICATED_MODE=BLOCKED_ROOT_IDENTITY
+AWS_ACCESS_KEYS_CREATED=0
+IAM_CHANGED_BY_CODEX=NO
+```
+
+AWS config/cache stay under the user profile, outside the repository. The
+immutable session snapshot, alternate-provider isolation and root guard remain.
+
+## Read-only capability evidence
+
+Both the repository preflight and independent CLI reads succeeded for Bedrock
+foundation-model and inference-profile lists. Authoritative model identifiers
+confirmed Sonnet 4.6 in both responses. No inference permission was tested.
+
+```text
+BEDROCK_CONTROL_PLANE=PASS
+SONNET_4_6_DISCOVERY=PASS
+SONNET_4_6_INFERENCE=NOT_TESTED
+AGENTCORE_CONTROL_PLANE=BLOCKED_PERMISSION
+AGENTCORE_RUNTIME_DISCOVERY=BLOCKED_PERMISSION
+AGENTCORE_GATEWAY_DISCOVERY=BLOCKED_PERMISSION
+AGENTCORE_WEB_SEARCH_DISCOVERY=UNVERIFIED
+AGENTCORE_DENIED_ACTIONS=bedrock-agentcore:ListAgentRuntimes,bedrock-agentcore:ListGateways
+```
+
+Both denied calls returned `AccessDeniedException`. No permissions were added.
+AgentCore API models exist in the installed CLI; documentation confirms regional
+Web Search availability as recorded in ADR 0002, but no connector, search or
+deployment was executed.
+
+## MCP diagnosis and the single fix
+
+Before changing code/configuration, Phase C captured installed Codex 0.153.4,
+the enabled `aws-qualor` stdio entry, and proxy 1.6.5 help. The configured command
+was and remains `powershell.exe -NoProfile -NonInteractive -File
+C:\PROJECTS\qualor\scripts\aws-mcp.ps1`. Profile and region were explicit;
+read-only mode was enabled. Startup/tool timeout configuration was unset.
+Existing unrelated MCP entries were preserved.
+
+The exact launcher outside Codex returned a valid JSON-RPC error `-32603` with
+an empty message after 4.844 seconds, then exited 0 when stdin was closed. A fresh
+installed Codex process also produced an empty knowledge-tool error. The primary
+pre-fix class was `UNKNOWN`; the supplied taxonomy has no network/TLS category.
+It was not established as a Codex-only failure, argument error or startup timeout.
+
+One additional debug run showed successful profile/region propagation and SigV4
+signing, followed by `httpx.ConnectError` during `start_tls`. Direct TLS probes
+found some IPv6 addresses resetting connections (Windows error 10054), while all
+probed IPv4 addresses negotiated TLS 1.3. IPv4-bound HTTPX reached the same managed
+endpoint with certificate verification enabled.
+
+Hypothesis: intermittent IPv6 TLS resets produce the empty downstream connection
+error surfaced by MCP. The single handshake fix supplies a direct IPv4 HTTPX
+transport inside the pinned proxy process, through its existing client factory.
+No Codex timeout/configuration, IAM policy, endpoint, TLS verification, proxy pin
+or read-only filter was weakened. See [ADR 0002](../decisions/0002-aws-development-bridge.md)
+for the narrow adapter and HTTP-proxy compatibility limitation.
+
+After the fix, the same launcher initialized successfully in 6.750 seconds and
+exited 0 after stdin closure. A server waiting for protocol input was not treated
+as a hang.
+
+## Fresh Codex evidence
+
+Two genuinely fresh installed Codex 0.153.4 processes used the existing
+configuration. Each requested one knowledge call and no retry:
+
+1. `aws___list_regions`: succeeded, returned 37 regions.
+2. `aws___get_regional_availability`: returned `Amazon Bedrock: isAvailableIn`
+   for `us-east-1`, with no failed regions or next page.
+
+Independent direct-client discovery found exactly six tools, all with
+`readOnlyHint=true`: `aws___get_tasks`, `aws___get_regional_availability`,
+`aws___list_regions`, `aws___read_documentation`, `aws___retrieve_skill`, and
+`aws___search_documentation`. Upstream filtering still applies to discovery and
+invocation. No write tool was invoked.
+
+```text
+FRESH_CODEX_MCP_CONNECTION=PASS
+FRESH_CODEX_TOOL_DISCOVERY=PASS
+AWS_KNOWLEDGE_TOOLS=PASS
+REGIONAL_DISCOVERY=PASS
+MCP_MODE=READ_ONLY
+MCP_WRITE_CAPABILITY=HIDDEN_OR_BLOCKED
+MCP_AUTH_METHOD=SIGV4_NAMED_TEMPORARY_PROFILE
 MCP_AUTHENTICATED_WRITE_MODE=DEFERRED
 ```
 
-The official per-user AWS installer had a valid Amazon signature. Automatic
-execution review blocked the combined installer command; the owner completed
-installation manually. Browser `aws login` completed successfully. Only nonsecret
-region metadata was subsequently set in the named profile. No keys were created
-or exported. AWS config and login cache remain outside the repository.
+Knowledge success does not establish authenticated AWS API execution through MCP.
+Independent CLI results above are a separate capability class. Raw diagnostics
+remain under ignored `.qualor/local/`; no browser/credential material is committed.
 
-STS identified root, so no authenticated Bedrock/AgentCore discovery or MCP
-execution followed. A separately created non-root identity is required. This task
-does not create IAM identities or policies.
+## Verification and remaining boundaries
 
-## Capability evidence
+- RED/GREEN tests cover the IPv4 adapter and explicit permission-gap reporting.
+  The suite has 42 passing tests, including all original bootstrap behaviors.
+- Ruff passes. The existing full clean-tree verification, locked frontend
+  install/build, Git whitespace and tracked-secret audit remain delivery gates.
+- `scripts/aws-preflight.ps1` returns 0 for this explicitly permitted diagnostic
+  state and continues to show each denied AgentCore action. It still fails on
+  missing/root authentication, unknown errors, Bedrock failures, or unsupported
+  MCP configuration. Its `AWS_MCP_SERVER=UNVERIFIED` means live MCP knowledge is
+  verified by the separate fresh-process smokes, not inferred by the CLI script.
+- Independent review verified TLS verification, SigV4 hooks, root/credential
+  guards and read-only filtering remain intact.
+- AWS resources created: 0. Paid AWS calls: 0. Estimated task cost: USD 0.
+- No long-term keys, proprietary imports, IAM changes, product features,
+  inference, AgentCore Web Search execution, deployment or external submissions.
 
-```text
-BEDROCK_CONTROL_PLANE=BLOCKED_ROOT_IDENTITY
-SONNET_4_6_DISCOVERY=BLOCKED_ROOT_IDENTITY
-SONNET_4_6_INFERENCE=NOT_TESTED
-AGENTCORE_CONTROL_PLANE=BLOCKED_ROOT_IDENTITY
-AGENTCORE_RUNTIME_DISCOVERY=BLOCKED_ROOT_IDENTITY
-AGENTCORE_GATEWAY_DISCOVERY=BLOCKED_ROOT_IDENTITY
-AGENTCORE_WEB_SEARCH_DISCOVERY=DOCUMENTED_US_EAST_1_EXECUTION_UNVERIFIED
-CLI_LIST_AGENT_RUNTIMES=PASS
-CLI_LIST_GATEWAYS=PASS
-AWS_RESOURCES_CREATED=0
-AWS_PAID_CALLS=0
-AWS_ESTIMATED_TASK_COST=USD_0
-```
-
-CLI AgentCore entries were inspected with local input-skeleton generation, not
-authenticated API calls. Official regional/model documentation supports the
-canonical direction with the inference-profile clarification in
-[ADR 0002](../decisions/0002-aws-development-bridge.md). Documentation and model
-listing do not establish runtime permission.
-
-## MCP evidence
-
-One enabled `aws-qualor` entry exists. No AWS MCP entry, legacy API/Knowledge
-server, AWS profile or Agent Toolkit setup existed in the inspected local
-configuration before this task. Unrelated Codex entries were preserved.
-
-The guarded launcher enforces the pinned proxy and read-only mode. With root
-blocked, it provides isolated, unauthenticated knowledge access. A direct MCP SDK
-client successfully initialized the exact configured launcher, listed six tools,
-and called `aws___get_regional_availability`. The service returned
-`Amazon Bedrock: isAvailableIn` for `us-east-1`.
-
-All six tools had `readOnlyHint=true`: `aws___get_tasks`,
-`aws___get_regional_availability`, `aws___list_regions`,
-`aws___read_documentation`, `aws___retrieve_skill`, and
-`aws___search_documentation`. Installed proxy source inspection confirmed filtering
-on both tool discovery and invocation. No write tool was invoked.
-
-```text
-CODEX_MCP_ENTRY=PASS
-MCP_PROXY=PASS
-MCP_MODE=READ_ONLY
-DIRECT_MCP_CONNECTION=PASS
-DIRECT_MCP_TOOL_DISCOVERY=PASS
-DIRECT_MCP_KNOWLEDGE_TOOL=PASS
-MCP_WRITE_CAPABILITY=HIDDEN_OR_BLOCKED
-FRESH_CODEX_MCP_CONNECTION=BLOCKED_HANDSHAKE
-```
-
-The installed Codex CLI could not use the configured model and required a newer
-CLI. A pinned temporary `npx @openai/codex@0.153.4` process used the existing MCP
-configuration, without a global Codex upgrade. Fresh-process attempts encountered
-tool-call errors and an explicit MCP initialization error `-32603`. Direct SDK
-success is not represented as a successful Codex end-to-end smoke. Raw diagnostics
-remain under ignored `.qualor/local/`.
-
-## Repository validation
-
-- TDD RED: new bridge test module initially failed because the implementation was
-  absent. Additional negative tests reproduced discovery/reporting defects before fixes.
-- GREEN: 24 offline bridge tests; 38 total pytest tests passed.
-- Ruff passed; frontend locked install, TypeScript check and Vite build passed.
-- Independent review covered credential isolation, immutable login-session
-  snapshots, root fallback, read-only filtering and truthful failure exits.
-- `scripts/aws-preflight.ps1` reports the root blocker and exits 1 as intended.
-  It does not claim successful authenticated discovery or MCP connection.
-- The existing full `scripts/verify.ps1` remains the final clean-tree delivery gate.
-- No proprietary code was imported; no product behavior was added or changed.
-
-## Unresolved and deferred
-
-Required blockers: non-root temporary AWS identity and successful fresh Codex MCP
-knowledge smoke. BDB registration remains blocked from QUALOR-00 and is outside
-this task. No domain implementation, live agent/search, model invocation,
-AgentCore deployment, write-enabled MCP, IAM automation role, resources or
-QUALOR-01 work was performed.
+Remaining permission gaps: `bedrock-agentcore:ListAgentRuntimes` and
+`bedrock-agentcore:ListGateways`. Inference and Web Search execution remain
+untested. BDB registration remains unchanged/out of scope. PR #2 is not merged;
+the next checkpoint is QUALOR-00BM, not QUALOR-01.
