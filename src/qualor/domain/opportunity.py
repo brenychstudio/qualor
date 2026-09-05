@@ -8,9 +8,10 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from pydantic import AfterValidator, model_validator
 
-from .base import CalendarDate, NonEmpty, Record, UtcInstant
+from .base import CalendarDate, Fact, NonEmpty, Record, UtcInstant
 from .enums import OpportunityStatus
 from .money import Reward
+from .planning import MatchingRequirements
 
 
 def validate_source_url(value: str) -> str:
@@ -55,6 +56,9 @@ class OpportunityRecord(Record):
     deliverables: tuple[NonEmpty, ...] = ()
     source_versions: tuple[NonEmpty, ...] = ()
     status: OpportunityStatus = OpportunityStatus.UNKNOWN
+
+    matching_requirements: MatchingRequirements | None = None
+    strategic_benefits: Fact[tuple[NonEmpty, ...]] = Fact()
 
     @model_validator(mode="after")
     def canonical_identity(self) -> Self:

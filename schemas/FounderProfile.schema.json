@@ -227,6 +227,42 @@
       "title": "Fact[Money]",
       "type": "object"
     },
+    "Fact_tuple_Annotated_str__StringConstraints___________": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_refs": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "default": "UNKNOWN"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "items": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "title": "Fact[tuple[Annotated[str, StringConstraints], ...]]",
+      "type": "object"
+    },
     "LegalForm": {
       "enum": [
         "INDIVIDUAL",
@@ -354,6 +390,14 @@
       "const": "1",
       "title": "Schema Version",
       "type": "string"
+    },
+    "strategic_goals": {
+      "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+      "default": {
+        "evidence_refs": [],
+        "provenance": "UNKNOWN",
+        "value": null
+      }
     },
     "team_size": {
       "$ref": "#/$defs/Fact_Annotated_int__Strict_strict_True___FieldInfo_annotation_NoneType__required_True__metadata__Ge_ge_1_____",

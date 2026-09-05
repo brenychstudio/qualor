@@ -1,10 +1,13 @@
 """Explicit owner-supplied facts; no private repository discovery or inferred traction."""
 
-from pydantic import StrictBool
+from typing import Self
+
+from pydantic import StrictBool, model_validator
 
 from .base import CalendarDate, Fact, NonEmpty, PositiveInt, Record, UtcInstant
 from .enums import CodeProvenance, LegalForm, ProjectStage
 from .money import Money, NonNegativeDecimal
+from .planning import MaterialReadiness
 
 
 class FounderProfile(Record):
@@ -16,6 +19,7 @@ class FounderProfile(Record):
     available_hours: Fact[NonNegativeDecimal] = Fact()
     max_cash_commitment: Fact[Money] = Fact()
     open_source_willingness: Fact[StrictBool] = Fact()
+    strategic_goals: Fact[tuple[NonEmpty, ...]] = Fact()
     constraints: tuple[NonEmpty, ...] = ()
     verified_at: UtcInstant | None = None
 
@@ -36,3 +40,14 @@ class ProjectProfile(Record):
     has_sponsor_support: Fact[StrictBool] = Fact()
     reward_conditions_met: Fact[StrictBool] = Fact()
     facts_verified_at: UtcInstant | None = None
+
+    material_readiness: tuple[MaterialReadiness, ...] = ()
+    project_lineage: Fact[tuple[NonEmpty, ...]] = Fact()
+    reused_components: Fact[tuple[NonEmpty, ...]] = Fact()
+    reuse_disclosed: Fact[StrictBool] = Fact()
+
+    @model_validator(mode="after")
+    def unique_materials(self) -> Self:
+        if len({m.kind for m in self.material_readiness}) != len(self.material_readiness):
+            raise ValueError("Duplicate material readiness facts")
+        return self

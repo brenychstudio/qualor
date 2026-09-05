@@ -207,6 +207,62 @@
       "title": "Fact[tuple[Annotated[str, StringConstraints], ...]]",
       "type": "object"
     },
+    "MaterialKind": {
+      "enum": [
+        "REPOSITORY",
+        "LICENSE",
+        "DEMO",
+        "ARCHITECTURE_DIAGRAM",
+        "TECHNICAL_INTEGRATION",
+        "NARRATIVE",
+        "PUBLIC_AVAILABILITY",
+        "OTHER"
+      ],
+      "title": "MaterialKind",
+      "type": "string"
+    },
+    "MaterialReadiness": {
+      "additionalProperties": false,
+      "properties": {
+        "gap_executable": {
+          "$ref": "#/$defs/Fact_Annotated_bool__Strict_strict_True___",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "kind": {
+          "$ref": "#/$defs/MaterialKind"
+        },
+        "ready": {
+          "$ref": "#/$defs/Fact_Annotated_bool__Strict_strict_True___",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "MaterialReadiness",
+      "type": "object"
+    },
     "ProjectStage": {
       "enum": [
         "IDEA",
@@ -309,6 +365,14 @@
         "value": null
       }
     },
+    "material_readiness": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/MaterialReadiness"
+      },
+      "title": "Material Readiness",
+      "type": "array"
+    },
     "name": {
       "minLength": 1,
       "title": "Name",
@@ -330,6 +394,14 @@
         "value": null
       }
     },
+    "project_lineage": {
+      "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+      "default": {
+        "evidence_refs": [],
+        "provenance": "UNKNOWN",
+        "value": null
+      }
+    },
     "provenance": {
       "$ref": "#/$defs/Provenance"
     },
@@ -341,6 +413,22 @@
       },
       "title": "Public Evidence Refs",
       "type": "array"
+    },
+    "reuse_disclosed": {
+      "$ref": "#/$defs/Fact_Annotated_bool__Strict_strict_True___",
+      "default": {
+        "evidence_refs": [],
+        "provenance": "UNKNOWN",
+        "value": null
+      }
+    },
+    "reused_components": {
+      "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+      "default": {
+        "evidence_refs": [],
+        "provenance": "UNKNOWN",
+        "value": null
+      }
     },
     "reward_conditions_met": {
       "$ref": "#/$defs/Fact_Annotated_bool__Strict_strict_True___",
