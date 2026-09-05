@@ -1,0 +1,459 @@
+{
+  "schema_version": "1",
+  "mode": "FIXTURE",
+  "context": {
+    "founder": {
+      "schema_version": "1",
+      "id": "founder_synthetic",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "country_of_residence": {
+        "value": "Spain",
+        "provenance": "DOCUMENTED"
+      },
+      "legal_form": {
+        "value": "INCORPORATED_COMPANY",
+        "provenance": "DOCUMENTED"
+      },
+      "team_size": {
+        "value": 2,
+        "provenance": "DOCUMENTED"
+      },
+      "verified_at": "2026-09-05T12:00:00Z"
+    },
+    "project": {
+      "schema_version": "1",
+      "id": "project_synthetic",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "name": "Synthetic Eligibility Demonstrator",
+      "stage": {
+        "value": "PROTOTYPE",
+        "provenance": "DOCUMENTED"
+      },
+      "code_provenance": {
+        "value": "ORIGINAL",
+        "provenance": "DOCUMENTED"
+      },
+      "is_new_project": {
+        "value": true,
+        "provenance": "DOCUMENTED"
+      },
+      "license_intent": {
+        "value": "MIT",
+        "provenance": "DOCUMENTED"
+      },
+      "technology_stack": {
+        "value": [
+          "Python",
+          "TypeScript"
+        ],
+        "provenance": "DOCUMENTED"
+      },
+      "has_sponsor_support": {
+        "value": false,
+        "provenance": "DOCUMENTED"
+      },
+      "reward_conditions_met": {
+        "value": true,
+        "provenance": "DOCUMENTED"
+      },
+      "facts_verified_at": "2026-09-05T12:00:00Z"
+    },
+    "opportunity": {
+      "schema_version": "1",
+      "id": "synthetic_opportunity",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "organizer": "Synthetic Example Foundation",
+      "program_name": "Owned Deterministic Test Award",
+      "edition": "2026-FIXTURE",
+      "canonical_rules_url": "https://synthetic.example/rules",
+      "application_url": "https://synthetic.example/apply",
+      "deadlines": [
+        "2026-09-15T12:00:00Z"
+      ],
+      "status": "OPEN"
+    },
+    "evidence": [
+      {
+        "schema_version": "1",
+        "id": "e_DEADLINE",
+        "version": 1,
+        "created_at": "2026-09-01T12:00:00Z",
+        "updated_at": "2026-09-05T12:00:00Z",
+        "provenance": "DOCUMENTED",
+        "original_url": "https://synthetic.example/rules",
+        "final_url": "https://synthetic.example/rules",
+        "retrieved_at": "2026-09-04T10:00:00Z",
+        "source_type": "SYNTHETIC_FIXTURE",
+        "content_hash": "020e3cb1cf9578b7ff52587bcb35e3df1396ffd03c28cfad78c75c5c9fb64c35",
+        "supporting_excerpt": "Synthetic entries open September 1 through September 15 at 12:00 UTC.",
+        "normalized_field": "DEADLINE",
+        "extraction_state": "REVIEWED",
+        "last_refresh_failed_at": "2026-09-05T11:00:00Z"
+      },
+      {
+        "schema_version": "1",
+        "id": "e_ENTRANT_TYPE",
+        "version": 1,
+        "created_at": "2026-09-01T12:00:00Z",
+        "updated_at": "2026-09-05T12:00:00Z",
+        "provenance": "DOCUMENTED",
+        "original_url": "https://synthetic.example/rules",
+        "final_url": "https://synthetic.example/rules",
+        "retrieved_at": "2026-09-04T10:00:00Z",
+        "source_type": "SYNTHETIC_FIXTURE",
+        "content_hash": "8910825c8719be0545fa47c1131b6a3ce5569c4e164824fd1509975f1f86a61c",
+        "supporting_excerpt": "Synthetic teams must have at least one member.",
+        "normalized_field": "ENTRANT_TYPE",
+        "extraction_state": "REVIEWED",
+        "last_refresh_failed_at": "2026-09-05T11:00:00Z"
+      },
+      {
+        "schema_version": "1",
+        "id": "e_GEOGRAPHY",
+        "version": 1,
+        "created_at": "2026-09-01T12:00:00Z",
+        "updated_at": "2026-09-05T12:00:00Z",
+        "provenance": "DOCUMENTED",
+        "original_url": "https://synthetic.example/rules",
+        "final_url": "https://synthetic.example/rules",
+        "retrieved_at": "2026-09-04T10:00:00Z",
+        "source_type": "SYNTHETIC_FIXTURE",
+        "content_hash": "ef8fb548617f479cc9f51dd9a01ceed300b983039f85f2dfa545a116e4161259",
+        "supporting_excerpt": "Synthetic entrants must reside in Spain or France. This states residence, not citizenship.",
+        "normalized_field": "GEOGRAPHY",
+        "extraction_state": "REVIEWED",
+        "last_refresh_failed_at": "2026-09-05T11:00:00Z"
+      },
+      {
+        "schema_version": "1",
+        "id": "e_LEGAL_ENTITY",
+        "version": 1,
+        "created_at": "2026-09-01T12:00:00Z",
+        "updated_at": "2026-09-05T12:00:00Z",
+        "provenance": "DOCUMENTED",
+        "original_url": "https://synthetic.example/rules",
+        "final_url": "https://synthetic.example/rules",
+        "retrieved_at": "2026-09-04T10:00:00Z",
+        "source_type": "SYNTHETIC_FIXTURE",
+        "content_hash": "3c88ce80b1367f91e1c72ec1be32e75b9fdfbf96a3cc03bb3ff95b09aca1d16b",
+        "supporting_excerpt": "Synthetic entrants must be incorporated companies.",
+        "normalized_field": "LEGAL_ENTITY",
+        "extraction_state": "REVIEWED",
+        "last_refresh_failed_at": "2026-09-05T11:00:00Z"
+      },
+      {
+        "schema_version": "1",
+        "id": "e_PROJECT_POLICY",
+        "version": 1,
+        "created_at": "2026-09-01T12:00:00Z",
+        "updated_at": "2026-09-05T12:00:00Z",
+        "provenance": "DOCUMENTED",
+        "original_url": "https://synthetic.example/rules",
+        "final_url": "https://synthetic.example/rules",
+        "retrieved_at": "2026-09-04T10:00:00Z",
+        "source_type": "SYNTHETIC_FIXTURE",
+        "content_hash": "dcad7d98dcf548c6f33a568d93dd87734f696bdca0eb8e7b941edcd9c9ffda9b",
+        "supporting_excerpt": "Synthetic entries must be new original projects. The authored fixture project has documented original code and new-work status.",
+        "normalized_field": "PROJECT_POLICY",
+        "extraction_state": "REVIEWED",
+        "last_refresh_failed_at": "2026-09-05T11:00:00Z"
+      },
+      {
+        "schema_version": "1",
+        "id": "e_LICENSE",
+        "version": 1,
+        "created_at": "2026-09-01T12:00:00Z",
+        "updated_at": "2026-09-05T12:00:00Z",
+        "provenance": "DOCUMENTED",
+        "original_url": "https://synthetic.example/rules",
+        "final_url": "https://synthetic.example/rules",
+        "retrieved_at": "2026-09-04T10:00:00Z",
+        "source_type": "SYNTHETIC_FIXTURE",
+        "content_hash": "bb4bfd16bddfb6d0c6b2fd63233a421156a930af98306146bb7b4d807ce947bd",
+        "supporting_excerpt": "Synthetic entries must declare an MIT license.",
+        "normalized_field": "LICENSE",
+        "extraction_state": "REVIEWED",
+        "last_refresh_failed_at": "2026-09-05T11:00:00Z"
+      },
+      {
+        "schema_version": "1",
+        "id": "e_REQUIRED_TECHNOLOGY",
+        "version": 1,
+        "created_at": "2026-09-01T12:00:00Z",
+        "updated_at": "2026-09-05T12:00:00Z",
+        "provenance": "DOCUMENTED",
+        "original_url": "https://synthetic.example/rules",
+        "final_url": "https://synthetic.example/rules",
+        "retrieved_at": "2026-09-04T10:00:00Z",
+        "source_type": "SYNTHETIC_FIXTURE",
+        "content_hash": "2431dafdef217d2c7a484ce406584cc90f944614da08b8cbfcb130f80e467e3d",
+        "supporting_excerpt": "Synthetic entries must use Python.",
+        "normalized_field": "REQUIRED_TECHNOLOGY",
+        "extraction_state": "REVIEWED",
+        "last_refresh_failed_at": "2026-09-05T11:00:00Z"
+      },
+      {
+        "schema_version": "1",
+        "id": "e_FINANCIAL_SUPPORT",
+        "version": 1,
+        "created_at": "2026-09-01T12:00:00Z",
+        "updated_at": "2026-09-05T12:00:00Z",
+        "provenance": "DOCUMENTED",
+        "original_url": "https://synthetic.example/rules",
+        "final_url": "https://synthetic.example/rules",
+        "retrieved_at": "2026-09-04T10:00:00Z",
+        "source_type": "SYNTHETIC_FIXTURE",
+        "content_hash": "43b158c9121f976777ad8dba95309675432747c038e36b534cb6ad95590abb3f",
+        "supporting_excerpt": "Synthetic entries must not have received sponsor support.",
+        "normalized_field": "FINANCIAL_SUPPORT",
+        "extraction_state": "REVIEWED",
+        "last_refresh_failed_at": "2026-09-05T11:00:00Z"
+      },
+      {
+        "schema_version": "1",
+        "id": "e_REWARD_CONDITIONS",
+        "version": 1,
+        "created_at": "2026-09-01T12:00:00Z",
+        "updated_at": "2026-09-05T12:00:00Z",
+        "provenance": "DOCUMENTED",
+        "original_url": "https://synthetic.example/rules",
+        "final_url": "https://synthetic.example/rules",
+        "retrieved_at": "2026-09-04T10:00:00Z",
+        "source_type": "SYNTHETIC_FIXTURE",
+        "content_hash": "3b43c5349ee0fde22dcb6dc7e65288d35190554ab499a6f5bd54a6d26a23d42a",
+        "supporting_excerpt": "Synthetic reward conditions require a documented attendance commitment.",
+        "normalized_field": "REWARD_CONDITIONS",
+        "extraction_state": "REVIEWED",
+        "last_refresh_failed_at": "2026-09-05T11:00:00Z"
+      }
+    ],
+    "evaluated_at": "2026-09-05T12:00:00Z",
+    "mode": "FIXTURE"
+  },
+  "rules": [
+    {
+      "schema_version": "1",
+      "id": "r_DEADLINE",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "rule_type": "DEADLINE",
+      "operator": "DATE_BETWEEN",
+      "operands": [
+        {
+          "kind": "instant",
+          "value": "2026-09-01T00:00:00Z"
+        },
+        {
+          "kind": "instant",
+          "value": "2026-09-15T12:00:00Z"
+        }
+      ],
+      "subject_reference": "context.evaluated_at",
+      "criticality": "CRITICAL",
+      "evidence_ids": [
+        "e_DEADLINE"
+      ],
+      "supported": true,
+      "source_text_summary": "Synthetic entries open September 1 through September 15 at 12:00 UTC."
+    },
+    {
+      "schema_version": "1",
+      "id": "r_ENTRANT_TYPE",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "rule_type": "ENTRANT_TYPE",
+      "operator": "GTE",
+      "operands": [
+        {
+          "kind": "number",
+          "value": "1"
+        }
+      ],
+      "subject_reference": "founder.team_size",
+      "criticality": "CRITICAL",
+      "evidence_ids": [
+        "e_ENTRANT_TYPE"
+      ],
+      "supported": true,
+      "source_text_summary": "Synthetic teams must have at least one member."
+    },
+    {
+      "schema_version": "1",
+      "id": "r_GEOGRAPHY",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "rule_type": "GEOGRAPHY",
+      "operator": "IN",
+      "operands": [
+        {
+          "kind": "text",
+          "value": "Spain"
+        },
+        {
+          "kind": "text",
+          "value": "France"
+        }
+      ],
+      "subject_reference": "founder.country_of_residence",
+      "criticality": "CRITICAL",
+      "evidence_ids": [
+        "e_GEOGRAPHY"
+      ],
+      "supported": true,
+      "source_text_summary": "Synthetic entrants must reside in Spain or France. This states residence, not citizenship."
+    },
+    {
+      "schema_version": "1",
+      "id": "r_LEGAL_ENTITY",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "rule_type": "LEGAL_ENTITY",
+      "operator": "EQ",
+      "operands": [
+        {
+          "kind": "text",
+          "value": "INCORPORATED_COMPANY"
+        }
+      ],
+      "subject_reference": "founder.legal_form",
+      "criticality": "CRITICAL",
+      "evidence_ids": [
+        "e_LEGAL_ENTITY"
+      ],
+      "supported": true,
+      "source_text_summary": "Synthetic entrants must be incorporated companies."
+    },
+    {
+      "schema_version": "1",
+      "id": "r_PROJECT_POLICY",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "rule_type": "PROJECT_POLICY",
+      "operator": "BOOL_IS",
+      "operands": [
+        {
+          "kind": "bool",
+          "value": true
+        }
+      ],
+      "subject_reference": "project.is_new_project",
+      "criticality": "CRITICAL",
+      "evidence_ids": [
+        "e_PROJECT_POLICY"
+      ],
+      "supported": true,
+      "source_text_summary": "Synthetic entries must be new original projects. The authored fixture project has documented original code and new-work status."
+    },
+    {
+      "schema_version": "1",
+      "id": "r_LICENSE",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "rule_type": "LICENSE",
+      "operator": "EQ",
+      "operands": [
+        {
+          "kind": "text",
+          "value": "MIT"
+        }
+      ],
+      "subject_reference": "project.license_intent",
+      "criticality": "CRITICAL",
+      "evidence_ids": [
+        "e_LICENSE"
+      ],
+      "supported": true,
+      "source_text_summary": "Synthetic entries must declare an MIT license."
+    },
+    {
+      "schema_version": "1",
+      "id": "r_REQUIRED_TECHNOLOGY",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "rule_type": "REQUIRED_TECHNOLOGY",
+      "operator": "IN",
+      "operands": [
+        {
+          "kind": "text",
+          "value": "Python"
+        }
+      ],
+      "subject_reference": "project.technology_stack",
+      "criticality": "CRITICAL",
+      "evidence_ids": [
+        "e_REQUIRED_TECHNOLOGY"
+      ],
+      "supported": true,
+      "source_text_summary": "Synthetic entries must use Python."
+    },
+    {
+      "schema_version": "1",
+      "id": "r_FINANCIAL_SUPPORT",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "rule_type": "FINANCIAL_SUPPORT",
+      "operator": "BOOL_IS",
+      "operands": [
+        {
+          "kind": "bool",
+          "value": false
+        }
+      ],
+      "subject_reference": "project.has_sponsor_support",
+      "criticality": "CRITICAL",
+      "evidence_ids": [
+        "e_FINANCIAL_SUPPORT"
+      ],
+      "supported": true,
+      "source_text_summary": "Synthetic entries must not have received sponsor support."
+    },
+    {
+      "schema_version": "1",
+      "id": "r_REWARD_CONDITIONS",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "rule_type": "REWARD_CONDITIONS",
+      "operator": "BOOL_IS",
+      "operands": [
+        {
+          "kind": "bool",
+          "value": true
+        }
+      ],
+      "subject_reference": "project.reward_conditions_met",
+      "criticality": "CRITICAL",
+      "evidence_ids": [
+        "e_REWARD_CONDITIONS"
+      ],
+      "supported": true,
+      "source_text_summary": "Synthetic reward conditions require a documented attendance commitment."
+    }
+  ]
+}

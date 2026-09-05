@@ -1,0 +1,339 @@
+{
+  "$defs": {
+    "Money": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "ge": 0,
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "title": "Amount",
+          "type": "string"
+        },
+        "currency": {
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency",
+          "type": "string"
+        }
+      },
+      "required": [
+        "currency",
+        "amount"
+      ],
+      "title": "Money",
+      "type": "object"
+    },
+    "OpportunityStatus": {
+      "enum": [
+        "OPEN",
+        "CLOSED",
+        "UNKNOWN"
+      ],
+      "title": "OpportunityStatus",
+      "type": "string"
+    },
+    "Provenance": {
+      "enum": [
+        "USER_ASSERTED",
+        "DOCUMENTED",
+        "UNKNOWN"
+      ],
+      "title": "Provenance",
+      "type": "string"
+    },
+    "Reward": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "amount_max": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "amount_min": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "conditions": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Conditions",
+          "type": "array"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "eligibility_note": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Eligibility Note"
+        },
+        "expiry": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expiry"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "is_total_pool": {
+          "default": false,
+          "title": "Is Total Pool",
+          "type": "boolean"
+        },
+        "kind": {
+          "$ref": "#/$defs/RewardKind"
+        },
+        "payment_timing": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Payment Timing"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "schema_version": {
+          "const": "1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "version",
+        "created_at",
+        "updated_at",
+        "provenance",
+        "kind"
+      ],
+      "title": "Reward",
+      "type": "object"
+    },
+    "RewardKind": {
+      "enum": [
+        "CASH_PRIZE",
+        "CLOUD_CREDIT",
+        "GRANT",
+        "EQUITY_INVESTMENT",
+        "IN_KIND"
+      ],
+      "title": "RewardKind",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "application_url": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Application Url"
+    },
+    "canonical_rules_url": {
+      "minLength": 1,
+      "title": "Canonical Rules Url",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "deadlines": {
+      "default": [],
+      "items": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "format": "date-time",
+            "type": "string"
+          }
+        ]
+      },
+      "title": "Deadlines",
+      "type": "array"
+    },
+    "deliverables": {
+      "default": [],
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Deliverables",
+      "type": "array"
+    },
+    "edition": {
+      "minLength": 1,
+      "title": "Edition",
+      "type": "string"
+    },
+    "geographic_scope": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Geographic Scope"
+    },
+    "id": {
+      "minLength": 1,
+      "title": "Id",
+      "type": "string"
+    },
+    "organizer": {
+      "minLength": 1,
+      "title": "Organizer",
+      "type": "string"
+    },
+    "program_name": {
+      "minLength": 1,
+      "title": "Program Name",
+      "type": "string"
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    },
+    "rewards": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Reward"
+      },
+      "title": "Rewards",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_versions": {
+      "default": [],
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Source Versions",
+      "type": "array"
+    },
+    "status": {
+      "$ref": "#/$defs/OpportunityStatus",
+      "default": "UNKNOWN"
+    },
+    "tracks": {
+      "default": [],
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Tracks",
+      "type": "array"
+    },
+    "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "version",
+    "created_at",
+    "updated_at",
+    "provenance",
+    "organizer",
+    "program_name",
+    "edition",
+    "canonical_rules_url"
+  ],
+  "title": "OpportunityRecord",
+  "type": "object"
+}

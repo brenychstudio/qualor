@@ -16,9 +16,11 @@ This describes the intended product. The authoritative specification is [the can
 
 QUALOR-00 establishes the development foundation: a health endpoint, an offline doctor, a static frontend shell, dependency locks and verification. Product discovery, agents and cloud deployment are not implemented. See [bootstrap status](docs/status/QUALOR-00.md) for measured results.
 
+QUALOR-01 adds typed domain contracts and a deterministic eligibility core, exercised only with owned synthetic fixtures. It checks evidence references, critical coverage, freshness and explicit rules, and returns PASS, FAIL or REVIEW_REQUIRED. Eligibility is not a submission recommendation. See [QUALOR-01 status](docs/status/QUALOR-01.md).
+
 ## Architecture direction
 
-Python 3.12, Pydantic v2 and FastAPI form the backend foundation. Strands Agents SDK is installed for later tasks. React, TypeScript, Vite and Tailwind v4 form the frontend foundation. Future deterministic controls and evidence handling follow the canonical brief. Live AgentCore integration belongs to later tasks.
+Python 3.12, Pydantic v2 and FastAPI form the backend foundation. Pydantic owns the domain contracts and exported JSON Schema. The eligibility core is pure Python and does not import AWS, network or agent clients. Strands Agents SDK is installed for later tasks. React, TypeScript, Vite and Tailwind v4 form the frontend foundation. Live AgentCore integration belongs to later tasks.
 
 ## Local development
 
@@ -38,6 +40,18 @@ npm --prefix apps/web run dev -- --host 127.0.0.1
 ```
 
 The frontend displays the bootstrap shell. Non-secret defaults are documented in `.env.example`. Live configuration is rejected during bootstrap.
+
+Evaluate the owned gold fixtures and regenerate domain schemas:
+
+```powershell
+uv run qualor evaluate-fixture tests/fixtures/F01_FULL_PASS.json
+.\scripts\export-schemas.ps1
+.\scripts\export-schemas.ps1 -Check
+```
+
+The CLI prints `MODE=FIXTURE`, `ELIGIBILITY=...` and the structured gate. `POST /dev/evaluate-fixture` accepts the same JSON envelope directly; it never accepts a filesystem path. This route returns 404 outside `QUALOR_ENV=development`. Run the API on loopback as shown above. It performs no persistence or external call. A FAIL or REVIEW_REQUIRED is a successfully evaluated fixture; malformed input exits nonzero in the CLI or returns HTTP 422 in the API.
+
+Public APIs and policy details are documented in the [implementation plan](docs/superpowers/plans/2026-09-05-qualor-01-domain-eligibility-core.md). The eight generated files in `schemas/` describe serialized contracts; Pydantic runtime validators also enforce cross-field semantics. TypeScript code generation is deferred to QUALOR-02; no duplicated frontend domain interfaces are maintained.
 
 ```powershell
 .\scripts\verify.ps1
