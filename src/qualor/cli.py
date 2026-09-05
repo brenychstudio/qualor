@@ -1,4 +1,4 @@
-"""Offline repository doctor. No AWS or agent imports are needed."""
+"""Offline repository doctor and synthetic deterministic evaluation."""
 
 import hashlib
 import sys
@@ -7,6 +7,8 @@ from pathlib import Path
 import typer
 from pydantic import ValidationError
 
+from qualor.domain.fixture import FixtureInput
+from qualor.eligibility import aggregate_eligibility
 from qualor.settings import Settings
 
 app = typer.Typer(help="QUALOR bootstrap utilities.", add_completion=False)
@@ -44,3 +46,17 @@ def doctor() -> None:
         typer.echo("CONFIGURATION=BLOCKED")
     if not (python_ok and canonical_ok and configuration_ok):
         raise typer.Exit(1)
+
+
+@app.command("evaluate-fixture")
+def evaluate_fixture(fixture_path: Path) -> None:
+    """Validate and evaluate an owned synthetic JSON fixture without network access."""
+    try:
+        fixture = FixtureInput.model_validate_json(fixture_path.read_text(encoding="utf-8"))
+        gate = aggregate_eligibility(fixture.rules, fixture.context)
+    except (OSError, ValueError):
+        typer.echo("INVALID_FIXTURE", err=True)
+        raise typer.Exit(2) from None
+    typer.echo("MODE=FIXTURE")
+    typer.echo(f"ELIGIBILITY={gate.state.value}")
+    typer.echo(gate.model_dump_json(indent=2))

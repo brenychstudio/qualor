@@ -1,6 +1,15 @@
-"""Minimal bootstrap API; no provider or agent initialization."""
+"""Local development API; fixture evaluation has no provider or agent initialization."""
 
-from fastapi import FastAPI
+from typing import Literal
+
+from fastapi import FastAPI, HTTPException
+
+from qualor.domain.base import Contract
+from qualor.domain.enums import GateState
+from qualor.domain.fixture import FixtureInput
+from qualor.domain.rules import CoverageEntry, RuleEvaluation
+from qualor.eligibility import aggregate_eligibility
+from qualor.settings import Settings
 
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 
@@ -8,3 +17,27 @@ app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"service": "qualor", "status": "ok", "phase": "bootstrap"}
+
+
+class FixtureResponse(Contract):
+    mode: Literal["FIXTURE"] = "FIXTURE"
+    eligibility: GateState
+    evaluations: tuple[RuleEvaluation, ...]
+    coverage: tuple[CoverageEntry, ...]
+    missing_information: tuple[str, ...]
+
+
+@app.post("/dev/evaluate-fixture", response_model=FixtureResponse)
+def evaluate_fixture(fixture: FixtureInput) -> FixtureResponse:
+    if Settings().qualor_env != "development":
+        raise HTTPException(status_code=404, detail="Not found")
+    try:
+        gate = aggregate_eligibility(fixture.rules, fixture.context)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Invalid fixture rule structure") from None
+    return FixtureResponse(
+        eligibility=gate.state,
+        evaluations=gate.evaluations,
+        coverage=gate.critical_coverage,
+        missing_information=gate.missing_information,
+    )
