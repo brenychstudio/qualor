@@ -1,6 +1,6 @@
 # QUALOR-00 — Repository Bootstrap & Capability Preflight
 
-Date: 2026-09-05. Scope: QUALOR-00, resumed by QUALOR-00A. Repository foundation implemented; final committed-tree verification and PR checks are pending at this documentation checkpoint.
+Date: 2026-09-05. Scope: QUALOR-00, resumed by QUALOR-00A. `STATUS=PASS` for the repository bootstrap. External AWS access and BDB registration remain explicitly blocked below. This document records the verified implementation checkpoint; the final Result Packet reports the exact final documentation commit and its repeated verification.
 
 ## Canonical import
 
@@ -62,7 +62,7 @@ Python dependencies are resolved in `uv.lock`; frontend versions are exact in `a
 
 Health uses HTTPX ASGITransport to test the real in-process app. The installed Starlette TestClient emits an HTTPX deprecation warning; using HTTPX directly avoids adding an unrequested HTTP client or suppressing warnings. Doctor tests deny socket connections and AWS client creation and verify missing/modified canonical bytes, incompatible Python, safe settings and rejected live enablement. No test requires AWS credentials.
 
-Initial `scripts/verify.ps1` passed sync, Ruff, pytest, doctor, frontend install/build, canonical/secret-pattern scan and whitespace gates, then correctly returned exit 1 because the implementation was staged but uncommitted. Final clean-tree verification is still pending at this checkpoint. Raw RED/GREEN logs are ignored under `.qualor/local/`.
+Initial `scripts/verify.ps1` passed sync, Ruff, pytest, doctor, frontend install/build, canonical/secret-pattern scan and whitespace gates, then correctly returned exit 1 because the implementation was staged but uncommitted. Raw RED/GREEN logs are ignored under `.qualor/local/`.
 
 Independent review reproduced an incorrect discovery PASS when a custom inference profile merely had a Sonnet 4.6 label. The corrected expression inspects authoritative foundation `modelId` and inference-profile `models[].modelArn` only. Five synthetic regression cases execute that actual expression without SDK startup or network calls; they are not evidence of AWS access. Browser inspection showed only the requested static shell and no application errors; unrelated browser-extension warnings were excluded from the application result.
 
@@ -78,7 +78,30 @@ Independent review reproduced an incorrect discovery PASS when a custom inferenc
 - `REMOTE_VISIBILITY=PRIVATE`; `ORIGIN=CONFIGURED`; `MAIN_PUSHED=YES`.
 - `main` remote SHA matched the baseline. No Pages, deployment, repository secrets or visibility change configured.
 - Final task SHA is reported using `git rev-parse HEAD` in the Result Packet, avoiding a self-referential committed hash.
-- PR targets `main` and must remain unmerged.
+- Implementation commit: `23d51a2e3a890f2d441731593529a2667d79dd28`, pushed to the task branch.
+- PR: [QUALOR-00: Bootstrap repository and capability preflight](https://github.com/brenychstudio/qualor/pull/1), OPEN, base `main`, head `qualor-00-bootstrap`, `mergedAt=null` when checked. `PR_CREATED=YES`; `PR_MERGED=NO`.
+
+## Final verification checkpoint
+
+Verified implementation commit: `23d51a2e3a890f2d441731593529a2667d79dd28`. Subsequent checkpoint changes only record results, mark plan execution and document Windows verification setup. The final Result Packet identifies and verifies the final HEAD.
+
+| Gate | Result | Exit |
+| --- | --- | --- |
+| `powershell -NoProfile -File scripts/verify.ps1` | PASS on clean committed tree | 0 |
+| Independent `uv run ruff check .` | PASS | 0 |
+| Independent `uv run pytest -q` | PASS, 14 tests | 0 |
+| Independent `npm --prefix apps/web ci` | PASS | 0 |
+| Independent `npm --prefix apps/web run build` | PASS, including TypeScript | 0 |
+| `git diff --check`, `git diff --cached --check` | PASS | 0 |
+| Canonical and tracked secret-pattern audit | PASS | 0 |
+| `git status --short` | Empty; WORKTREE=CLEAN | 0 |
+| Temporary Ruff failure probe | Correctly failed at Ruff, probe removed | 1 |
+| Temporary untracked-file probe | Correctly failed clean-tree gate, probe removed | 1 |
+| GitHub push CI on implementation commit | [PASS](https://github.com/brenychstudio/qualor/actions/runs/33963242324) | success |
+
+A verification attempt while the inspection dev server was still running failed with Windows EPERM at `npm ci`, correctly propagated as nonzero. Stopping that task-owned server released its native dependency file lock; the full script then passed. README now documents stopping the frontend dev server before verification on Windows. No deletion or permission change was used to bypass the lock.
+
+`VERIFY_SCRIPT=PASS`; `SECRETS_SCAN=PASS`; `PROPRIETARY_CODE_IMPORTED=NO`. Manual provenance review found only newly authored bootstrap code, dependency lock metadata and the approved canonical import. No unrelated product code, credentials, runtime state or external rules-page copies are tracked. Known AWS/BDB blockers remain separate from these local results.
 
 ## AWS capability state
 

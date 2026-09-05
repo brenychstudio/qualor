@@ -104,7 +104,7 @@ def test_health_returns_bootstrap_status():
 - [x] Preflight checks local tool presence/versions. Inspect installed botocore operation models before calling APIs. Use only STS `GetCallerIdentity`, Bedrock `ListFoundationModels` and supported `ListInferenceProfiles`, AgentCore control-plane `ListAgentRuntimes` if supported; region `us-east-1`. Validate result structure. Discovery must not imply inference access.
 - [x] Catch capability errors into BLOCKED/UNAVAILABLE; report Sonnet 4.6 PASS only on matching model/profile metadata. Preserve `SONNET_4_6_INFERENCE=NOT_TESTED`, `AGENTCORE_WEB_SEARCH=UNVERIFIED`, `AWS_PAID_SMOKE=NOT_RUN_BY_POLICY`, `AWS_RESOURCES_CREATED=0`.
 - [x] Review correction: RED reproduced two false-positive Sonnet results from custom profile labels. GREEN now matches authoritative model identifiers only; five isolated metadata regressions pass. These tests establish no live capability.
-- [ ] Test verification failure propagation with a temporary untracked sentinel, then remove only that file. Exercise preflight with installed SDK; missing AWS CLI is a tool blocker, not a reason to simulate AWS results.
+- [x] Test verification failure propagation with a temporary untracked sentinel, then remove only that file. Exercise preflight with installed SDK; missing AWS CLI is a tool blocker, not a reason to simulate AWS results.
 
 ## Task 7: BDB operator path, review and final Git checkpoint
 
@@ -115,10 +115,10 @@ def test_health_returns_bootstrap_status():
 - [x] Timebox BDB operator documentation discovery to five minutes, read-only. Use only documented registration/bootstrap commands; validate workspace if supported. Do not read or copy proprietary implementation, patch BDB or edit opaque state. Otherwise report `BLOCKED_NO_DOCUMENTED_OPERATOR_PATH`.
 - [x] Record canonical hash, installed versions, exact baseline SHA, task branch, commands/exit codes/counts, sanitized AWS/BDB/remote state, blockers and deferred items in status. No self-referential final commit hash: identify final checkpoint with `git rev-parse HEAD` and final Result Packet.
 - [x] Independently review requirements, code, boundary behavior, secret patterns and Git diff; resolve concrete findings only within bootstrap scope.
-- [ ] Commit `chore: bootstrap QUALOR development foundation`; run `.\scripts\verify.ps1` on clean committed tree. If a gate fails, fix and commit, then repeat affected gates and full final verification.
-- [ ] Independently rerun `uv run ruff check .`, `uv run pytest -q`, `npm --prefix apps/web ci`, `npm --prefix apps/web run build`, `git diff --check`, `git status --short` as explicitly required by owner.
-- [ ] Push task branch if available. Write exact PR body to ignored local file; `gh pr create --base main --head qualor-00-bootstrap --title "QUALOR-00: Bootstrap repository and capability preflight" --body-file .qualor/local/pr-body.md`. Verify PR remains open/unmerged, remote private, baseline and task SHAs, clean worktree. Observe CI result.
-- [ ] Return one complete QUALOR-00 Result Packet; stop before QUALOR-01.
+- [x] Commit `chore: bootstrap QUALOR development foundation`; run `.\scripts\verify.ps1` on clean committed tree. If a gate fails, fix and commit, then repeat affected gates and full final verification.
+- [x] Independently rerun `uv run ruff check .`, `uv run pytest -q`, `npm --prefix apps/web ci`, `npm --prefix apps/web run build`, `git diff --check`, `git status --short` as explicitly required by owner.
+- [x] Push task branch if available. Write exact PR body to ignored local file; `gh pr create --base main --head qualor-00-bootstrap --title "QUALOR-00: Bootstrap repository and capability preflight" --body-file .qualor/local/pr-body.md`. Verify PR remains open/unmerged, remote private, baseline and task SHAs, clean worktree. Observe CI result.
+- Return one complete QUALOR-00 Result Packet after final repeated verification; stop before QUALOR-01. This is the terminal reporting action, not an additional implementation task.
 
 ## Explicitly deferred
 
