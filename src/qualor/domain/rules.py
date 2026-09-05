@@ -1,6 +1,8 @@
 """Rule candidates are inputs; evaluations and gates are engine outputs."""
 
-from pydantic import StrictBool
+from typing import Self
+
+from pydantic import StrictBool, model_validator
 
 from .base import Contract, NonEmpty, PositiveInt, Record, UtcInstant
 from .enums import (
@@ -28,6 +30,14 @@ class RuleCandidate(Record):
     source_text_summary: NonEmpty
     not_applicable_reason: NonEmpty | None = None
     contradiction: StrictBool = False
+
+    @model_validator(mode="after")
+    def explicit_non_applicability(self) -> Self:
+        if self.not_applicable_reason and (
+            self.subject_reference or self.operands or self.children
+        ):
+            raise ValueError("Non-applicability cannot override an executable expression")
+        return self
 
 
 class RuleEvaluation(Record):
