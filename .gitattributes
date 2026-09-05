@@ -1,0 +1,2 @@
+* text=auto eol=lf
+docs/00_CANONICAL_BRIEF_UA.md -text -diff
