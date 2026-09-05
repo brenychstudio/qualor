@@ -1,0 +1,320 @@
+{
+  "$defs": {
+    "BoolValue": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "bool",
+          "default": "bool",
+          "title": "Kind",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "title": "BoolValue",
+      "type": "object"
+    },
+    "Category": {
+      "enum": [
+        "DEADLINE",
+        "ENTRANT_TYPE",
+        "GEOGRAPHY",
+        "LEGAL_ENTITY",
+        "PROJECT_POLICY",
+        "LICENSE",
+        "REQUIRED_TECHNOLOGY",
+        "FINANCIAL_SUPPORT",
+        "REWARD_CONDITIONS"
+      ],
+      "title": "Category",
+      "type": "string"
+    },
+    "Criticality": {
+      "enum": [
+        "CRITICAL",
+        "NON_CRITICAL"
+      ],
+      "title": "Criticality",
+      "type": "string"
+    },
+    "DateValue": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "date",
+          "default": "date",
+          "title": "Kind",
+          "type": "string"
+        },
+        "value": {
+          "format": "date",
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "title": "DateValue",
+      "type": "object"
+    },
+    "InstantValue": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "instant",
+          "default": "instant",
+          "title": "Kind",
+          "type": "string"
+        },
+        "value": {
+          "format": "date-time",
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "title": "InstantValue",
+      "type": "object"
+    },
+    "NumberValue": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "number",
+          "default": "number",
+          "title": "Kind",
+          "type": "string"
+        },
+        "value": {
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "title": "NumberValue",
+      "type": "object"
+    },
+    "Operator": {
+      "enum": [
+        "EQ",
+        "IN",
+        "GTE",
+        "LTE",
+        "BETWEEN",
+        "DATE_BETWEEN",
+        "BOOL_IS",
+        "AND",
+        "OR"
+      ],
+      "title": "Operator",
+      "type": "string"
+    },
+    "Provenance": {
+      "enum": [
+        "USER_ASSERTED",
+        "DOCUMENTED",
+        "UNKNOWN"
+      ],
+      "title": "Provenance",
+      "type": "string"
+    },
+    "RuleCandidate": {
+      "additionalProperties": false,
+      "properties": {
+        "children": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/RuleCandidate"
+          },
+          "title": "Children",
+          "type": "array"
+        },
+        "contradiction": {
+          "default": false,
+          "title": "Contradiction",
+          "type": "boolean"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "criticality": {
+          "$ref": "#/$defs/Criticality"
+        },
+        "evidence_ids": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "not_applicable_reason": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Not Applicable Reason"
+        },
+        "operands": {
+          "default": [],
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "bool": "#/$defs/BoolValue",
+                "date": "#/$defs/DateValue",
+                "instant": "#/$defs/InstantValue",
+                "number": "#/$defs/NumberValue",
+                "text": "#/$defs/TextValue"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/TextValue"
+              },
+              {
+                "$ref": "#/$defs/NumberValue"
+              },
+              {
+                "$ref": "#/$defs/BoolValue"
+              },
+              {
+                "$ref": "#/$defs/DateValue"
+              },
+              {
+                "$ref": "#/$defs/InstantValue"
+              }
+            ]
+          },
+          "title": "Operands",
+          "type": "array"
+        },
+        "operator": {
+          "$ref": "#/$defs/Operator"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "rule_type": {
+          "$ref": "#/$defs/Category"
+        },
+        "schema_version": {
+          "const": "1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "source_text_summary": {
+          "minLength": 1,
+          "title": "Source Text Summary",
+          "type": "string"
+        },
+        "subject_reference": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SubjectReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "supported": {
+          "title": "Supported",
+          "type": "boolean"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "version",
+        "created_at",
+        "updated_at",
+        "provenance",
+        "rule_type",
+        "operator",
+        "criticality",
+        "evidence_ids",
+        "supported",
+        "source_text_summary"
+      ],
+      "title": "RuleCandidate",
+      "type": "object"
+    },
+    "SubjectReference": {
+      "enum": [
+        "founder.country_of_residence",
+        "founder.citizenship",
+        "founder.legal_form",
+        "founder.incorporation_date",
+        "founder.team_size",
+        "founder.open_source_willingness",
+        "project.is_new_project",
+        "project.license_intent",
+        "project.technology_stack",
+        "project.has_sponsor_support",
+        "project.reward_conditions_met",
+        "context.evaluated_at"
+      ],
+      "title": "SubjectReference",
+      "type": "string"
+    },
+    "TextValue": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "text",
+          "default": "text",
+          "title": "Kind",
+          "type": "string"
+        },
+        "value": {
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "title": "TextValue",
+      "type": "object"
+    }
+  },
+  "$ref": "#/$defs/RuleCandidate"
+}

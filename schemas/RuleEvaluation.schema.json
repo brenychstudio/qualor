@@ -1,0 +1,167 @@
+{
+  "$defs": {
+    "Provenance": {
+      "enum": [
+        "USER_ASSERTED",
+        "DOCUMENTED",
+        "UNKNOWN"
+      ],
+      "title": "Provenance",
+      "type": "string"
+    },
+    "ReasonCode": {
+      "enum": [
+        "MATCH",
+        "MISMATCH",
+        "MISSING_FACT",
+        "UNSUPPORTED",
+        "INVALID_OPERANDS",
+        "MISSING_EVIDENCE",
+        "UNVERIFIED_EVIDENCE",
+        "STALE_EVIDENCE",
+        "CONFLICT",
+        "PROVENANCE_REQUIRED",
+        "EXPLICIT_NOT_APPLICABLE",
+        "INCOMPLETE_COVERAGE",
+        "EMPTY_RULE_SET",
+        "CRITICAL_UNKNOWN"
+      ],
+      "title": "ReasonCode",
+      "type": "string"
+    },
+    "RuleEvaluation": {
+      "additionalProperties": false,
+      "properties": {
+        "children": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/RuleEvaluation"
+          },
+          "title": "Children",
+          "type": "array"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "policy_version": {
+          "minimum": 1,
+          "title": "Policy Version",
+          "type": "integer"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "reason_code": {
+          "$ref": "#/$defs/ReasonCode"
+        },
+        "reason_codes": {
+          "items": {
+            "$ref": "#/$defs/ReasonCode"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "rule_id": {
+          "minLength": 1,
+          "title": "Rule Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/RuleStatus"
+        },
+        "subject_reference": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SubjectReference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "version",
+        "created_at",
+        "updated_at",
+        "provenance",
+        "rule_id",
+        "status",
+        "reason_code",
+        "reason_codes",
+        "evidence_ids",
+        "subject_reference",
+        "policy_version",
+        "evaluated_at"
+      ],
+      "title": "RuleEvaluation",
+      "type": "object"
+    },
+    "RuleStatus": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "UNKNOWN",
+        "NOT_APPLICABLE"
+      ],
+      "title": "RuleStatus",
+      "type": "string"
+    },
+    "SubjectReference": {
+      "enum": [
+        "founder.country_of_residence",
+        "founder.citizenship",
+        "founder.legal_form",
+        "founder.incorporation_date",
+        "founder.team_size",
+        "founder.open_source_willingness",
+        "project.is_new_project",
+        "project.license_intent",
+        "project.technology_stack",
+        "project.has_sponsor_support",
+        "project.reward_conditions_met",
+        "context.evaluated_at"
+      ],
+      "title": "SubjectReference",
+      "type": "string"
+    }
+  },
+  "$ref": "#/$defs/RuleEvaluation"
+}

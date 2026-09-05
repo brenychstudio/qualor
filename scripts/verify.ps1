@@ -20,6 +20,7 @@ try {
     Invoke-Gate 'Python environment sync' { uv sync --locked }
     Invoke-Gate 'Ruff' { uv run --locked ruff check . }
     Invoke-Gate 'Pytest' { uv run --locked pytest -q }
+    Invoke-Gate 'Canonical domain schema drift' { uv run --locked python -m qualor.schemas.export --check }
     Invoke-Gate 'Offline doctor' { uv run --locked qualor doctor }
     Invoke-Gate 'Frontend install from lockfile' { npm --prefix apps/web ci }
     Invoke-Gate 'Frontend typecheck and build' { npm --prefix apps/web run build }
