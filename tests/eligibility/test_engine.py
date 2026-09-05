@@ -121,6 +121,25 @@ def test_A22_geography_silence_in_snippet_not_worldwide(scenario, source):
     assert aggregate_eligibility(rules, context).state == "REVIEW_REQUIRED"
 
 
+def test_C07_matching_search_snippet_cannot_prove_critical_legal_eligibility(scenario):
+    from qualor.eligibility import aggregate_eligibility
+
+    context, rules = scenario()
+    context = replace(
+        context,
+        evidence=tuple(
+            replace(e, source_type="SEARCH_SNIPPET")
+            if e.normalized_field == Category.LEGAL_ENTITY
+            else e
+            for e in context.evidence
+        ),
+    )
+    gate = aggregate_eligibility(rules, context)
+    legal = next(e for e in gate.evaluations if e.rule_id == "r_LEGAL_ENTITY")
+    assert legal.status == "UNKNOWN"
+    assert gate.state == "REVIEW_REQUIRED"
+
+
 def test_A23_new_project_requires_documented_provenance(scenario):
     from qualor.eligibility import aggregate_eligibility
 

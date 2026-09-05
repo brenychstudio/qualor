@@ -1,0 +1,84 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CreateOnlyTaggedQualorGateway",
+      "Effect": "Allow",
+      "Action": "bedrock-agentcore:CreateGateway",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Project": "QUALOR",
+          "aws:RequestTag/Environment": "hackathon",
+          "aws:RequestTag/Owner": "BrenychStudio"
+        },
+        "ForAllValues:StringEquals": {
+          "aws:TagKeys": [
+            "Project",
+            "Environment",
+            "Owner"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ListGatewayInventory",
+      "Effect": "Allow",
+      "Action": "bedrock-agentcore:ListGateways",
+      "Resource": "*"
+    },
+    {
+      "Sid": "ManageOnlyTaggedQualorGatewayAndWebSearchTarget",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock-agentcore:CreateGatewayTarget",
+        "bedrock-agentcore:DeleteGateway",
+        "bedrock-agentcore:DeleteGatewayTarget",
+        "bedrock-agentcore:GetGateway",
+        "bedrock-agentcore:GetGatewayTarget",
+        "bedrock-agentcore:InvokeGateway",
+        "bedrock-agentcore:ListGatewayTargets",
+        "bedrock-agentcore:SynchronizeGatewayTargets"
+      ],
+      "Resource": "<QUALOR_GATEWAY_ARN_PATTERN>",
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/Project": "QUALOR",
+          "aws:ResourceTag/Environment": "hackathon",
+          "aws:ResourceTag/Owner": "BrenychStudio"
+        }
+      }
+    },
+    {
+      "Sid": "TagOnlyQualorGateway",
+      "Effect": "Allow",
+      "Action": "bedrock-agentcore:TagResource",
+      "Resource": "<QUALOR_GATEWAY_ARN_PATTERN>",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Project": "QUALOR",
+          "aws:RequestTag/Environment": "hackathon",
+          "aws:RequestTag/Owner": "BrenychStudio"
+        },
+        "ForAllValues:StringEquals": {
+          "aws:TagKeys": [
+            "Project",
+            "Environment",
+            "Owner"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "PassOnlyQualorGatewayRoleToAgentCore",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "<QUALOR_GATEWAY_ROLE_ARN>",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "bedrock-agentcore.amazonaws.com"
+        }
+      }
+    }
+  ]
+}
