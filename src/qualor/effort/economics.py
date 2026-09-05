@@ -11,7 +11,7 @@ from qualor.domain.base import Contract, Fact, NonEmpty, UtcInstant
 from qualor.domain.money import Money
 from qualor.domain.profiles import FounderProfile
 
-from .policy import EFFORT_POLICY_VERSION, SUPPORTED_CURRENCIES
+from .policy import EFFORT_POLICY_VERSION
 
 
 class CostKind(StrEnum):
@@ -64,21 +64,15 @@ def assess_affordability(
         missing.append("participation_costs.complete")
     if budget is None:
         missing.append("founder.max_cash_commitment")
-    elif budget.currency not in SUPPORTED_CURRENCIES:
-        missing.append("founder.max_cash_commitment.supported_currency")
     total = Decimal(0)
-    cash_known = budget is not None and budget.currency in SUPPORTED_CURRENCIES
+    cash_known = budget is not None
     for index, item in enumerate(costs.items):
         ref = f"participation_costs.items.{index}"
         if item.kind in {CostKind.CASH_SPEND, CostKind.ENTRY_FEE, CostKind.TRAVEL}:
             if item.amount is None:
                 missing.append(ref + ".amount")
                 cash_known = False
-            elif (
-                budget is None
-                or item.amount.currency != budget.currency
-                or (item.amount.currency not in SUPPORTED_CURRENCIES)
-            ):
+            elif budget is None or item.amount.currency != budget.currency:
                 missing.append(ref + ".comparable_currency")
                 cash_known = False
             else:

@@ -181,7 +181,14 @@ def test_unknown_amount_budget_or_currency_cannot_pass(api):
     assert assess(api, (cost(api, amount=None),)).state == "UNKNOWN"
     assert assess(api, (cost(api),), cash=None).state == "UNKNOWN"
     assert assess(api, (cost(api, currency="EUR"),)).state == "UNKNOWN"
-    assert assess(api, (cost(api, currency="ZZZ"),), currency="ZZZ").state == "UNKNOWN"
+    assert assess(api, (cost(api, currency="UAH"),), currency="EUR").state == "UNKNOWN"
+
+
+def test_same_uah_cost_and_budget_need_no_currency_conversion(api):
+    result = assess(api, (cost(api, amount="5.25", currency="UAH"),), currency="UAH")
+    assert result.state == "SUFFICIENT"
+    assert result.cash_required.currency == "UAH"
+    assert result.cash_required.amount == Decimal("5.25")
 
 
 def test_b22_credits_never_enlarge_cash_budget(api):
