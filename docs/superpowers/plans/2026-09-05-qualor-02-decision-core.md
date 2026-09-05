@@ -226,3 +226,9 @@ Use a maintained JSON Schema -> TypeScript development package, inspect official
 ## Execution evidence
 
 Baseline gates completed before branching: canonical hash, 180 tests, Ruff, web build, verify, AWS read-only preflight and eight-schema regeneration PASS. AgentCore read permission gaps remain intentionally deferred. Task implementation/review outcomes will be recorded here and in the final status document.
+
+Tasks 1–5 completed with observed RED/GREEN steps and independent spec/quality review. Matching added 21 tests; effort/strategy added 52; conflicts added 54; decisions/adapters added 84; schema/codegen added four. The resulting suite contains 395 passing tests. Reviews corrected an unrequested currency allowlist and a same-project lineage disagreement gap, each with a failing regression before its fix. No eligibility behavior or canonical bytes changed.
+
+Implementation commits: `0d289f0` matching; `4b88280` effort/strategy; `3eb5d32` same-currency correction; `bb8d8be` conflicts; `d8e6c41` lineage correction; `cde323b` decision composition; `5d2a97c` fixture adapters; `675e9bf` schema/TypeScript generation. All five task reviews approved their final implementation. The full verification script passed on `675e9bf9b373c0b9730f36ae9d41ec2bd5273e87` with 20 schemas and deterministic generated types. All twelve D and eight F fixtures ran through the real CLI. Independent review compared all 3,888 policy combinations with the six-rule oracle.
+
+The [checkpoint status](../../status/QUALOR-02.md) records implementation facts and limitations. Final documentation, whole-branch review, fresh verification and remote publication gates are controller-owned; the final Result Packet records the exact publication HEAD and CI result. No PR merge or QUALOR-03 work is authorized in this task.
