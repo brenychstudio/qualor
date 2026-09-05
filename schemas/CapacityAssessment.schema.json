@@ -1,0 +1,110 @@
+{
+  "$defs": {
+    "CapacityState": {
+      "enum": [
+        "SUFFICIENT",
+        "INSUFFICIENT",
+        "UNKNOWN"
+      ],
+      "title": "CapacityState",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "available_hours": {
+      "anyOf": [
+        {
+          "ge": 0,
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Available Hours"
+    },
+    "evaluated_at": {
+      "format": "date-time",
+      "title": "Evaluated At",
+      "type": "string"
+    },
+    "missing_information": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Missing Information",
+      "type": "array"
+    },
+    "policy_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Policy Version",
+      "type": "integer"
+    },
+    "reasons": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Reasons",
+      "type": "array"
+    },
+    "remaining_wall_hours": {
+      "anyOf": [
+        {
+          "ge": 0,
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Remaining Wall Hours"
+    },
+    "required_hours": {
+      "anyOf": [
+        {
+          "ge": 0,
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Required Hours"
+    },
+    "state": {
+      "$ref": "#/$defs/CapacityState"
+    },
+    "usable_hours": {
+      "anyOf": [
+        {
+          "ge": 0,
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Usable Hours"
+    }
+  },
+  "required": [
+    "state",
+    "available_hours",
+    "remaining_wall_hours",
+    "usable_hours",
+    "required_hours",
+    "reasons",
+    "missing_information",
+    "evaluated_at"
+  ],
+  "title": "CapacityAssessment",
+  "type": "object"
+}

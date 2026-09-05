@@ -1,0 +1,982 @@
+{
+  "schema_version": "1",
+  "mode": "FIXTURE",
+  "founder": {
+    "schema_version": "1",
+    "id": "founder_synthetic",
+    "version": 1,
+    "created_at": "2026-09-01T12:00:00Z",
+    "updated_at": "2026-09-05T12:00:00Z",
+    "provenance": "DOCUMENTED",
+    "country_of_residence": {
+      "value": "Spain",
+      "provenance": "DOCUMENTED"
+    },
+    "legal_form": {
+      "value": "INCORPORATED_COMPANY",
+      "provenance": "DOCUMENTED"
+    },
+    "team_size": {
+      "value": 2,
+      "provenance": "DOCUMENTED"
+    },
+    "verified_at": "2026-09-05T12:00:00Z",
+    "available_hours": {
+      "value": "80",
+      "provenance": "USER_ASSERTED"
+    },
+    "max_cash_commitment": {
+      "value": {
+        "currency": "USD",
+        "amount": "100"
+      },
+      "provenance": "USER_ASSERTED"
+    },
+    "strategic_goals": {
+      "value": [
+        "unrelated"
+      ],
+      "provenance": "USER_ASSERTED"
+    }
+  },
+  "opportunity": {
+    "schema_version": "1",
+    "id": "synthetic_opportunity",
+    "version": 1,
+    "created_at": "2026-09-01T12:00:00Z",
+    "updated_at": "2026-09-05T12:00:00Z",
+    "provenance": "DOCUMENTED",
+    "organizer": "Synthetic Example Foundation",
+    "program_name": "Owned Deterministic Test Award",
+    "edition": "2026-FIXTURE",
+    "canonical_rules_url": "https://synthetic.example/rules",
+    "application_url": "https://synthetic.example/apply",
+    "deadlines": [
+      "2026-09-15T12:00:00Z"
+    ],
+    "status": "OPEN",
+    "strategic_benefits": {
+      "value": [
+        "learning"
+      ],
+      "provenance": "USER_ASSERTED"
+    },
+    "matching_requirements": {
+      "problem_labels": {
+        "value": [
+          "climate"
+        ],
+        "provenance": "USER_ASSERTED"
+      },
+      "audience_labels": {
+        "value": [
+          "founders"
+        ],
+        "provenance": "USER_ASSERTED"
+      },
+      "technologies": {
+        "value": [
+          "Python",
+          "TypeScript"
+        ],
+        "provenance": "USER_ASSERTED"
+      },
+      "features": {
+        "value": [
+          "search"
+        ],
+        "provenance": "USER_ASSERTED"
+      },
+      "stages": {
+        "value": [
+          "PROTOTYPE"
+        ],
+        "provenance": "USER_ASSERTED"
+      },
+      "licenses": {
+        "value": [
+          "MIT"
+        ],
+        "provenance": "USER_ASSERTED"
+      },
+      "original_code_required": {
+        "value": true,
+        "provenance": "USER_ASSERTED"
+      },
+      "max_adaptation_hours": {
+        "value": "10",
+        "provenance": "USER_ASSERTED"
+      },
+      "materials": [
+        {
+          "kind": "REPOSITORY",
+          "required": {
+            "value": true,
+            "provenance": "USER_ASSERTED"
+          }
+        },
+        {
+          "kind": "LICENSE",
+          "required": {
+            "value": true,
+            "provenance": "USER_ASSERTED"
+          }
+        },
+        {
+          "kind": "DEMO",
+          "required": {
+            "value": true,
+            "provenance": "USER_ASSERTED"
+          }
+        },
+        {
+          "kind": "ARCHITECTURE_DIAGRAM",
+          "required": {
+            "value": true,
+            "provenance": "USER_ASSERTED"
+          }
+        },
+        {
+          "kind": "TECHNICAL_INTEGRATION",
+          "required": {
+            "value": true,
+            "provenance": "USER_ASSERTED"
+          }
+        },
+        {
+          "kind": "NARRATIVE",
+          "required": {
+            "value": true,
+            "provenance": "USER_ASSERTED"
+          }
+        },
+        {
+          "kind": "PUBLIC_AVAILABILITY",
+          "required": {
+            "value": true,
+            "provenance": "USER_ASSERTED"
+          }
+        },
+        {
+          "kind": "OTHER",
+          "required": {
+            "value": true,
+            "provenance": "USER_ASSERTED"
+          }
+        }
+      ]
+    }
+  },
+  "projects": [
+    {
+      "project": {
+        "schema_version": "1",
+        "id": "project_synthetic",
+        "version": 1,
+        "created_at": "2026-09-01T12:00:00Z",
+        "updated_at": "2026-09-05T12:00:00Z",
+        "provenance": "DOCUMENTED",
+        "name": "Synthetic Eligibility Demonstrator",
+        "stage": {
+          "value": "PROTOTYPE",
+          "provenance": "DOCUMENTED"
+        },
+        "code_provenance": {
+          "value": "ORIGINAL",
+          "provenance": "DOCUMENTED"
+        },
+        "is_new_project": {
+          "value": true,
+          "provenance": "DOCUMENTED"
+        },
+        "license_intent": {
+          "value": "MIT",
+          "provenance": "DOCUMENTED"
+        },
+        "technology_stack": {
+          "value": [
+            "Python",
+            "TypeScript"
+          ],
+          "provenance": "DOCUMENTED"
+        },
+        "has_sponsor_support": {
+          "value": false,
+          "provenance": "DOCUMENTED"
+        },
+        "reward_conditions_met": {
+          "value": true,
+          "provenance": "DOCUMENTED"
+        },
+        "facts_verified_at": "2026-09-05T12:00:00Z",
+        "problem": {
+          "value": "climate",
+          "provenance": "USER_ASSERTED"
+        },
+        "audience": {
+          "value": "founders",
+          "provenance": "USER_ASSERTED"
+        },
+        "available_features": {
+          "value": [],
+          "provenance": "USER_ASSERTED"
+        },
+        "estimated_adaptation_hours": {
+          "value": "2",
+          "provenance": "USER_ASSERTED"
+        },
+        "project_lineage": {
+          "value": [],
+          "provenance": "USER_ASSERTED"
+        },
+        "reused_components": {
+          "value": [],
+          "provenance": "USER_ASSERTED"
+        },
+        "reuse_disclosed": {
+          "value": true,
+          "provenance": "USER_ASSERTED"
+        },
+        "material_readiness": [
+          {
+            "kind": "REPOSITORY",
+            "ready": {
+              "value": false,
+              "provenance": "USER_ASSERTED"
+            },
+            "gap_executable": {
+              "value": true,
+              "provenance": "USER_ASSERTED"
+            }
+          },
+          {
+            "kind": "LICENSE",
+            "ready": {
+              "value": true,
+              "provenance": "USER_ASSERTED"
+            },
+            "gap_executable": {}
+          },
+          {
+            "kind": "DEMO",
+            "ready": {
+              "value": true,
+              "provenance": "USER_ASSERTED"
+            },
+            "gap_executable": {}
+          },
+          {
+            "kind": "ARCHITECTURE_DIAGRAM",
+            "ready": {
+              "value": true,
+              "provenance": "USER_ASSERTED"
+            },
+            "gap_executable": {}
+          },
+          {
+            "kind": "TECHNICAL_INTEGRATION",
+            "ready": {
+              "value": true,
+              "provenance": "USER_ASSERTED"
+            },
+            "gap_executable": {}
+          },
+          {
+            "kind": "NARRATIVE",
+            "ready": {
+              "value": true,
+              "provenance": "USER_ASSERTED"
+            },
+            "gap_executable": {}
+          },
+          {
+            "kind": "PUBLIC_AVAILABILITY",
+            "ready": {
+              "value": true,
+              "provenance": "USER_ASSERTED"
+            },
+            "gap_executable": {}
+          },
+          {
+            "kind": "OTHER",
+            "ready": {
+              "value": true,
+              "provenance": "USER_ASSERTED"
+            },
+            "gap_executable": {}
+          }
+        ]
+      },
+      "effort": {
+        "items": [
+          {
+            "category": "INTEGRATION",
+            "hours": {
+              "min_hours": "1",
+              "max_hours": "2"
+            },
+            "confidence": "MEDIUM",
+            "reason": "Owned explicit preparation assumption"
+          },
+          {
+            "category": "EVIDENCE",
+            "hours": {
+              "min_hours": "1",
+              "max_hours": "2"
+            },
+            "confidence": "MEDIUM",
+            "reason": "Owned explicit preparation assumption"
+          },
+          {
+            "category": "REPO_LICENSE_CLEANUP",
+            "hours": {
+              "min_hours": "1",
+              "max_hours": "2"
+            },
+            "confidence": "MEDIUM",
+            "reason": "Owned explicit preparation assumption"
+          },
+          {
+            "category": "DEMO",
+            "hours": {
+              "min_hours": "1",
+              "max_hours": "2"
+            },
+            "confidence": "MEDIUM",
+            "reason": "Owned explicit preparation assumption"
+          },
+          {
+            "category": "NARRATIVE",
+            "hours": {
+              "min_hours": "1",
+              "max_hours": "2"
+            },
+            "confidence": "MEDIUM",
+            "reason": "Owned explicit preparation assumption"
+          },
+          {
+            "category": "SUBMISSION",
+            "hours": {
+              "min_hours": "1",
+              "max_hours": "2"
+            },
+            "confidence": "MEDIUM",
+            "reason": "Owned explicit preparation assumption"
+          }
+        ]
+      }
+    }
+  ],
+  "eligibility_rules": [
+    {
+      "schema_version": "1",
+      "id": "r_DEADLINE",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "rule_type": "DEADLINE",
+      "operator": "DATE_BETWEEN",
+      "operands": [
+        {
+          "kind": "instant",
+          "value": "2026-09-01T00:00:00Z"
+        },
+        {
+          "kind": "instant",
+          "value": "2026-09-15T12:00:00Z"
+        }
+      ],
+      "subject_reference": "context.evaluated_at",
+      "criticality": "CRITICAL",
+      "evidence_ids": [
+        "e_DEADLINE"
+      ],
+      "supported": true,
+      "source_text_summary": "Synthetic entries open September 1 through September 15 at 12:00 UTC."
+    },
+    {
+      "schema_version": "1",
+      "id": "r_ENTRANT_TYPE",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "rule_type": "ENTRANT_TYPE",
+      "operator": "GTE",
+      "operands": [
+        {
+          "kind": "number",
+          "value": "1"
+        }
+      ],
+      "subject_reference": "founder.team_size",
+      "criticality": "CRITICAL",
+      "evidence_ids": [
+        "e_ENTRANT_TYPE"
+      ],
+      "supported": true,
+      "source_text_summary": "Synthetic teams must have at least one member."
+    },
+    {
+      "schema_version": "1",
+      "id": "r_GEOGRAPHY",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "rule_type": "GEOGRAPHY",
+      "operator": "IN",
+      "operands": [
+        {
+          "kind": "text",
+          "value": "Spain"
+        },
+        {
+          "kind": "text",
+          "value": "France"
+        }
+      ],
+      "subject_reference": "founder.country_of_residence",
+      "criticality": "CRITICAL",
+      "evidence_ids": [
+        "e_GEOGRAPHY"
+      ],
+      "supported": true,
+      "source_text_summary": "Synthetic entrants must reside in Spain or France. This states residence, not citizenship."
+    },
+    {
+      "schema_version": "1",
+      "id": "r_LEGAL_ENTITY",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "rule_type": "LEGAL_ENTITY",
+      "operator": "EQ",
+      "operands": [
+        {
+          "kind": "text",
+          "value": "INCORPORATED_COMPANY"
+        }
+      ],
+      "subject_reference": "founder.legal_form",
+      "criticality": "CRITICAL",
+      "evidence_ids": [
+        "e_LEGAL_ENTITY"
+      ],
+      "supported": true,
+      "source_text_summary": "Synthetic entrants must be incorporated companies."
+    },
+    {
+      "schema_version": "1",
+      "id": "r_PROJECT_POLICY",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "rule_type": "PROJECT_POLICY",
+      "operator": "BOOL_IS",
+      "operands": [
+        {
+          "kind": "bool",
+          "value": true
+        }
+      ],
+      "subject_reference": "project.is_new_project",
+      "criticality": "CRITICAL",
+      "evidence_ids": [
+        "e_PROJECT_POLICY"
+      ],
+      "supported": true,
+      "source_text_summary": "Synthetic entries must be new original projects. The authored fixture project has documented original code and new-work status."
+    },
+    {
+      "schema_version": "1",
+      "id": "r_LICENSE",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "rule_type": "LICENSE",
+      "operator": "EQ",
+      "operands": [
+        {
+          "kind": "text",
+          "value": "MIT"
+        }
+      ],
+      "subject_reference": "project.license_intent",
+      "criticality": "CRITICAL",
+      "evidence_ids": [
+        "e_LICENSE"
+      ],
+      "supported": true,
+      "source_text_summary": "Synthetic entries must declare an MIT license."
+    },
+    {
+      "schema_version": "1",
+      "id": "r_REQUIRED_TECHNOLOGY",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "rule_type": "REQUIRED_TECHNOLOGY",
+      "operator": "IN",
+      "operands": [
+        {
+          "kind": "text",
+          "value": "Python"
+        }
+      ],
+      "subject_reference": "project.technology_stack",
+      "criticality": "CRITICAL",
+      "evidence_ids": [
+        "e_REQUIRED_TECHNOLOGY"
+      ],
+      "supported": true,
+      "source_text_summary": "Synthetic entries must use Python."
+    },
+    {
+      "schema_version": "1",
+      "id": "r_FINANCIAL_SUPPORT",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "rule_type": "FINANCIAL_SUPPORT",
+      "operator": "BOOL_IS",
+      "operands": [
+        {
+          "kind": "bool",
+          "value": false
+        }
+      ],
+      "subject_reference": "project.has_sponsor_support",
+      "criticality": "CRITICAL",
+      "evidence_ids": [
+        "e_FINANCIAL_SUPPORT"
+      ],
+      "supported": true,
+      "source_text_summary": "Synthetic entries must not have received sponsor support."
+    },
+    {
+      "schema_version": "1",
+      "id": "r_REWARD_CONDITIONS",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "rule_type": "REWARD_CONDITIONS",
+      "operator": "BOOL_IS",
+      "operands": [
+        {
+          "kind": "bool",
+          "value": true
+        }
+      ],
+      "subject_reference": "project.reward_conditions_met",
+      "criticality": "CRITICAL",
+      "evidence_ids": [
+        "e_REWARD_CONDITIONS"
+      ],
+      "supported": true,
+      "source_text_summary": "Synthetic reward conditions require a documented attendance commitment."
+    }
+  ],
+  "evidence": [
+    {
+      "schema_version": "1",
+      "id": "e_DEADLINE",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "original_url": "https://synthetic.example/rules",
+      "final_url": "https://synthetic.example/rules",
+      "retrieved_at": "2026-09-05T12:00:00Z",
+      "source_type": "SYNTHETIC_FIXTURE",
+      "content_hash": "020e3cb1cf9578b7ff52587bcb35e3df1396ffd03c28cfad78c75c5c9fb64c35",
+      "supporting_excerpt": "Synthetic entries open September 1 through September 15 at 12:00 UTC.",
+      "normalized_field": "DEADLINE",
+      "extraction_state": "REVIEWED"
+    },
+    {
+      "schema_version": "1",
+      "id": "e_ENTRANT_TYPE",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "original_url": "https://synthetic.example/rules",
+      "final_url": "https://synthetic.example/rules",
+      "retrieved_at": "2026-09-05T12:00:00Z",
+      "source_type": "SYNTHETIC_FIXTURE",
+      "content_hash": "8910825c8719be0545fa47c1131b6a3ce5569c4e164824fd1509975f1f86a61c",
+      "supporting_excerpt": "Synthetic teams must have at least one member.",
+      "normalized_field": "ENTRANT_TYPE",
+      "extraction_state": "REVIEWED"
+    },
+    {
+      "schema_version": "1",
+      "id": "e_GEOGRAPHY",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "original_url": "https://synthetic.example/rules",
+      "final_url": "https://synthetic.example/rules",
+      "retrieved_at": "2026-09-05T12:00:00Z",
+      "source_type": "SYNTHETIC_FIXTURE",
+      "content_hash": "ef8fb548617f479cc9f51dd9a01ceed300b983039f85f2dfa545a116e4161259",
+      "supporting_excerpt": "Synthetic entrants must reside in Spain or France. This states residence, not citizenship.",
+      "normalized_field": "GEOGRAPHY",
+      "extraction_state": "REVIEWED"
+    },
+    {
+      "schema_version": "1",
+      "id": "e_LEGAL_ENTITY",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "original_url": "https://synthetic.example/rules",
+      "final_url": "https://synthetic.example/rules",
+      "retrieved_at": "2026-09-05T12:00:00Z",
+      "source_type": "SYNTHETIC_FIXTURE",
+      "content_hash": "3c88ce80b1367f91e1c72ec1be32e75b9fdfbf96a3cc03bb3ff95b09aca1d16b",
+      "supporting_excerpt": "Synthetic entrants must be incorporated companies.",
+      "normalized_field": "LEGAL_ENTITY",
+      "extraction_state": "REVIEWED"
+    },
+    {
+      "schema_version": "1",
+      "id": "e_PROJECT_POLICY",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "original_url": "https://synthetic.example/rules",
+      "final_url": "https://synthetic.example/rules",
+      "retrieved_at": "2026-09-05T12:00:00Z",
+      "source_type": "SYNTHETIC_FIXTURE",
+      "content_hash": "dcad7d98dcf548c6f33a568d93dd87734f696bdca0eb8e7b941edcd9c9ffda9b",
+      "supporting_excerpt": "Synthetic entries must be new original projects. The authored fixture project has documented original code and new-work status.",
+      "normalized_field": "PROJECT_POLICY",
+      "extraction_state": "REVIEWED"
+    },
+    {
+      "schema_version": "1",
+      "id": "e_LICENSE",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "original_url": "https://synthetic.example/rules",
+      "final_url": "https://synthetic.example/rules",
+      "retrieved_at": "2026-09-05T12:00:00Z",
+      "source_type": "SYNTHETIC_FIXTURE",
+      "content_hash": "bb4bfd16bddfb6d0c6b2fd63233a421156a930af98306146bb7b4d807ce947bd",
+      "supporting_excerpt": "Synthetic entries must declare an MIT license.",
+      "normalized_field": "LICENSE",
+      "extraction_state": "REVIEWED"
+    },
+    {
+      "schema_version": "1",
+      "id": "e_REQUIRED_TECHNOLOGY",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "original_url": "https://synthetic.example/rules",
+      "final_url": "https://synthetic.example/rules",
+      "retrieved_at": "2026-09-05T12:00:00Z",
+      "source_type": "SYNTHETIC_FIXTURE",
+      "content_hash": "2431dafdef217d2c7a484ce406584cc90f944614da08b8cbfcb130f80e467e3d",
+      "supporting_excerpt": "Synthetic entries must use Python.",
+      "normalized_field": "REQUIRED_TECHNOLOGY",
+      "extraction_state": "REVIEWED"
+    },
+    {
+      "schema_version": "1",
+      "id": "e_FINANCIAL_SUPPORT",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "original_url": "https://synthetic.example/rules",
+      "final_url": "https://synthetic.example/rules",
+      "retrieved_at": "2026-09-05T12:00:00Z",
+      "source_type": "SYNTHETIC_FIXTURE",
+      "content_hash": "43b158c9121f976777ad8dba95309675432747c038e36b534cb6ad95590abb3f",
+      "supporting_excerpt": "Synthetic entries must not have received sponsor support.",
+      "normalized_field": "FINANCIAL_SUPPORT",
+      "extraction_state": "REVIEWED"
+    },
+    {
+      "schema_version": "1",
+      "id": "e_REWARD_CONDITIONS",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "original_url": "https://synthetic.example/rules",
+      "final_url": "https://synthetic.example/rules",
+      "retrieved_at": "2026-09-05T12:00:00Z",
+      "source_type": "SYNTHETIC_FIXTURE",
+      "content_hash": "3b43c5349ee0fde22dcb6dc7e65288d35190554ab499a6f5bd54a6d26a23d42a",
+      "supporting_excerpt": "Synthetic reward conditions require a documented attendance commitment.",
+      "normalized_field": "REWARD_CONDITIONS",
+      "extraction_state": "REVIEWED"
+    },
+    {
+      "schema_version": "1",
+      "id": "conflict_NEW_PROJECT",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "original_url": "https://synthetic.example/rules",
+      "final_url": "https://synthetic.example/rules",
+      "retrieved_at": "2026-09-05T12:00:00Z",
+      "source_type": "SYNTHETIC_FIXTURE",
+      "content_hash": "9b6c8bd1044bd27ac787ea23483b3140db15a85e79ba0f97aa37284549e8230e",
+      "supporting_excerpt": "Owned synthetic decision policy: restriction NEW_PROJECT is explicitly not applicable to this fixture event.",
+      "normalized_field": "PROJECT_POLICY",
+      "extraction_state": "REVIEWED"
+    },
+    {
+      "schema_version": "1",
+      "id": "conflict_EXCLUSIVE_SUBMISSION",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "original_url": "https://synthetic.example/rules",
+      "final_url": "https://synthetic.example/rules",
+      "retrieved_at": "2026-09-05T12:00:00Z",
+      "source_type": "SYNTHETIC_FIXTURE",
+      "content_hash": "eec087dc5624b3a0872ea4fd2cd31b528be27b8bc0e1ca2283f70a3d81ac9b89",
+      "supporting_excerpt": "Owned synthetic decision policy: restriction EXCLUSIVE_SUBMISSION is explicitly not applicable to this fixture event.",
+      "normalized_field": "PROJECT_POLICY",
+      "extraction_state": "REVIEWED"
+    },
+    {
+      "schema_version": "1",
+      "id": "conflict_LICENSE",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "original_url": "https://synthetic.example/rules",
+      "final_url": "https://synthetic.example/rules",
+      "retrieved_at": "2026-09-05T12:00:00Z",
+      "source_type": "SYNTHETIC_FIXTURE",
+      "content_hash": "65ecc485bb6d6cbd034b0cbd9af2e7098dd9ad8e1e96c9f68a54b1b69342b6ea",
+      "supporting_excerpt": "Owned synthetic decision policy: restriction LICENSE is explicitly not applicable to this fixture event.",
+      "normalized_field": "LICENSE",
+      "extraction_state": "REVIEWED"
+    },
+    {
+      "schema_version": "1",
+      "id": "conflict_SPONSOR_SUPPORT",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "original_url": "https://synthetic.example/rules",
+      "final_url": "https://synthetic.example/rules",
+      "retrieved_at": "2026-09-05T12:00:00Z",
+      "source_type": "SYNTHETIC_FIXTURE",
+      "content_hash": "871cfa94cf724faf6f517ffd66b436656aa70a97272167257627b1c811bc0273",
+      "supporting_excerpt": "Owned synthetic decision policy: restriction SPONSOR_SUPPORT is explicitly not applicable to this fixture event.",
+      "normalized_field": "FINANCIAL_SUPPORT",
+      "extraction_state": "REVIEWED"
+    },
+    {
+      "schema_version": "1",
+      "id": "conflict_SAME_PROJECT",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "original_url": "https://synthetic.example/rules",
+      "final_url": "https://synthetic.example/rules",
+      "retrieved_at": "2026-09-05T12:00:00Z",
+      "source_type": "SYNTHETIC_FIXTURE",
+      "content_hash": "7a3239b3508fb0be19de5197fe215a8a5bb1bbf0345d926db17c600ff49f4b67",
+      "supporting_excerpt": "Owned synthetic decision policy: restriction SAME_PROJECT is explicitly not applicable to this fixture event.",
+      "normalized_field": "PROJECT_POLICY",
+      "extraction_state": "REVIEWED"
+    },
+    {
+      "schema_version": "1",
+      "id": "conflict_EXISTING_PROJECT",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "original_url": "https://synthetic.example/rules",
+      "final_url": "https://synthetic.example/rules",
+      "retrieved_at": "2026-09-05T12:00:00Z",
+      "source_type": "SYNTHETIC_FIXTURE",
+      "content_hash": "0d3b5331f9ea626f543d86f07854f636aad5ecfc4a6cbf8b52882736ba00864d",
+      "supporting_excerpt": "Owned synthetic decision policy: restriction EXISTING_PROJECT is explicitly not applicable to this fixture event.",
+      "normalized_field": "PROJECT_POLICY",
+      "extraction_state": "REVIEWED"
+    },
+    {
+      "schema_version": "1",
+      "id": "conflict_DISCLOSURE",
+      "version": 1,
+      "created_at": "2026-09-01T12:00:00Z",
+      "updated_at": "2026-09-05T12:00:00Z",
+      "provenance": "DOCUMENTED",
+      "original_url": "https://synthetic.example/rules",
+      "final_url": "https://synthetic.example/rules",
+      "retrieved_at": "2026-09-05T12:00:00Z",
+      "source_type": "SYNTHETIC_FIXTURE",
+      "content_hash": "50297d06a68e7cd4881608abb4a5da67ae8a461ac4c9fcffc040f9c0849d102d",
+      "supporting_excerpt": "Owned synthetic decision policy: restriction DISCLOSURE is explicitly not applicable to this fixture event.",
+      "normalized_field": "PROJECT_POLICY",
+      "extraction_state": "REVIEWED"
+    }
+  ],
+  "conflict_rules": [
+    {
+      "id": "conflict_NEW_PROJECT",
+      "category": "NEW_PROJECT",
+      "applies": {
+        "value": false,
+        "provenance": "USER_ASSERTED"
+      },
+      "supported": true,
+      "evidence_ids": [
+        "conflict_NEW_PROJECT"
+      ],
+      "allowed_licenses": {
+        "value": [
+          "MIT"
+        ],
+        "provenance": "USER_ASSERTED"
+      }
+    },
+    {
+      "id": "conflict_EXCLUSIVE_SUBMISSION",
+      "category": "EXCLUSIVE_SUBMISSION",
+      "applies": {
+        "value": false,
+        "provenance": "USER_ASSERTED"
+      },
+      "supported": true,
+      "evidence_ids": [
+        "conflict_EXCLUSIVE_SUBMISSION"
+      ],
+      "allowed_licenses": {
+        "value": [
+          "MIT"
+        ],
+        "provenance": "USER_ASSERTED"
+      }
+    },
+    {
+      "id": "conflict_LICENSE",
+      "category": "LICENSE",
+      "applies": {
+        "value": false,
+        "provenance": "USER_ASSERTED"
+      },
+      "supported": true,
+      "evidence_ids": [
+        "conflict_LICENSE"
+      ],
+      "allowed_licenses": {
+        "value": [
+          "MIT"
+        ],
+        "provenance": "USER_ASSERTED"
+      }
+    },
+    {
+      "id": "conflict_SPONSOR_SUPPORT",
+      "category": "SPONSOR_SUPPORT",
+      "applies": {
+        "value": false,
+        "provenance": "USER_ASSERTED"
+      },
+      "supported": true,
+      "evidence_ids": [
+        "conflict_SPONSOR_SUPPORT"
+      ],
+      "allowed_licenses": {
+        "value": [
+          "MIT"
+        ],
+        "provenance": "USER_ASSERTED"
+      }
+    },
+    {
+      "id": "conflict_SAME_PROJECT",
+      "category": "SAME_PROJECT",
+      "applies": {
+        "value": false,
+        "provenance": "USER_ASSERTED"
+      },
+      "supported": true,
+      "evidence_ids": [
+        "conflict_SAME_PROJECT"
+      ],
+      "allowed_licenses": {
+        "value": [
+          "MIT"
+        ],
+        "provenance": "USER_ASSERTED"
+      }
+    },
+    {
+      "id": "conflict_EXISTING_PROJECT",
+      "category": "EXISTING_PROJECT",
+      "applies": {
+        "value": false,
+        "provenance": "USER_ASSERTED"
+      },
+      "supported": true,
+      "evidence_ids": [
+        "conflict_EXISTING_PROJECT"
+      ],
+      "allowed_licenses": {
+        "value": [
+          "MIT"
+        ],
+        "provenance": "USER_ASSERTED"
+      }
+    },
+    {
+      "id": "conflict_DISCLOSURE",
+      "category": "DISCLOSURE",
+      "applies": {
+        "value": false,
+        "provenance": "USER_ASSERTED"
+      },
+      "supported": true,
+      "evidence_ids": [
+        "conflict_DISCLOSURE"
+      ],
+      "allowed_licenses": {
+        "value": [
+          "MIT"
+        ],
+        "provenance": "USER_ASSERTED"
+      }
+    }
+  ],
+  "active_submissions": [],
+  "participation_costs": {
+    "complete": {
+      "value": true,
+      "provenance": "USER_ASSERTED"
+    },
+    "items": []
+  },
+  "evaluated_at": "2026-09-05T12:00:00Z"
+}

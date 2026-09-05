@@ -4,6 +4,7 @@ from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 
+from qualor.decisions import DecisionFixture, DecisionResult, decide_fixture
 from qualor.domain.base import Contract
 from qualor.domain.enums import GateState
 from qualor.domain.fixture import FixtureInput
@@ -41,3 +42,14 @@ def evaluate_fixture(fixture: FixtureInput) -> FixtureResponse:
         coverage=gate.critical_coverage,
         missing_information=gate.missing_information,
     )
+
+
+@app.post("/dev/decide-fixture", response_model=DecisionResult)
+def decide_fixture_json(fixture: DecisionFixture) -> DecisionResult:
+    """Development-only explicit JSON facts; no server path or external action."""
+    if Settings().qualor_env != "development":
+        raise HTTPException(status_code=404, detail="Not found")
+    try:
+        return decide_fixture(fixture)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Invalid decision fixture structure") from None

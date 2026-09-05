@@ -1,0 +1,1393 @@
+{
+  "$defs": {
+    "AffordabilityAssessment": {
+      "additionalProperties": false,
+      "properties": {
+        "cash_budget": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cash_required": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        },
+        "missing_information": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Missing Information",
+          "type": "array"
+        },
+        "policy_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Policy Version",
+          "type": "integer"
+        },
+        "reasons": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "state": {
+          "$ref": "#/$defs/AffordabilityState"
+        }
+      },
+      "required": [
+        "state",
+        "cash_required",
+        "cash_budget",
+        "reasons",
+        "missing_information",
+        "evaluated_at"
+      ],
+      "title": "AffordabilityAssessment",
+      "type": "object"
+    },
+    "AffordabilityState": {
+      "enum": [
+        "SUFFICIENT",
+        "INSUFFICIENT",
+        "UNKNOWN"
+      ],
+      "title": "AffordabilityState",
+      "type": "string"
+    },
+    "CapacityAssessment": {
+      "additionalProperties": false,
+      "properties": {
+        "available_hours": {
+          "anyOf": [
+            {
+              "ge": 0,
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Available Hours"
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        },
+        "missing_information": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Missing Information",
+          "type": "array"
+        },
+        "policy_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Policy Version",
+          "type": "integer"
+        },
+        "reasons": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "remaining_wall_hours": {
+          "anyOf": [
+            {
+              "ge": 0,
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Remaining Wall Hours"
+        },
+        "required_hours": {
+          "anyOf": [
+            {
+              "ge": 0,
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Required Hours"
+        },
+        "state": {
+          "$ref": "#/$defs/CapacityState"
+        },
+        "usable_hours": {
+          "anyOf": [
+            {
+              "ge": 0,
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Usable Hours"
+        }
+      },
+      "required": [
+        "state",
+        "available_hours",
+        "remaining_wall_hours",
+        "usable_hours",
+        "required_hours",
+        "reasons",
+        "missing_information",
+        "evaluated_at"
+      ],
+      "title": "CapacityAssessment",
+      "type": "object"
+    },
+    "CapacityState": {
+      "enum": [
+        "SUFFICIENT",
+        "INSUFFICIENT",
+        "UNKNOWN"
+      ],
+      "title": "CapacityState",
+      "type": "string"
+    },
+    "Category": {
+      "enum": [
+        "DEADLINE",
+        "ENTRANT_TYPE",
+        "GEOGRAPHY",
+        "LEGAL_ENTITY",
+        "PROJECT_POLICY",
+        "LICENSE",
+        "REQUIRED_TECHNOLOGY",
+        "FINANCIAL_SUPPORT",
+        "REWARD_CONDITIONS"
+      ],
+      "title": "Category",
+      "type": "string"
+    },
+    "Confidence": {
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH",
+        "UNKNOWN"
+      ],
+      "title": "Confidence",
+      "type": "string"
+    },
+    "ConflictAssessment": {
+      "additionalProperties": false,
+      "properties": {
+        "checked_rule_categories": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/ConflictCategory"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Checked Rule Categories",
+          "type": "array"
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "missing_rule_categories": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/ConflictCategory"
+              }
+            ],
+            "type": "array"
+          },
+          "title": "Missing Rule Categories",
+          "type": "array"
+        },
+        "policy_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Policy Version",
+          "type": "integer"
+        },
+        "reasons": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "status": {
+          "$ref": "#/$defs/ConflictStatus"
+        }
+      },
+      "required": [
+        "status",
+        "checked_rule_categories",
+        "missing_rule_categories",
+        "evidence_ids",
+        "reasons",
+        "evaluated_at"
+      ],
+      "title": "ConflictAssessment",
+      "type": "object"
+    },
+    "ConflictCategory": {
+      "enum": [
+        "NEW_PROJECT",
+        "EXCLUSIVE_SUBMISSION",
+        "LICENSE",
+        "SPONSOR_SUPPORT",
+        "SAME_PROJECT",
+        "EXISTING_PROJECT",
+        "DISCLOSURE"
+      ],
+      "title": "ConflictCategory",
+      "type": "string"
+    },
+    "ConflictStatus": {
+      "enum": [
+        "BLOCKED_BY_EXPLICIT_RULE",
+        "REVIEW_REQUIRED",
+        "NO_CONFLICT_DETECTED_IN_CHECKED_RULES"
+      ],
+      "title": "ConflictStatus",
+      "type": "string"
+    },
+    "CoverageEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "$ref": "#/$defs/Category"
+        },
+        "reasons": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "rule_ids": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Rule Ids",
+          "type": "array"
+        },
+        "state": {
+          "$ref": "#/$defs/CoverageState"
+        }
+      },
+      "required": [
+        "category",
+        "state"
+      ],
+      "title": "CoverageEntry",
+      "type": "object"
+    },
+    "CoverageState": {
+      "enum": [
+        "EVALUATED",
+        "NOT_APPLICABLE_WITH_REASON",
+        "UNKNOWN",
+        "MISSING"
+      ],
+      "title": "CoverageState",
+      "type": "string"
+    },
+    "EffortCategory": {
+      "enum": [
+        "INTEGRATION",
+        "EVIDENCE",
+        "REPO_LICENSE_CLEANUP",
+        "DEMO",
+        "NARRATIVE",
+        "SUBMISSION"
+      ],
+      "title": "EffortCategory",
+      "type": "string"
+    },
+    "EffortEstimate": {
+      "additionalProperties": false,
+      "properties": {
+        "adaptation_range": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HourRange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "breakdown": {
+          "items": {
+            "$ref": "#/$defs/EffortItem"
+          },
+          "title": "Breakdown",
+          "type": "array"
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        },
+        "max_total": {
+          "anyOf": [
+            {
+              "ge": 0,
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Max Total"
+        },
+        "min_total": {
+          "anyOf": [
+            {
+              "ge": 0,
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Min Total"
+        },
+        "missing_information": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Missing Information",
+          "type": "array"
+        },
+        "policy_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Policy Version",
+          "type": "integer"
+        },
+        "reasons": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        }
+      },
+      "required": [
+        "breakdown",
+        "adaptation_range",
+        "min_total",
+        "max_total",
+        "reasons",
+        "missing_information",
+        "evaluated_at"
+      ],
+      "title": "EffortEstimate",
+      "type": "object"
+    },
+    "EffortItem": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "$ref": "#/$defs/EffortCategory"
+        },
+        "confidence": {
+          "$ref": "#/$defs/Confidence"
+        },
+        "hours": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HourRange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "category",
+        "hours",
+        "confidence",
+        "reason"
+      ],
+      "title": "EffortItem",
+      "type": "object"
+    },
+    "EligibilityGate": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "critical_coverage": {
+          "items": {
+            "$ref": "#/$defs/CoverageEntry"
+          },
+          "title": "Critical Coverage",
+          "type": "array"
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        },
+        "evaluations": {
+          "items": {
+            "$ref": "#/$defs/RuleEvaluation"
+          },
+          "title": "Evaluations",
+          "type": "array"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "missing_information": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Missing Information",
+          "type": "array"
+        },
+        "policy_version": {
+          "minimum": 1,
+          "title": "Policy Version",
+          "type": "integer"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "reason_codes": {
+          "items": {
+            "$ref": "#/$defs/ReasonCode"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "schema_version": {
+          "const": "1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/GateState"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "version",
+        "created_at",
+        "updated_at",
+        "provenance",
+        "state",
+        "evaluations",
+        "critical_coverage",
+        "missing_information",
+        "reason_codes",
+        "policy_version",
+        "evaluated_at"
+      ],
+      "title": "EligibilityGate",
+      "type": "object"
+    },
+    "FactorResult": {
+      "additionalProperties": false,
+      "properties": {
+        "fact_refs": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Fact Refs",
+          "type": "array"
+        },
+        "factor": {
+          "minLength": 1,
+          "title": "Factor",
+          "type": "string"
+        },
+        "rating": {
+          "anyOf": [
+            {
+              "maximum": 4,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Rating"
+        },
+        "reasons": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "requirement_refs": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Requirement Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "factor",
+        "rating",
+        "reasons",
+        "requirement_refs",
+        "fact_refs"
+      ],
+      "title": "FactorResult",
+      "type": "object"
+    },
+    "FreshnessStatus": {
+      "enum": [
+        "FRESH",
+        "STALE",
+        "UNKNOWN"
+      ],
+      "title": "FreshnessStatus",
+      "type": "string"
+    },
+    "GateState": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "REVIEW_REQUIRED"
+      ],
+      "title": "GateState",
+      "type": "string"
+    },
+    "HourRange": {
+      "additionalProperties": false,
+      "properties": {
+        "max_hours": {
+          "ge": 0,
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "title": "Max Hours",
+          "type": "string"
+        },
+        "min_hours": {
+          "ge": 0,
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "title": "Min Hours",
+          "type": "string"
+        }
+      },
+      "required": [
+        "min_hours",
+        "max_hours"
+      ],
+      "title": "HourRange",
+      "type": "object"
+    },
+    "MatchStatus": {
+      "enum": [
+        "STRONG",
+        "PARTIAL",
+        "WEAK",
+        "INSUFFICIENT_EVIDENCE"
+      ],
+      "title": "MatchStatus",
+      "type": "string"
+    },
+    "MaterialKind": {
+      "enum": [
+        "REPOSITORY",
+        "LICENSE",
+        "DEMO",
+        "ARCHITECTURE_DIAGRAM",
+        "TECHNICAL_INTEGRATION",
+        "NARRATIVE",
+        "PUBLIC_AVAILABILITY",
+        "OTHER"
+      ],
+      "title": "MaterialKind",
+      "type": "string"
+    },
+    "Money": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "ge": 0,
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "title": "Amount",
+          "type": "string"
+        },
+        "currency": {
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency",
+          "type": "string"
+        }
+      },
+      "required": [
+        "currency",
+        "amount"
+      ],
+      "title": "Money",
+      "type": "object"
+    },
+    "PolicyVersions": {
+      "additionalProperties": false,
+      "properties": {
+        "conflicts": {
+          "minimum": 1,
+          "title": "Conflicts",
+          "type": "integer"
+        },
+        "decisions": {
+          "const": 1,
+          "title": "Decisions",
+          "type": "integer"
+        },
+        "effort": {
+          "minimum": 1,
+          "title": "Effort",
+          "type": "integer"
+        },
+        "eligibility": {
+          "minimum": 1,
+          "title": "Eligibility",
+          "type": "integer"
+        },
+        "matching": {
+          "minimum": 1,
+          "title": "Matching",
+          "type": "integer"
+        },
+        "strategy": {
+          "minimum": 1,
+          "title": "Strategy",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "eligibility",
+        "matching",
+        "effort",
+        "conflicts",
+        "strategy",
+        "decisions"
+      ],
+      "title": "PolicyVersions",
+      "type": "object"
+    },
+    "ProjectMatch": {
+      "additionalProperties": false,
+      "properties": {
+        "adaptation_hours": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HourRange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "blocking_gaps": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Blocking Gaps",
+          "type": "array"
+        },
+        "comparable_score": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Comparable Score"
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        },
+        "factor_results": {
+          "items": {
+            "$ref": "#/$defs/FactorResult"
+          },
+          "title": "Factor Results",
+          "type": "array"
+        },
+        "match_status": {
+          "$ref": "#/$defs/MatchStatus"
+        },
+        "matched_requirements": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Matched Requirements",
+          "type": "array"
+        },
+        "missing_project_facts": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Missing Project Facts",
+          "type": "array"
+        },
+        "opportunity_id": {
+          "minLength": 1,
+          "title": "Opportunity Id",
+          "type": "string"
+        },
+        "policy_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Policy Version",
+          "type": "integer"
+        },
+        "project_id": {
+          "minLength": 1,
+          "title": "Project Id",
+          "type": "string"
+        },
+        "rating": {
+          "anyOf": [
+            {
+              "maximum": 4,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Rating"
+        }
+      },
+      "required": [
+        "project_id",
+        "opportunity_id",
+        "factor_results",
+        "missing_project_facts",
+        "matched_requirements",
+        "blocking_gaps",
+        "adaptation_hours",
+        "match_status",
+        "comparable_score",
+        "rating",
+        "evaluated_at"
+      ],
+      "title": "ProjectMatch",
+      "type": "object"
+    },
+    "Provenance": {
+      "enum": [
+        "USER_ASSERTED",
+        "DOCUMENTED",
+        "UNKNOWN"
+      ],
+      "title": "Provenance",
+      "type": "string"
+    },
+    "ReadinessAssessment": {
+      "additionalProperties": false,
+      "properties": {
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        },
+        "factor_results": {
+          "items": {
+            "$ref": "#/$defs/FactorResult"
+          },
+          "title": "Factor Results",
+          "type": "array"
+        },
+        "gaps": {
+          "items": {
+            "$ref": "#/$defs/MaterialKind"
+          },
+          "title": "Gaps",
+          "type": "array"
+        },
+        "missing_information": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Missing Information",
+          "type": "array"
+        },
+        "policy_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Policy Version",
+          "type": "integer"
+        },
+        "state": {
+          "$ref": "#/$defs/ReadinessState"
+        }
+      },
+      "required": [
+        "state",
+        "gaps",
+        "missing_information",
+        "factor_results",
+        "evaluated_at"
+      ],
+      "title": "ReadinessAssessment",
+      "type": "object"
+    },
+    "ReadinessState": {
+      "enum": [
+        "READY",
+        "GAPS_EXECUTABLE",
+        "NOT_READY",
+        "UNKNOWN"
+      ],
+      "title": "ReadinessState",
+      "type": "string"
+    },
+    "ReasonCode": {
+      "enum": [
+        "MATCH",
+        "MISMATCH",
+        "MISSING_FACT",
+        "UNSUPPORTED",
+        "INVALID_OPERANDS",
+        "MISSING_EVIDENCE",
+        "UNVERIFIED_EVIDENCE",
+        "STALE_EVIDENCE",
+        "CONFLICT",
+        "PROVENANCE_REQUIRED",
+        "EXPLICIT_NOT_APPLICABLE",
+        "INCOMPLETE_COVERAGE",
+        "EMPTY_RULE_SET",
+        "CRITICAL_UNKNOWN"
+      ],
+      "title": "ReasonCode",
+      "type": "string"
+    },
+    "Recommendation": {
+      "enum": [
+        "APPLY",
+        "PREPARE",
+        "WATCH",
+        "SKIP"
+      ],
+      "title": "Recommendation",
+      "type": "string"
+    },
+    "RuleEvaluation": {
+      "additionalProperties": false,
+      "properties": {
+        "children": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/RuleEvaluation"
+          },
+          "title": "Children",
+          "type": "array"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "policy_version": {
+          "minimum": 1,
+          "title": "Policy Version",
+          "type": "integer"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "reason_code": {
+          "$ref": "#/$defs/ReasonCode"
+        },
+        "reason_codes": {
+          "items": {
+            "$ref": "#/$defs/ReasonCode"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "rule_id": {
+          "minLength": 1,
+          "title": "Rule Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/RuleStatus"
+        },
+        "subject_reference": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SubjectReference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "version",
+        "created_at",
+        "updated_at",
+        "provenance",
+        "rule_id",
+        "status",
+        "reason_code",
+        "reason_codes",
+        "evidence_ids",
+        "subject_reference",
+        "policy_version",
+        "evaluated_at"
+      ],
+      "title": "RuleEvaluation",
+      "type": "object"
+    },
+    "RuleStatus": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "UNKNOWN",
+        "NOT_APPLICABLE"
+      ],
+      "title": "RuleStatus",
+      "type": "string"
+    },
+    "StrategyAssessment": {
+      "additionalProperties": false,
+      "properties": {
+        "breakdown": {
+          "items": {
+            "$ref": "#/$defs/StrategyContribution"
+          },
+          "title": "Breakdown",
+          "type": "array"
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        },
+        "missing_strategy_factors": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Missing Strategy Factors",
+          "type": "array"
+        },
+        "policy_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Policy Version",
+          "type": "integer"
+        },
+        "score": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Score"
+        },
+        "semantics": {
+          "const": "PRIORITIZATION_NOT_WIN_PROBABILITY",
+          "default": "PRIORITIZATION_NOT_WIN_PROBABILITY",
+          "title": "Semantics",
+          "type": "string"
+        }
+      },
+      "required": [
+        "score",
+        "breakdown",
+        "missing_strategy_factors",
+        "evaluated_at"
+      ],
+      "title": "StrategyAssessment",
+      "type": "object"
+    },
+    "StrategyContribution": {
+      "additionalProperties": false,
+      "properties": {
+        "contribution": {
+          "anyOf": [
+            {
+              "ge": 0,
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Contribution"
+        },
+        "factor": {
+          "minLength": 1,
+          "title": "Factor",
+          "type": "string"
+        },
+        "rating": {
+          "anyOf": [
+            {
+              "maximum": 4,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Rating"
+        },
+        "weight": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Weight",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "factor",
+        "weight",
+        "rating",
+        "contribution"
+      ],
+      "title": "StrategyContribution",
+      "type": "object"
+    },
+    "SubjectReference": {
+      "enum": [
+        "founder.country_of_residence",
+        "founder.citizenship",
+        "founder.legal_form",
+        "founder.incorporation_date",
+        "founder.team_size",
+        "founder.open_source_willingness",
+        "project.is_new_project",
+        "project.license_intent",
+        "project.technology_stack",
+        "project.has_sponsor_support",
+        "project.reward_conditions_met",
+        "context.evaluated_at"
+      ],
+      "title": "SubjectReference",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "affordability": {
+      "$ref": "#/$defs/AffordabilityAssessment"
+    },
+    "capacity": {
+      "$ref": "#/$defs/CapacityAssessment"
+    },
+    "conflict": {
+      "$ref": "#/$defs/ConflictAssessment"
+    },
+    "conflict_status": {
+      "$ref": "#/$defs/ConflictStatus"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "effort": {
+      "$ref": "#/$defs/EffortEstimate"
+    },
+    "eligibility_gate": {
+      "$ref": "#/$defs/EligibilityGate"
+    },
+    "explanation": {
+      "minLength": 1,
+      "title": "Explanation",
+      "type": "string"
+    },
+    "freshness_status": {
+      "$ref": "#/$defs/FreshnessStatus"
+    },
+    "id": {
+      "minLength": 1,
+      "title": "Id",
+      "type": "string"
+    },
+    "missing_information": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Missing Information",
+      "type": "array"
+    },
+    "next_action": {
+      "minLength": 1,
+      "title": "Next Action",
+      "type": "string"
+    },
+    "opportunity_id": {
+      "minLength": 1,
+      "title": "Opportunity Id",
+      "type": "string"
+    },
+    "opportunity_version": {
+      "minimum": 1,
+      "title": "Opportunity Version",
+      "type": "integer"
+    },
+    "policy_versions": {
+      "$ref": "#/$defs/PolicyVersions"
+    },
+    "profile_version": {
+      "minimum": 1,
+      "title": "Profile Version",
+      "type": "integer"
+    },
+    "project_id": {
+      "minLength": 1,
+      "title": "Project Id",
+      "type": "string"
+    },
+    "project_match": {
+      "$ref": "#/$defs/ProjectMatch"
+    },
+    "project_version": {
+      "minimum": 1,
+      "title": "Project Version",
+      "type": "integer"
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    },
+    "readiness": {
+      "$ref": "#/$defs/ReadinessAssessment"
+    },
+    "reason_codes": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Reason Codes",
+      "type": "array"
+    },
+    "recommendation": {
+      "$ref": "#/$defs/Recommendation"
+    },
+    "schema_version": {
+      "const": "1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "strategy": {
+      "$ref": "#/$defs/StrategyAssessment"
+    },
+    "strategy_breakdown": {
+      "items": {
+        "$ref": "#/$defs/StrategyContribution"
+      },
+      "title": "Strategy Breakdown",
+      "type": "array"
+    },
+    "strategy_score": {
+      "anyOf": [
+        {
+          "maximum": 100,
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Strategy Score"
+    },
+    "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "version",
+    "created_at",
+    "updated_at",
+    "provenance",
+    "opportunity_id",
+    "opportunity_version",
+    "project_id",
+    "project_version",
+    "profile_version",
+    "eligibility_gate",
+    "conflict_status",
+    "conflict",
+    "project_match",
+    "strategy_score",
+    "strategy_breakdown",
+    "strategy",
+    "readiness",
+    "capacity",
+    "affordability",
+    "effort",
+    "recommendation",
+    "explanation",
+    "reason_codes",
+    "missing_information",
+    "next_action",
+    "freshness_status",
+    "policy_versions"
+  ],
+  "title": "DecisionRecord",
+  "type": "object"
+}

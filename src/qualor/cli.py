@@ -1,12 +1,14 @@
 """Offline repository doctor and synthetic deterministic evaluation."""
 
 import hashlib
+import json
 import sys
 from pathlib import Path
 
 import typer
 from pydantic import ValidationError
 
+from qualor.decisions import DecisionFixture, decide_fixture
 from qualor.domain.fixture import FixtureInput
 from qualor.eligibility import aggregate_eligibility
 from qualor.settings import Settings
@@ -60,3 +62,34 @@ def evaluate_fixture(fixture_path: Path) -> None:
     typer.echo("MODE=FIXTURE")
     typer.echo(f"ELIGIBILITY={gate.state.value}")
     typer.echo(gate.model_dump_json(indent=2))
+
+
+@app.command("decide-fixture")
+def decide_fixture_file(fixture_path: Path) -> None:
+    """Compose an owned synthetic fixture and print a bounded eight-field summary."""
+    try:
+        fixture = DecisionFixture.model_validate_json(fixture_path.read_text(encoding="utf-8"))
+        result = decide_fixture(fixture)
+    except (OSError, ValueError):
+        typer.echo("INVALID_FIXTURE", err=True)
+        raise typer.Exit(2) from None
+    selected = result.selected_decision
+    # JSON escaping keeps arbitrary project identifiers within one output field.
+    best = json.dumps(result.best_project_id, ensure_ascii=True)[1:-1] if selected else "UNRESOLVED"
+    fields = (
+        ("MODE", "FIXTURE"),
+        ("ELIGIBILITY", selected.eligibility_gate.state.value if selected else "UNKNOWN"),
+        ("BEST_PROJECT", best),
+        (
+            "STRATEGY_SCORE",
+            selected.strategy_score
+            if selected and selected.strategy_score is not None
+            else "UNKNOWN",
+        ),
+        ("CONFLICT", selected.conflict_status.value if selected else "UNKNOWN"),
+        ("READINESS", selected.readiness.state.value if selected else "UNKNOWN"),
+        ("CAPACITY", selected.capacity.state.value if selected else "UNKNOWN"),
+        ("RECOMMENDATION", result.recommendation.value),
+    )
+    for key, value in fields:
+        typer.echo(f"{key}={value}")

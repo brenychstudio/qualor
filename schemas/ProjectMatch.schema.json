@@ -1,0 +1,202 @@
+{
+  "$defs": {
+    "FactorResult": {
+      "additionalProperties": false,
+      "properties": {
+        "fact_refs": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Fact Refs",
+          "type": "array"
+        },
+        "factor": {
+          "minLength": 1,
+          "title": "Factor",
+          "type": "string"
+        },
+        "rating": {
+          "anyOf": [
+            {
+              "maximum": 4,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Rating"
+        },
+        "reasons": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "requirement_refs": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Requirement Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "factor",
+        "rating",
+        "reasons",
+        "requirement_refs",
+        "fact_refs"
+      ],
+      "title": "FactorResult",
+      "type": "object"
+    },
+    "HourRange": {
+      "additionalProperties": false,
+      "properties": {
+        "max_hours": {
+          "ge": 0,
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "title": "Max Hours",
+          "type": "string"
+        },
+        "min_hours": {
+          "ge": 0,
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "title": "Min Hours",
+          "type": "string"
+        }
+      },
+      "required": [
+        "min_hours",
+        "max_hours"
+      ],
+      "title": "HourRange",
+      "type": "object"
+    },
+    "MatchStatus": {
+      "enum": [
+        "STRONG",
+        "PARTIAL",
+        "WEAK",
+        "INSUFFICIENT_EVIDENCE"
+      ],
+      "title": "MatchStatus",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "adaptation_hours": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/HourRange"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "blocking_gaps": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Blocking Gaps",
+      "type": "array"
+    },
+    "comparable_score": {
+      "anyOf": [
+        {
+          "maximum": 100,
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Comparable Score"
+    },
+    "evaluated_at": {
+      "format": "date-time",
+      "title": "Evaluated At",
+      "type": "string"
+    },
+    "factor_results": {
+      "items": {
+        "$ref": "#/$defs/FactorResult"
+      },
+      "title": "Factor Results",
+      "type": "array"
+    },
+    "match_status": {
+      "$ref": "#/$defs/MatchStatus"
+    },
+    "matched_requirements": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Matched Requirements",
+      "type": "array"
+    },
+    "missing_project_facts": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Missing Project Facts",
+      "type": "array"
+    },
+    "opportunity_id": {
+      "minLength": 1,
+      "title": "Opportunity Id",
+      "type": "string"
+    },
+    "policy_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Policy Version",
+      "type": "integer"
+    },
+    "project_id": {
+      "minLength": 1,
+      "title": "Project Id",
+      "type": "string"
+    },
+    "rating": {
+      "anyOf": [
+        {
+          "maximum": 4,
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Rating"
+    }
+  },
+  "required": [
+    "project_id",
+    "opportunity_id",
+    "factor_results",
+    "missing_project_facts",
+    "matched_requirements",
+    "blocking_gaps",
+    "adaptation_hours",
+    "match_status",
+    "comparable_score",
+    "rating",
+    "evaluated_at"
+  ],
+  "title": "ProjectMatch",
+  "type": "object"
+}

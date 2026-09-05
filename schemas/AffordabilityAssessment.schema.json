@@ -1,0 +1,98 @@
+{
+  "$defs": {
+    "AffordabilityState": {
+      "enum": [
+        "SUFFICIENT",
+        "INSUFFICIENT",
+        "UNKNOWN"
+      ],
+      "title": "AffordabilityState",
+      "type": "string"
+    },
+    "Money": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "ge": 0,
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "title": "Amount",
+          "type": "string"
+        },
+        "currency": {
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency",
+          "type": "string"
+        }
+      },
+      "required": [
+        "currency",
+        "amount"
+      ],
+      "title": "Money",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "cash_budget": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Money"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "cash_required": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Money"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "evaluated_at": {
+      "format": "date-time",
+      "title": "Evaluated At",
+      "type": "string"
+    },
+    "missing_information": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Missing Information",
+      "type": "array"
+    },
+    "policy_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Policy Version",
+      "type": "integer"
+    },
+    "reasons": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Reasons",
+      "type": "array"
+    },
+    "state": {
+      "$ref": "#/$defs/AffordabilityState"
+    }
+  },
+  "required": [
+    "state",
+    "cash_required",
+    "cash_budget",
+    "reasons",
+    "missing_information",
+    "evaluated_at"
+  ],
+  "title": "AffordabilityAssessment",
+  "type": "object"
+}

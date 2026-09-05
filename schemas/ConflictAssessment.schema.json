@@ -1,0 +1,105 @@
+{
+  "$defs": {
+    "ConflictCategory": {
+      "enum": [
+        "NEW_PROJECT",
+        "EXCLUSIVE_SUBMISSION",
+        "LICENSE",
+        "SPONSOR_SUPPORT",
+        "SAME_PROJECT",
+        "EXISTING_PROJECT",
+        "DISCLOSURE"
+      ],
+      "title": "ConflictCategory",
+      "type": "string"
+    },
+    "ConflictStatus": {
+      "enum": [
+        "BLOCKED_BY_EXPLICIT_RULE",
+        "REVIEW_REQUIRED",
+        "NO_CONFLICT_DETECTED_IN_CHECKED_RULES"
+      ],
+      "title": "ConflictStatus",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "checked_rule_categories": {
+      "items": {
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+          {
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "$ref": "#/$defs/ConflictCategory"
+          }
+        ],
+        "type": "array"
+      },
+      "title": "Checked Rule Categories",
+      "type": "array"
+    },
+    "evaluated_at": {
+      "format": "date-time",
+      "title": "Evaluated At",
+      "type": "string"
+    },
+    "evidence_ids": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Evidence Ids",
+      "type": "array"
+    },
+    "missing_rule_categories": {
+      "items": {
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+          {
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "$ref": "#/$defs/ConflictCategory"
+          }
+        ],
+        "type": "array"
+      },
+      "title": "Missing Rule Categories",
+      "type": "array"
+    },
+    "policy_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Policy Version",
+      "type": "integer"
+    },
+    "reasons": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Reasons",
+      "type": "array"
+    },
+    "status": {
+      "$ref": "#/$defs/ConflictStatus"
+    }
+  },
+  "required": [
+    "status",
+    "checked_rule_categories",
+    "missing_rule_categories",
+    "evidence_ids",
+    "reasons",
+    "evaluated_at"
+  ],
+  "title": "ConflictAssessment",
+  "type": "object"
+}

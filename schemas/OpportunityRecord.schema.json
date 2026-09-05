@@ -1,5 +1,256 @@
 {
   "$defs": {
+    "Fact_Annotated_Decimal__BeforeValidator__FieldInfo_annotation_NoneType__required_True__metadata___PydanticGeneralMetadata_allow_inf_nan_False_____FieldInfo_annotation_NoneType__required_True__metadata__Ge_ge_0_____": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_refs": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "default": "UNKNOWN"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "ge": 0,
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "title": "Fact[Annotated[Decimal, BeforeValidator, FieldInfo(annotation=NoneType, required=True, metadata=[_PydanticGeneralMetadata(allow_inf_nan=False)]), FieldInfo(annotation=NoneType, required=True, metadata=[Ge(ge=0)])]]",
+      "type": "object"
+    },
+    "Fact_Annotated_bool__Strict_strict_True___": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_refs": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "default": "UNKNOWN"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "title": "Fact[Annotated[bool, Strict(strict=True)]]",
+      "type": "object"
+    },
+    "Fact_tuple_Annotated_str__StringConstraints___________": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_refs": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "default": "UNKNOWN"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "items": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "title": "Fact[tuple[Annotated[str, StringConstraints], ...]]",
+      "type": "object"
+    },
+    "Fact_tuple_ProjectStage__________": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_refs": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "default": "UNKNOWN"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/ProjectStage"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "title": "Fact[tuple[ProjectStage, ...]]",
+      "type": "object"
+    },
+    "MatchingRequirements": {
+      "additionalProperties": false,
+      "properties": {
+        "audience_labels": {
+          "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "features": {
+          "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "licenses": {
+          "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "materials": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/MaterialRequirement"
+          },
+          "title": "Materials",
+          "type": "array"
+        },
+        "max_adaptation_hours": {
+          "$ref": "#/$defs/Fact_Annotated_Decimal__BeforeValidator__FieldInfo_annotation_NoneType__required_True__metadata___PydanticGeneralMetadata_allow_inf_nan_False_____FieldInfo_annotation_NoneType__required_True__metadata__Ge_ge_0_____",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "original_code_required": {
+          "$ref": "#/$defs/Fact_Annotated_bool__Strict_strict_True___",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "problem_labels": {
+          "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "stages": {
+          "$ref": "#/$defs/Fact_tuple_ProjectStage__________",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "technologies": {
+          "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        }
+      },
+      "title": "MatchingRequirements",
+      "type": "object"
+    },
+    "MaterialKind": {
+      "enum": [
+        "REPOSITORY",
+        "LICENSE",
+        "DEMO",
+        "ARCHITECTURE_DIAGRAM",
+        "TECHNICAL_INTEGRATION",
+        "NARRATIVE",
+        "PUBLIC_AVAILABILITY",
+        "OTHER"
+      ],
+      "title": "MaterialKind",
+      "type": "string"
+    },
+    "MaterialRequirement": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/MaterialKind"
+        },
+        "required": {
+          "$ref": "#/$defs/Fact_Annotated_bool__Strict_strict_True___",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "MaterialRequirement",
+      "type": "object"
+    },
     "Money": {
       "additionalProperties": false,
       "properties": {
@@ -29,6 +280,17 @@
         "UNKNOWN"
       ],
       "title": "OpportunityStatus",
+      "type": "string"
+    },
+    "ProjectStage": {
+      "enum": [
+        "IDEA",
+        "PROTOTYPE",
+        "MVP",
+        "PRODUCTION",
+        "UNKNOWN"
+      ],
+      "title": "ProjectStage",
       "type": "string"
     },
     "Provenance": {
@@ -263,6 +525,17 @@
       "title": "Id",
       "type": "string"
     },
+    "matching_requirements": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MatchingRequirements"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "organizer": {
       "minLength": 1,
       "title": "Organizer",
@@ -301,6 +574,14 @@
     "status": {
       "$ref": "#/$defs/OpportunityStatus",
       "default": "UNKNOWN"
+    },
+    "strategic_benefits": {
+      "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+      "default": {
+        "evidence_refs": [],
+        "provenance": "UNKNOWN",
+        "value": null
+      }
     },
     "tracks": {
       "default": [],

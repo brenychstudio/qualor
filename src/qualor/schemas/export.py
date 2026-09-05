@@ -4,6 +4,9 @@ import argparse
 import json
 from pathlib import Path
 
+from qualor.conflicts import ActiveSubmission, ConflictAssessment
+from qualor.decisions.fixture import DecisionFixture
+from qualor.decisions.model import DecisionRecord, DecisionResult
 from qualor.domain import (
     EligibilityGate,
     EvidenceRecord,
@@ -14,6 +17,9 @@ from qualor.domain import (
     RuleCandidate,
     RuleEvaluation,
 )
+from qualor.effort import AffordabilityAssessment, CapacityAssessment, EffortEstimate
+from qualor.matching import ProjectMatch, ProjectSelection, ReadinessAssessment
+from qualor.strategy import StrategyAssessment
 
 CONTRACTS = (
     FounderProfile,
@@ -24,6 +30,18 @@ CONTRACTS = (
     RuleEvaluation,
     EligibilityGate,
     Reward,
+    ProjectMatch,
+    ProjectSelection,
+    ReadinessAssessment,
+    EffortEstimate,
+    CapacityAssessment,
+    AffordabilityAssessment,
+    StrategyAssessment,
+    ActiveSubmission,
+    ConflictAssessment,
+    DecisionRecord,
+    DecisionFixture,
+    DecisionResult,
 )
 DEFAULT_OUTPUT = Path(__file__).resolve().parents[3] / "schemas"
 
