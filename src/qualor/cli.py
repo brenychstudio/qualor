@@ -4,6 +4,7 @@ import hashlib
 import json
 import sys
 from pathlib import Path
+from typing import Annotated
 
 import typer
 from pydantic import ValidationError
@@ -93,3 +94,51 @@ def decide_fixture_file(fixture_path: Path) -> None:
     )
     for key, value in fields:
         typer.echo(f"{key}={value}")
+
+
+@app.command("search-live")
+def search_live(
+    query: str,
+    mode: str = typer.Option("FIXTURE"),
+    gateway_id: str = typer.Option("", envvar="QUALOR_GATEWAY_ID"),
+    max_results: int = typer.Option(5),
+    include_domain: Annotated[list[str] | None, typer.Option()] = None,
+) -> None:
+    """Explicit bounded live discovery; preserves citations, never evaluates eligibility."""
+    if mode != "LIVE":
+        typer.echo("LIVE_REQUIRES_EXPLICIT_MODE", err=True)
+        raise typer.Exit(2)
+    from dataclasses import asdict
+
+    from qualor.runtime.budget import LiveBudgetGuard, LiveBudgetPolicy
+    from qualor.runtime.providers import SearchRequest
+    from qualor.runtime.search import WEB_SEARCH_TASK_COST_CAP_USD, AgentCoreSearchProvider
+    from qualor.runtime.search_transport import open_gateway_transport
+
+    try:
+        request = SearchRequest(
+            query,
+            max_results=max_results,
+            filters={"domainFilter": {"include": include_domain}} if include_domain else None,
+        )
+        budget = LiveBudgetGuard(
+            LiveBudgetPolicy(search_max_calls=2, cost_cap_usd=WEB_SEARCH_TASK_COST_CAP_USD)
+        )
+        with open_gateway_transport(mode=mode, gateway_id=gateway_id) as transport:
+            provider = AgentCoreSearchProvider(mode=mode, transport=transport, budget=budget)
+            results = provider.search(request)
+    except (ValueError, RuntimeError, OSError):
+        # SDK/HTTP errors may contain private endpoint or credential details.
+        typer.echo("LIVE_SEARCH_FAILED_CLOSED", err=True)
+        raise typer.Exit(1) from None
+    typer.echo("MODE=LIVE")
+    typer.echo("PROVIDER=AGENTCORE_WEB_SEARCH")
+    typer.echo("QUERY=" + json.dumps(query, ensure_ascii=True))
+    typer.echo(f"RESULT_COUNT={len(results)}")
+    typer.echo(f"CITATION_COUNT={sum(c.citable_for_user_output for c in results)}")
+    for candidate in results:
+        # Surface uncited rows only as unavailable, not as attributed search content.
+        if candidate.citable_for_user_output:
+            typer.echo(json.dumps(asdict(candidate), default=str, ensure_ascii=True))
+        else:
+            typer.echo("CITABLE_FOR_USER_OUTPUT=NO; HARD_EVIDENCE_ELIGIBLE=NO")
