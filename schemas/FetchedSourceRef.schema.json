@@ -1,0 +1,90 @@
+{
+  "$defs": {
+    "SourceType": {
+      "enum": [
+        "OFFICIAL_RULES",
+        "OFFICIAL_FAQ",
+        "OFFICIAL_APPLICATION",
+        "OFFICIAL_ANNOUNCEMENT",
+        "OTHER_OFFICIAL",
+        "THIRD_PARTY",
+        "SYNTHETIC_FIXTURE",
+        "SEARCH_SNIPPET"
+      ],
+      "title": "SourceType",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "bounded_excerpt": {
+      "maxLength": 512,
+      "title": "Bounded Excerpt",
+      "type": "string"
+    },
+    "candidate_id": {
+      "minLength": 1,
+      "title": "Candidate Id",
+      "type": "string"
+    },
+    "content_length": {
+      "minimum": 1,
+      "title": "Content Length",
+      "type": "integer"
+    },
+    "content_type": {
+      "minLength": 1,
+      "title": "Content Type",
+      "type": "string"
+    },
+    "retrieved_at": {
+      "format": "date-time",
+      "title": "Retrieved At",
+      "type": "string"
+    },
+    "source_id": {
+      "minLength": 1,
+      "title": "Source Id",
+      "type": "string"
+    },
+    "source_type": {
+      "$ref": "#/$defs/SourceType"
+    },
+    "source_url": {
+      "minLength": 1,
+      "title": "Source Url",
+      "type": "string"
+    },
+    "title": {
+      "anyOf": [
+        {
+          "maxLength": 200,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Title"
+    },
+    "url": {
+      "minLength": 1,
+      "title": "Url",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source_id",
+    "candidate_id",
+    "url",
+    "source_url",
+    "source_type",
+    "content_type",
+    "content_length",
+    "retrieved_at",
+    "bounded_excerpt"
+  ],
+  "title": "FetchedSourceRef",
+  "type": "object"
+}

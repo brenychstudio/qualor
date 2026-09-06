@@ -18,9 +18,9 @@ class ProjectDecisionInput(Contract):
     effort: EffortAssumptions
 
 
-class DecisionFixture(Contract):
+class DecisionInput(Contract):
     schema_version: Literal["1"]
-    mode: Literal["FIXTURE"]
+    mode: Literal["FIXTURE", "REPLAY", "LIVE"]
     founder: FounderProfile
     opportunity: OpportunityRecord
     projects: Annotated[tuple[ProjectDecisionInput, ...], Field(min_length=1, max_length=5)]
@@ -37,3 +37,7 @@ class DecisionFixture(Contract):
             if len(ids) != len(set(ids)):
                 raise ValueError("Duplicate project or evidence IDs")
         return self
+
+
+class DecisionFixture(DecisionInput):
+    mode: Literal["FIXTURE"]

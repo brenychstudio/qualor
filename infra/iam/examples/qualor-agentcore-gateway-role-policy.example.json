@@ -1,0 +1,17 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "InvokeQualorGateway",
+      "Effect": "Allow",
+      "Action": "bedrock-agentcore:InvokeGateway",
+      "Resource": "<QUALOR_GATEWAY_ARN_PATTERN>"
+    },
+    {
+      "Sid": "InvokeAwsOwnedWebSearchConnector",
+      "Effect": "Allow",
+      "Action": "bedrock-agentcore:InvokeWebSearch",
+      "Resource": "<AWS_US_EAST_1_WEB_SEARCH_TOOL_ARN>"
+    }
+  ]
+}

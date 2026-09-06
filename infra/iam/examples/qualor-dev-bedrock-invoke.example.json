@@ -1,0 +1,31 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "InvokeGlobalSonnet46Profile",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock:InvokeModel",
+        "bedrock:InvokeModelWithResponseStream"
+      ],
+      "Resource": "<GLOBAL_SONNET_46_INFERENCE_PROFILE_ARN>"
+    },
+    {
+      "Sid": "RouteOnlyThroughGlobalSonnet46Profile",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock:InvokeModel",
+        "bedrock:InvokeModelWithResponseStream"
+      ],
+      "Resource": [
+        "<GLOBAL_SONNET_46_FOUNDATION_MODEL_ARN>",
+        "<US_EAST_1_SONNET_46_FOUNDATION_MODEL_ARN>"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "bedrock:InferenceProfileArn": "<GLOBAL_SONNET_46_INFERENCE_PROFILE_ARN>"
+        }
+      }
+    }
+  ]
+}

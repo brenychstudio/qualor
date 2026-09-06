@@ -1,0 +1,822 @@
+{
+  "schema_version": "1",
+  "sanitized": true,
+  "goal": "Discover and evaluate AWS Agents for Humans, Professional Agents track, using current official rules and the supplied synthetic project portfolio.",
+  "allowed_hosts": [
+    "agentsforhumans.devpost.com",
+    "aws.amazon.com"
+  ],
+  "founder": {
+    "schema_version": "1",
+    "id": "synthetic-founder",
+    "version": 1,
+    "created_at": "2026-09-06T00:00:00Z",
+    "updated_at": "2026-09-06T00:00:00Z",
+    "provenance": "USER_ASSERTED",
+    "country_of_residence": {
+      "value": "Spain",
+      "provenance": "USER_ASSERTED",
+      "evidence_refs": []
+    },
+    "citizenship": {
+      "value": "Spain",
+      "provenance": "USER_ASSERTED",
+      "evidence_refs": []
+    },
+    "legal_form": {
+      "value": "INDIVIDUAL",
+      "provenance": "USER_ASSERTED",
+      "evidence_refs": []
+    },
+    "team_size": {
+      "value": 2,
+      "provenance": "USER_ASSERTED",
+      "evidence_refs": []
+    },
+    "available_hours": {
+      "value": "30",
+      "provenance": "USER_ASSERTED",
+      "evidence_refs": []
+    },
+    "max_cash_commitment": {
+      "value": {
+        "amount": "40",
+        "currency": "USD"
+      },
+      "provenance": "USER_ASSERTED",
+      "evidence_refs": []
+    },
+    "open_source_willingness": {
+      "value": true,
+      "provenance": "USER_ASSERTED",
+      "evidence_refs": []
+    },
+    "strategic_goals": {
+      "value": [
+        "workflow automation",
+        "open-source portfolio"
+      ],
+      "provenance": "USER_ASSERTED",
+      "evidence_refs": []
+    },
+    "constraints": [
+      "Owned synthetic demo profile. Financial numbers are fictional planning assumptions."
+    ],
+    "verified_at": "2026-09-06T00:00:00Z"
+  },
+  "projects": [
+    {
+      "project": {
+        "schema_version": "1",
+        "id": "paper-catalog",
+        "version": 1,
+        "created_at": "2026-09-06T00:00:00Z",
+        "updated_at": "2026-09-06T00:00:00Z",
+        "provenance": "USER_ASSERTED",
+        "name": "Paper Catalog",
+        "problem": {
+          "value": "document organization",
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "audience": {
+          "value": "small teams",
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "stage": {
+          "value": "PRODUCTION",
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "available_features": {
+          "value": [
+            "document organization"
+          ],
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "technology_stack": {
+          "value": [
+            "TypeScript"
+          ],
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "code_provenance": {
+          "value": "ORIGINAL",
+          "provenance": "DOCUMENTED",
+          "evidence_refs": [
+            "owned-synthetic-profile-attestation"
+          ]
+        },
+        "is_new_project": {
+          "value": false,
+          "provenance": "DOCUMENTED",
+          "evidence_refs": [
+            "owned-synthetic-profile-attestation"
+          ]
+        },
+        "license_intent": {
+          "value": "MIT",
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "prior_submissions": {
+          "value": [],
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "estimated_adaptation_hours": {
+          "value": "36",
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "has_sponsor_support": {
+          "value": false,
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "facts_verified_at": "2026-09-06T00:00:00Z",
+        "project_lineage": {
+          "value": [
+            "paper-catalog"
+          ],
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "reused_components": {
+          "value": [],
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "reuse_disclosed": {
+          "value": true,
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "material_readiness": [
+          {
+            "kind": "REPOSITORY",
+            "ready": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "gap_executable": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "reason": "Owned synthetic readiness assumption"
+          },
+          {
+            "kind": "LICENSE",
+            "ready": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "gap_executable": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "reason": "Owned synthetic readiness assumption"
+          },
+          {
+            "kind": "TECHNICAL_INTEGRATION",
+            "ready": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "gap_executable": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "reason": "Owned synthetic readiness assumption"
+          },
+          {
+            "kind": "DEMO",
+            "ready": {
+              "value": false,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "gap_executable": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "reason": "Owned synthetic readiness assumption"
+          },
+          {
+            "kind": "ARCHITECTURE_DIAGRAM",
+            "ready": {
+              "value": false,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "gap_executable": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "reason": "Owned synthetic readiness assumption"
+          },
+          {
+            "kind": "NARRATIVE",
+            "ready": {
+              "value": false,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "gap_executable": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "reason": "Owned synthetic readiness assumption"
+          },
+          {
+            "kind": "PUBLIC_AVAILABILITY",
+            "ready": {
+              "value": false,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "gap_executable": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "reason": "Owned synthetic readiness assumption"
+          }
+        ]
+      },
+      "effort": {
+        "items": [
+          {
+            "category": "INTEGRATION",
+            "hours": {
+              "min_hours": "1",
+              "max_hours": "2"
+            },
+            "confidence": "MEDIUM",
+            "reason": "Owner-supplied synthetic planning range, not an agent estimate"
+          },
+          {
+            "category": "EVIDENCE",
+            "hours": {
+              "min_hours": "1",
+              "max_hours": "2"
+            },
+            "confidence": "MEDIUM",
+            "reason": "Owner-supplied synthetic planning range, not an agent estimate"
+          },
+          {
+            "category": "REPO_LICENSE_CLEANUP",
+            "hours": {
+              "min_hours": "1",
+              "max_hours": "2"
+            },
+            "confidence": "MEDIUM",
+            "reason": "Owner-supplied synthetic planning range, not an agent estimate"
+          },
+          {
+            "category": "DEMO",
+            "hours": {
+              "min_hours": "1",
+              "max_hours": "2"
+            },
+            "confidence": "MEDIUM",
+            "reason": "Owner-supplied synthetic planning range, not an agent estimate"
+          },
+          {
+            "category": "NARRATIVE",
+            "hours": {
+              "min_hours": "1",
+              "max_hours": "2"
+            },
+            "confidence": "MEDIUM",
+            "reason": "Owner-supplied synthetic planning range, not an agent estimate"
+          },
+          {
+            "category": "SUBMISSION",
+            "hours": {
+              "min_hours": "1",
+              "max_hours": "2"
+            },
+            "confidence": "MEDIUM",
+            "reason": "Owner-supplied synthetic planning range, not an agent estimate"
+          }
+        ]
+      }
+    },
+    {
+      "project": {
+        "schema_version": "1",
+        "id": "support-assistant",
+        "version": 1,
+        "created_at": "2026-09-06T00:00:00Z",
+        "updated_at": "2026-09-06T00:00:00Z",
+        "provenance": "USER_ASSERTED",
+        "name": "Support Assistant",
+        "problem": {
+          "value": "customer support",
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "audience": {
+          "value": "small teams",
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "stage": {
+          "value": "PROTOTYPE",
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "available_features": {
+          "value": [
+            "customer support"
+          ],
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "technology_stack": {
+          "value": [
+            "Python",
+            "Amazon Bedrock"
+          ],
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "code_provenance": {
+          "value": "ORIGINAL",
+          "provenance": "DOCUMENTED",
+          "evidence_refs": [
+            "owned-synthetic-profile-attestation"
+          ]
+        },
+        "is_new_project": {
+          "value": true,
+          "provenance": "DOCUMENTED",
+          "evidence_refs": [
+            "owned-synthetic-profile-attestation"
+          ]
+        },
+        "license_intent": {
+          "value": "MIT",
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "prior_submissions": {
+          "value": [],
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "estimated_adaptation_hours": {
+          "value": "20",
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "has_sponsor_support": {
+          "value": false,
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "facts_verified_at": "2026-09-06T00:00:00Z",
+        "project_lineage": {
+          "value": [
+            "support-assistant"
+          ],
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "reused_components": {
+          "value": [],
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "reuse_disclosed": {
+          "value": true,
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "material_readiness": [
+          {
+            "kind": "REPOSITORY",
+            "ready": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "gap_executable": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "reason": "Owned synthetic readiness assumption"
+          },
+          {
+            "kind": "LICENSE",
+            "ready": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "gap_executable": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "reason": "Owned synthetic readiness assumption"
+          },
+          {
+            "kind": "TECHNICAL_INTEGRATION",
+            "ready": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "gap_executable": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "reason": "Owned synthetic readiness assumption"
+          },
+          {
+            "kind": "DEMO",
+            "ready": {
+              "value": false,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "gap_executable": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "reason": "Owned synthetic readiness assumption"
+          },
+          {
+            "kind": "ARCHITECTURE_DIAGRAM",
+            "ready": {
+              "value": false,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "gap_executable": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "reason": "Owned synthetic readiness assumption"
+          },
+          {
+            "kind": "NARRATIVE",
+            "ready": {
+              "value": false,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "gap_executable": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "reason": "Owned synthetic readiness assumption"
+          },
+          {
+            "kind": "PUBLIC_AVAILABILITY",
+            "ready": {
+              "value": false,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "gap_executable": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "reason": "Owned synthetic readiness assumption"
+          }
+        ]
+      },
+      "effort": {
+        "items": [
+          {
+            "category": "INTEGRATION",
+            "hours": {
+              "min_hours": "1",
+              "max_hours": "2"
+            },
+            "confidence": "MEDIUM",
+            "reason": "Owner-supplied synthetic planning range, not an agent estimate"
+          },
+          {
+            "category": "EVIDENCE",
+            "hours": {
+              "min_hours": "1",
+              "max_hours": "2"
+            },
+            "confidence": "MEDIUM",
+            "reason": "Owner-supplied synthetic planning range, not an agent estimate"
+          },
+          {
+            "category": "REPO_LICENSE_CLEANUP",
+            "hours": {
+              "min_hours": "1",
+              "max_hours": "2"
+            },
+            "confidence": "MEDIUM",
+            "reason": "Owner-supplied synthetic planning range, not an agent estimate"
+          },
+          {
+            "category": "DEMO",
+            "hours": {
+              "min_hours": "1",
+              "max_hours": "2"
+            },
+            "confidence": "MEDIUM",
+            "reason": "Owner-supplied synthetic planning range, not an agent estimate"
+          },
+          {
+            "category": "NARRATIVE",
+            "hours": {
+              "min_hours": "1",
+              "max_hours": "2"
+            },
+            "confidence": "MEDIUM",
+            "reason": "Owner-supplied synthetic planning range, not an agent estimate"
+          },
+          {
+            "category": "SUBMISSION",
+            "hours": {
+              "min_hours": "1",
+              "max_hours": "2"
+            },
+            "confidence": "MEDIUM",
+            "reason": "Owner-supplied synthetic planning range, not an agent estimate"
+          }
+        ]
+      }
+    },
+    {
+      "project": {
+        "schema_version": "1",
+        "id": "workflow-helper",
+        "version": 1,
+        "created_at": "2026-09-06T00:00:00Z",
+        "updated_at": "2026-09-06T00:00:00Z",
+        "provenance": "USER_ASSERTED",
+        "name": "Workflow Helper",
+        "problem": {
+          "value": "workflow automation",
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "audience": {
+          "value": "small teams",
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "stage": {
+          "value": "PROTOTYPE",
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "available_features": {
+          "value": [
+            "workflow automation"
+          ],
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "technology_stack": {
+          "value": [
+            "Python",
+            "Amazon Bedrock",
+            "Strands Agents SDK"
+          ],
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "code_provenance": {
+          "value": "ORIGINAL",
+          "provenance": "DOCUMENTED",
+          "evidence_refs": [
+            "owned-synthetic-profile-attestation"
+          ]
+        },
+        "is_new_project": {
+          "value": true,
+          "provenance": "DOCUMENTED",
+          "evidence_refs": [
+            "owned-synthetic-profile-attestation"
+          ]
+        },
+        "license_intent": {
+          "value": "MIT",
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "prior_submissions": {
+          "value": [],
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "estimated_adaptation_hours": {
+          "value": "8",
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "has_sponsor_support": {
+          "value": false,
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "facts_verified_at": "2026-09-06T00:00:00Z",
+        "project_lineage": {
+          "value": [
+            "workflow-helper"
+          ],
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "reused_components": {
+          "value": [],
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "reuse_disclosed": {
+          "value": true,
+          "provenance": "USER_ASSERTED",
+          "evidence_refs": []
+        },
+        "material_readiness": [
+          {
+            "kind": "REPOSITORY",
+            "ready": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "gap_executable": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "reason": "Owned synthetic readiness assumption"
+          },
+          {
+            "kind": "LICENSE",
+            "ready": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "gap_executable": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "reason": "Owned synthetic readiness assumption"
+          },
+          {
+            "kind": "TECHNICAL_INTEGRATION",
+            "ready": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "gap_executable": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "reason": "Owned synthetic readiness assumption"
+          },
+          {
+            "kind": "DEMO",
+            "ready": {
+              "value": false,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "gap_executable": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "reason": "Owned synthetic readiness assumption"
+          },
+          {
+            "kind": "ARCHITECTURE_DIAGRAM",
+            "ready": {
+              "value": false,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "gap_executable": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "reason": "Owned synthetic readiness assumption"
+          },
+          {
+            "kind": "NARRATIVE",
+            "ready": {
+              "value": false,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "gap_executable": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "reason": "Owned synthetic readiness assumption"
+          },
+          {
+            "kind": "PUBLIC_AVAILABILITY",
+            "ready": {
+              "value": false,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "gap_executable": {
+              "value": true,
+              "provenance": "USER_ASSERTED",
+              "evidence_refs": []
+            },
+            "reason": "Owned synthetic readiness assumption"
+          }
+        ]
+      },
+      "effort": {
+        "items": [
+          {
+            "category": "INTEGRATION",
+            "hours": {
+              "min_hours": "1",
+              "max_hours": "2"
+            },
+            "confidence": "MEDIUM",
+            "reason": "Owner-supplied synthetic planning range, not an agent estimate"
+          },
+          {
+            "category": "EVIDENCE",
+            "hours": {
+              "min_hours": "1",
+              "max_hours": "2"
+            },
+            "confidence": "MEDIUM",
+            "reason": "Owner-supplied synthetic planning range, not an agent estimate"
+          },
+          {
+            "category": "REPO_LICENSE_CLEANUP",
+            "hours": {
+              "min_hours": "1",
+              "max_hours": "2"
+            },
+            "confidence": "MEDIUM",
+            "reason": "Owner-supplied synthetic planning range, not an agent estimate"
+          },
+          {
+            "category": "DEMO",
+            "hours": {
+              "min_hours": "1",
+              "max_hours": "2"
+            },
+            "confidence": "MEDIUM",
+            "reason": "Owner-supplied synthetic planning range, not an agent estimate"
+          },
+          {
+            "category": "NARRATIVE",
+            "hours": {
+              "min_hours": "1",
+              "max_hours": "2"
+            },
+            "confidence": "MEDIUM",
+            "reason": "Owner-supplied synthetic planning range, not an agent estimate"
+          },
+          {
+            "category": "SUBMISSION",
+            "hours": {
+              "min_hours": "1",
+              "max_hours": "2"
+            },
+            "confidence": "MEDIUM",
+            "reason": "Owner-supplied synthetic planning range, not an agent estimate"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -79,8 +79,8 @@ class DecisionRecord(Record):
         return self
 
 
-class DecisionResult(Contract):
-    mode: Literal["FIXTURE"] = "FIXTURE"
+class DecisionOutput(Contract):
+    mode: Literal["FIXTURE", "REPLAY", "LIVE"]
     best_project_id: NonEmpty | None
     selection: ProjectSelection
     candidate_semantics: Literal["CONDITIONAL_PER_PROJECT"] = "CONDITIONAL_PER_PROJECT"
@@ -128,5 +128,9 @@ class DecisionResult(Contract):
         return self
 
 
-# Both names identify the same structured result contract.
+class DecisionResult(DecisionOutput):
+    mode: Literal["FIXTURE"] = "FIXTURE"
+
+
+# Both names identify the same structured fixture result contract.
 StructuredDecisionResult = DecisionResult

@@ -11,7 +11,7 @@ from qualor.domain.enums import (
     SourceType,
     SubjectReference,
 )
-from qualor.domain.fixture import EvaluationContext
+from qualor.domain.fixture import EvaluationInput as EvaluationContext
 from qualor.domain.rules import RuleCandidate
 
 from .freshness import evaluate_freshness

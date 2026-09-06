@@ -8,7 +8,7 @@ from qualor.domain.enums import (
     ReasonCode,
     SubjectReference,
 )
-from qualor.domain.fixture import EvaluationContext
+from qualor.domain.fixture import EvaluationInput as EvaluationContext
 from qualor.domain.rules import RuleCandidate
 from qualor.domain.values import BoolValue, DateValue, InstantValue, NumberValue, Scalar, TextValue
 

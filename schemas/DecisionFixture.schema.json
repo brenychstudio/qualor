@@ -413,10 +413,24 @@
           "title": "Schema Version",
           "type": "string"
         },
+        "source_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Id"
+        },
         "source_type": {
           "$ref": "#/$defs/SourceType"
         },
         "supporting_excerpt": {
+          "maxLength": 700,
           "minLength": 1,
           "title": "Supporting Excerpt",
           "type": "string"

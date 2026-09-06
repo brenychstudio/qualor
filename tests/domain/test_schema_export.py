@@ -22,6 +22,13 @@ EXPECTED = {
     "DecisionRecord",
     "DecisionFixture",
     "DecisionResult",
+    "DecisionInput",
+    "DecisionOutput",
+    "StudioInput",
+    "FetchedSourceRef",
+    "ExtractedClaimBatch",
+    "ExtractedClaimBatchTransport",
+    "AgentRunResult",
 }
 
 

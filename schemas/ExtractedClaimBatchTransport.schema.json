@@ -1,0 +1,118 @@
+{
+  "$defs": {
+    "ExtractedClaimTransport": {
+      "additionalProperties": false,
+      "description": "Strict JSON-facing claim; source text authority remains in the runtime registry.",
+      "properties": {
+        "candidate_value": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 12,
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Candidate Value"
+        },
+        "confidence": {
+          "enum": [
+            "HIGH",
+            "MEDIUM",
+            "LOW",
+            "UNKNOWN"
+          ],
+          "title": "Confidence",
+          "type": "string"
+        },
+        "extraction_state": {
+          "enum": [
+            "CANDIDATE",
+            "UNKNOWN",
+            "NOT_APPLICABLE"
+          ],
+          "title": "Extraction State",
+          "type": "string"
+        },
+        "normalized_field": {
+          "enum": [
+            "organizer",
+            "program",
+            "edition",
+            "deadline",
+            "entrant_type",
+            "geography",
+            "legal_entity",
+            "project_policy",
+            "license",
+            "required_technology",
+            "financial_support",
+            "reward_conditions",
+            "deliverables"
+          ],
+          "title": "Normalized Field",
+          "type": "string"
+        },
+        "not_applicable_reason": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Not Applicable Reason"
+        },
+        "source_id": {
+          "minLength": 1,
+          "title": "Source Id",
+          "type": "string"
+        },
+        "supporting_span_id": {
+          "pattern": "^span_[a-f0-9]{32}$",
+          "title": "Supporting Span Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "normalized_field",
+        "candidate_value",
+        "supporting_span_id",
+        "extraction_state",
+        "confidence"
+      ],
+      "title": "ExtractedClaimTransport",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Canonical JSON wire shape; JSON arrays are validated before tuple conversion.",
+  "properties": {
+    "claims": {
+      "items": {
+        "$ref": "#/$defs/ExtractedClaimTransport"
+      },
+      "maxItems": 2,
+      "title": "Claims",
+      "type": "array"
+    }
+  },
+  "required": [
+    "claims"
+  ],
+  "title": "ExtractedClaimBatchTransport",
+  "type": "object"
+}
