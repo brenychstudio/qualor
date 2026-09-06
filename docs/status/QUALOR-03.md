@@ -1,4 +1,48 @@
-# QUALOR-03 checkpoint: deterministic claim-value grounding (03B3Q)
+# QUALOR-03 final live cutoff (03F)
+
+## QUALOR-03F: source-grounded mechanics passed; supported normalization not proven
+
+Date: 2026-09-07. Baseline: `d39cbb772b81a0d68b6e370380e14de2295107b2`.
+Exactly one owner-authorized live acceptance run was performed. No IAM, Gateway or
+GatewayTarget changes were made, and no retry or post-run backend fix was attempted.
+
+The live run proved one Strands agent, AgentCore Web Search, opaque current-run
+candidate selection, two official fetches, 28 exact dual-bounded EvidenceSpans,
+runtime HMAC span selection, native structured extraction and deterministic claim
+normalization. It admitted one exact-source `OFFICIAL_FAQ` EvidenceRecord for a
+critical `required_technology` candidate. The field normalizer conservatively marked
+that qualified clause `AMBIGUOUS`, so the EvidenceRecord remained `UNVERIFIED` and
+the rule remained unsupported. A second grounded `project_policy` proposal was
+rejected as `CLAIM_VALUE_UNSUPPORTED`. No normalization result was `SUPPORTED`.
+
+The run therefore did not meet the final authoritative-evidence acceptance gate.
+The deterministic engines failed closed with unresolved portfolio eligibility and
+`WATCH`; they did not promote the ambiguous claim. The earliest acceptance failure
+is B7 claim validation, classified as a normalizer coverage gap. A later extraction
+attempt also returned a strict schema rejection and was not retried. Normalization
+events retained field, status, reason and version, but the trace contract lacks the
+separately requested `value_kind`, so the final diagnostic gate is partial.
+
+The bounded run used six Bedrock inference calls, three Web Search calls and six
+Gateway MCP calls for an estimated **USD 0.106593**, below the USD 0.20 cap. Maximum
+ordinary Strands request size was 15,268 bytes; raw fetched bodies did not return to
+agent context. Search snippets remained discovery-only and the evidence validator
+was not relaxed.
+
+### QUALOR-05 hardening backlog
+
+- `QUALOR-05-HARDEN-CLAIM-NORMALIZER-COVERAGE`: build a sanitized official-clause
+  regression corpus for qualified required-technology and project-policy wording;
+  extend deterministic normalization only where exact source language proves a safe
+  mapping; add `value_kind` to bounded normalization receipts; retain strict span,
+  evidence and model-authority boundaries. The later strict extraction-schema
+  rejection should be reproduced from sanitized envelope diagnostics before any
+  change.
+
+QUALOR-03 live debugging is frozen at this cutoff. Product-layer work may proceed
+separately; this task does not begin QUALOR-04A.
+
+# Historical checkpoint: deterministic claim-value grounding (03B3Q)
 
 ## QUALOR-03B3Q: offline field-aware source normalization
 
