@@ -70,6 +70,36 @@ export type PolicyVersion = 1;
 export type Reasons = string[];
 export type AffordabilityState = "SUFFICIENT" | "INSUFFICIENT" | "UNKNOWN";
 export type AgentSteps = number;
+export type BudgetAttemptedCostUsd = string | null;
+export type BudgetCurrentCostUsd = string | null;
+export type BudgetProjectedCostUsd = string | null;
+export type BudgetRemainingCostUsd = string | null;
+/**
+ * @maxItems 10
+ */
+export type CandidateDomains =
+  | []
+  | [string]
+  | [string, string]
+  | [string, string, string]
+  | [string, string, string, string]
+  | [string, string, string, string, string]
+  | [string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string];
+export type CandidateUrlCount = number;
+/**
+ * @maxItems 5
+ */
+export type ClosestCandidateUrlsSanitized =
+  | []
+  | [string]
+  | [string, string]
+  | [string, string, string]
+  | [string, string, string, string]
+  | [string, string, string, string, string];
 export type Component =
   | "orchestration"
   | "search_web"
@@ -148,6 +178,7 @@ export type MissingFields =
 export type OutputShape = string;
 export type ReasonCode = string;
 export type Recoverable = "YES" | "NO";
+export type RequestedUrlSanitized = string | null;
 export type SafeSummary = string;
 export type Sequence = number;
 /**
@@ -505,6 +536,7 @@ export type Count = number;
 export type Event1 =
   | "SEARCH_REQUESTED"
   | "SEARCH_RESULTS_RECEIVED"
+  | "CANDIDATE_SELECTED"
   | "SOURCE_SELECTED"
   | "SOURCE_FETCHED"
   | "CLAIM_EXTRACTED"
@@ -786,6 +818,13 @@ export interface AgentRunResult {
   trace: Trace;
 }
 export interface BoundaryEvent {
+  budget_attempted_cost_usd?: BudgetAttemptedCostUsd;
+  budget_current_cost_usd?: BudgetCurrentCostUsd;
+  budget_projected_cost_usd?: BudgetProjectedCostUsd;
+  budget_remaining_cost_usd?: BudgetRemainingCostUsd;
+  candidate_domains?: CandidateDomains;
+  candidate_url_count?: CandidateUrlCount;
+  closest_candidate_urls_sanitized?: ClosestCandidateUrlsSanitized;
   component: Component;
   event: Event;
   input_shape?: InputShape;
@@ -793,6 +832,7 @@ export interface BoundaryEvent {
   output_shape?: OutputShape;
   reason_code: ReasonCode;
   recoverable?: Recoverable;
+  requested_url_sanitized?: RequestedUrlSanitized;
   safe_summary: SafeSummary;
   sequence: Sequence;
   source_ids?: SourceIds;

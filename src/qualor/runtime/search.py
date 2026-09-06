@@ -28,7 +28,7 @@ def _schema_object(value: dict, *path: str) -> dict:
 
 
 class AgentCoreSearchProvider:
-    """One shared run budget; failed calls remain reserved, with no automatic retries."""
+    """One shared budget; failures retain reservations and successes commit fixed cost."""
 
     def __init__(
         self, *, mode: RuntimeMode, transport: McpTransport, budget: LiveBudgetGuard
@@ -77,10 +77,13 @@ class AgentCoreSearchProvider:
         arguments = {"query": request.query, "maxResults": request.max_results}
         if request.filters is not None:
             arguments["filters"] = request.filters
-        self.budget.reserve(LiveCallKind.SEARCH, estimated_cost_usd=WEB_SEARCH_RESERVED_COST_USD)
+        receipt = self.budget.reserve(
+            LiveCallKind.SEARCH, estimated_cost_usd=WEB_SEARCH_RESERVED_COST_USD
+        )
         response = self.transport.rpc(
             "tools/call", {"name": self.tool_name, "arguments": arguments}
         )
+        self.budget.commit(receipt)
         return parse_search_result(response, request)
 
 

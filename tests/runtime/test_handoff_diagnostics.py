@@ -2,13 +2,12 @@ import json
 from pathlib import Path
 
 import pytest
-from test_autonomous_loop import make_run, record
+from test_autonomous_loop import discover_and_fetch, make_run, record
 
 
 def test_handoff_events_cover_success_and_reference_fetched_source():
     r = make_run()
-    r.search_web("q")
-    r.fetch_official_source("https://example.org/rules")
+    discover_and_fetch(r)
     record(r)
     result = r.finish()
     names = {e.event for e in result.boundary_events}

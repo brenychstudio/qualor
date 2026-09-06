@@ -33,6 +33,12 @@ FIELDS = frozenset(
         "query",
         "include_domains",
         "url",
+        "candidate_id",
+        "budget",
+        "current_cost_usd",
+        "attempted_cost_usd",
+        "remaining_cost_usd",
+        "projected_cost_usd",
         "focus",
         "claims",
         "source_id",
@@ -109,6 +115,14 @@ class BoundaryEvent(Contract):
     input_shape: str = Field(default="", max_length=500)
     output_shape: str = Field(default="", max_length=500)
     source_ids: Annotated[tuple[str, ...], Field(max_length=40)] = ()
+    requested_url_sanitized: str | None = Field(default=None, max_length=500)
+    candidate_url_count: int = Field(default=0, ge=0, le=25)
+    candidate_domains: Annotated[tuple[str, ...], Field(max_length=10)] = ()
+    closest_candidate_urls_sanitized: Annotated[tuple[str, ...], Field(max_length=5)] = ()
+    budget_current_cost_usd: str | None = Field(default=None, max_length=40)
+    budget_attempted_cost_usd: str | None = Field(default=None, max_length=40)
+    budget_remaining_cost_usd: str | None = Field(default=None, max_length=40)
+    budget_projected_cost_usd: str | None = Field(default=None, max_length=40)
 
 
 CODEBOOK = {
@@ -133,6 +147,10 @@ CODEBOOK = {
     ),
     "URL_NOT_DISCOVERED": (
         "Use an exact URL returned by search_web; search for the missing URL.",
+        "YES",
+    ),
+    "CANDIDATE_NOT_FOUND": (
+        "Use one current-run candidate_id returned by search_web; no new search is required.",
         "YES",
     ),
     "CLAIM_SOURCE_REFERENCE_MISSING": (

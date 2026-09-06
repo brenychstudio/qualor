@@ -10,7 +10,7 @@ import threading
 import time
 from datetime import UTC, datetime
 from html.parser import HTMLParser
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import urldefrag, urljoin, urlsplit
 
 from pydantic import Field
 
@@ -187,9 +187,10 @@ class OfficialSourceFetcher:
         self.resolver, self.request = resolver, request
 
     def fetch(self, request: FetchRequest) -> SourceDocument:
-        original = current = request.url
+        original = request.url
+        current = urldefrag(original).url
         address = validate_destination(current, self.allowed_hosts, self.resolver)
-        self.budget.reserve(LiveCallKind.FETCH)
+        receipt = self.budget.reserve(LiveCallKind.FETCH)
         for redirect in range(4):
             status, headers, body = self.request(current, address)
             if status in {301, 302, 303, 307, 308}:
@@ -213,7 +214,7 @@ class OfficialSourceFetcher:
             elif mime == "application/json":
                 text = json.dumps(json.loads(text), ensure_ascii=False)
             digest = hashlib.sha256(body).hexdigest()
-            return SourceDocument(
+            source = SourceDocument(
                 id="source_" + hashlib.sha256(current.encode()).hexdigest()[:20],
                 original_url=original,
                 final_url=current,
@@ -223,4 +224,6 @@ class OfficialSourceFetcher:
                 text=text[:MAX_SOURCE_CHARACTERS],
                 truncated=len(text) > MAX_SOURCE_CHARACTERS,
             )
+            self.budget.commit(receipt)
+            return source
         raise ValueError("SOURCE_REDIRECT_LIMIT")

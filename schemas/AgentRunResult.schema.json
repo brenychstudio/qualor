@@ -77,6 +77,83 @@
     "BoundaryEvent": {
       "additionalProperties": false,
       "properties": {
+        "budget_attempted_cost_usd": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Budget Attempted Cost Usd"
+        },
+        "budget_current_cost_usd": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Budget Current Cost Usd"
+        },
+        "budget_projected_cost_usd": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Budget Projected Cost Usd"
+        },
+        "budget_remaining_cost_usd": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Budget Remaining Cost Usd"
+        },
+        "candidate_domains": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Candidate Domains",
+          "type": "array"
+        },
+        "candidate_url_count": {
+          "default": 0,
+          "maximum": 25,
+          "minimum": 0,
+          "title": "Candidate Url Count",
+          "type": "integer"
+        },
+        "closest_candidate_urls_sanitized": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 5,
+          "title": "Closest Candidate Urls Sanitized",
+          "type": "array"
+        },
         "component": {
           "enum": [
             "orchestration",
@@ -141,6 +218,19 @@
           ],
           "title": "Recoverable",
           "type": "string"
+        },
+        "requested_url_sanitized": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requested Url Sanitized"
         },
         "safe_summary": {
           "maxLength": 250,
@@ -2003,6 +2093,7 @@
           "enum": [
             "SEARCH_REQUESTED",
             "SEARCH_RESULTS_RECEIVED",
+            "CANDIDATE_SELECTED",
             "SOURCE_SELECTED",
             "SOURCE_FETCHED",
             "CLAIM_EXTRACTED",

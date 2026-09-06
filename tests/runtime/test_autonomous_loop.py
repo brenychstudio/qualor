@@ -83,11 +83,15 @@ def record(run, value="Widget SDK"):
     )
 
 
+def discover_and_fetch(run, query="q"):
+    result = run.search_web(query)
+    return run.fetch_official_source(result["results"][0]["candidate_id"])
+
+
 @pytest.mark.parametrize("mode", ["FIXTURE", "REPLAY"])
 def test_A01_A02_A22_A23_offline_contract_can_search_fetch_and_evaluate(mode):
     r = make_run(mode)
-    r.search_web("owned query")
-    r.fetch_official_source("https://example.org/rules")
+    discover_and_fetch(r, "owned query")
     record(r)
     result = r.evaluate_current_state()
     assert result["candidates"][0]["eligibility"] == "FAIL"
@@ -109,8 +113,7 @@ def test_additive_technology_requirements_are_not_contradictions():
     from qualor.runtime.sources import SourceDocument
 
     r = make_run()
-    r.search_web("q")
-    r.fetch_official_source("https://example.org/rules")
+    discover_and_fetch(r)
     record(r)
     r.sources["other"] = SourceDocument(
         id="other",
@@ -173,8 +176,8 @@ def test_A09_disagreeing_official_deadlines_force_review():
 
 def test_A20_step_limit_prevents_tool_action():
     r = make_run(max_steps=1)
-    r.search_web("q")
-    assert r.fetch_official_source("https://example.org/rules")["status"] == "STOPPED"
+    result = r.search_web("q")
+    assert r.fetch_official_source(result["results"][0]["candidate_id"])["status"] == "STOPPED"
     assert r.termination_reason == "MAX_STEPS"
     assert not r.sources
 
@@ -189,8 +192,7 @@ def test_A21_repeated_no_progress_stops():
 
 def test_A24_A25_trace_is_bounded_action_only_and_final_engine_owns_result():
     r = make_run()
-    r.search_web("q")
-    r.fetch_official_source("https://example.org/rules")
+    discover_and_fetch(r)
     record(r)
     result = r.finish()
     assert result.decision.recommendation == "SKIP"
@@ -204,17 +206,16 @@ def test_A24_A25_trace_is_bounded_action_only_and_final_engine_owns_result():
 
 def test_rejected_request_records_safe_specific_code_without_private_error_text():
     r = make_run()
-    result = r.fetch_official_source("https://example.org/not-discovered")
-    assert result["reason_code"] == "URL_NOT_DISCOVERED"
-    assert r.trace[-1].reason_code == "URL_NOT_DISCOVERED"
+    result = r.fetch_official_source("candidate_not_discovered")
+    assert result["reason_code"] == "CANDIDATE_NOT_FOUND"
+    assert r.trace[-1].reason_code == "CANDIDATE_NOT_FOUND"
     result = r.failure(RuntimeError("potentially sensitive arbitrary service response"))
     assert result["reason_code"] == "TOOL_OR_CLAIM_REJECTED"
 
 
 def test_fetched_source_citation_survives_even_without_admitted_claims():
     r = make_run()
-    r.search_web("q")
-    r.fetch_official_source("https://example.org/rules")
+    discover_and_fetch(r)
     result = r.finish()
     assert result.citation_urls == ("https://example.org/rules",)
     assert result.sources[0].final_url == "https://example.org/rules"
@@ -223,14 +224,12 @@ def test_fetched_source_citation_survives_even_without_admitted_claims():
 
 def test_equivalent_scalar_and_list_technology_claims_do_not_change_verdict():
     r = make_run()
-    r.search_web("q")
-    r.fetch_official_source("https://example.org/rules")
+    discover_and_fetch(r)
     record(r)
     earlier = r.evaluate_current_state()["recommendation"]
     # Use a fresh run because the first run correctly terminates on hard failure.
     r = make_run()
-    r.search_web("q")
-    r.fetch_official_source("https://example.org/rules")
+    discover_and_fetch(r)
     record(r)
     payload = next(iter(r.claims.values())).claim.model_dump()
     payload["value"] = "Widget SDK"

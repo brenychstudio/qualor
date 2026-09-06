@@ -89,7 +89,11 @@ def compute_decision(run):
     url = (
         sources[0].final_url
         if sources
-        else next(iter(run.candidates), "https://" + run.inputs.allowed_hosts[0] + "/")
+        else (
+            next(iter(run.candidates.values())).observation.url
+            if run.candidates
+            else "https://" + run.inputs.allowed_hosts[0] + "/"
+        )
     )
     # Metadata, dates, rewards and costs are not promoted from merely valid extraction JSON.
     opportunity = OpportunityRecord(

@@ -1,4 +1,125 @@
-# QUALOR-03 checkpoint: live handoff localized (03B3D BLOCKED)
+# QUALOR-03 checkpoint: offline handoff closure (03B3E)
+
+## QUALOR-03B3E: URL admission and budget root cause
+
+Date: 2026-09-06. Starting HEAD: `8ad689c28e10adc6dd301fc58c78317f794ef872`.
+This checkpoint performs no live run, Bedrock inference, Web Search, IAM change, or AWS
+resource mutation. It repairs and proves the upstream handoff offline; a separately
+authorized live proof is still required.
+
+### B3 data flow and exact defect
+
+The run-2 implementation used this path:
+
+1. AWS structured result `url` -> `SearchCandidate.url`: literal provider value; no
+   normalization.
+2. Search candidate -> run registry: literal URL used as both key and value.
+3. Registry -> tool result: literal URL, including its path/query/fragment form.
+4. Tool result -> Strands fetch argument: model-generated `url` string.
+5. Fetch admission: byte-for-byte membership in the registry.
+6. Redirect handling: only after admission, with HTTPS/host/DNS/IP validation at each hop.
+
+Thus a model had to reproduce a raw network address exactly. Run 2 proves the supplied
+string differed from the registry and was rejected. The trace did not retain the two URL
+values, so whether its mismatch was a fragment, case, slash, query, canonical/redirect URL,
+or an invented path remains unknowable. The proven contract defect is independent of that
+missing historical value: raw model text was being used as a network capability reference.
+
+The repaired boundary assigns a random, run-scoped `candidate_id` to every citable search
+observation. `search_web` returns that ID alongside the original title and URL;
+`fetch_official_source` accepts only the ID and resolves it to the registered address.
+Unknown, fabricated, raw-URL, alternate-path and prior-run references fail closed. A
+rejection returns at most five current IDs/titles/sanitized public URLs so the agent can
+recover without another search. Trace diagnostics retain the sanitized requested public URL
+when the rejected reference is URL-shaped, candidate count/domains and bounded candidate
+URLs; query and fragment data are removed. The original provider URL remains visible in the
+search citation.
+
+Registry identity permits only these explicit equivalences:
+
+- scheme and IDNA host case;
+- default HTTP/HTTPS port removal;
+- fragment removal;
+- empty path and `/`.
+
+It does not merge distinct paths, non-empty trailing-slash variants, subdomains, query
+strings, non-default ports, or HTTP with HTTPS. `SEARCH_CANDIDATE_EXACT` and
+`SEARCH_CANDIDATE_CANONICAL_EQUIVALENT` are the only admitted provenance classes. An
+official-document link or redirect target is not a model-selectable registry capability;
+the existing fetcher may follow a bounded redirect only as transport continuation after an
+admitted candidate, reapplying the complete SSRF policy. There is no same-domain shortcut.
+
+The existing source fetch defenses remain unchanged: HTTPS-only LIVE sources, operator host
+allowlist, public resolved addresses, DNS-pinned socket, TLS/certificate/hostname/SNI
+verification, bounded redirects, time, size and content types. Evidence admission itself is
+unchanged because run 2 never invoked `record_evidence` and supplied no evidence of a B6-B8
+defect.
+
+### Budget root cause and correction
+
+Run 2's completed usage was reconciled correctly: model cost USD 0.043356 plus two
+conservative search commitments of USD 0.009 each produced the guard value USD 0.061356.
+The remaining cap was USD 0.088644. There was no duplicate model charge, completed model
+reservation leak, or retained fetch cost. Search uses a fixed conservative amount; it is now
+explicitly marked committed on success so open-reservation state is accurate, without
+reducing the charged amount.
+
+The rejected model request used this fail-closed reservation formula:
+
+```text
+((UTF8_SERIALIZED_REQUEST_BYTES + 2048) * USD 0.000003)
++ (MAX_OUTPUT_TOKENS * USD 0.000015)
+```
+
+With the former 1,600-token maximum, the output component alone was USD 0.024. The exact
+historical request bytes and proposed total were not persisted and are not invented; the
+known fact is that the projection exceeded USD 0.15. The guard now carries current,
+attempted, remaining and projected costs in a bounded exception for future diagnostics.
+The 03B3 diagnostic policy lowers maximum output to 512 tokens (USD 0.00768 maximum output
+reservation), consistent with observed tool turns of 113-201 tokens. Call count and USD 0.15
+ceilings are unchanged. The conservative input-byte bound, reserve-before-call behavior,
+failed-call retention and actual-usage reconciliation remain fail closed.
+
+### Offline proof
+
+RED/GREEN tests cover exact/current-run capability resolution, unknown/fabricated/prior-run
+rejection, canonical equivalence, citation retention, SSRF non-bypass, safe diagnostics and
+recovery without a second search. Budget tests cover one-time reconciliation/commit,
+non-mutating over-cap rejection, exact projected-cost diagnostics and the explicit integer
+reservation formula.
+
+An independent offline review found three additional issues before commit: budget amounts
+were not propagated into run diagnostics, registry identity had been used as the fetch URL,
+an abnormal offline registry could exceed the diagnostic count schema, and successful
+zero-cost fetch reservations remained marked open. Focused RED/GREEN
+tests now prove that budget projections reach the bounded trace, the original provider URL
+enters the fetch request while canonicalization remains registry-only, and reported counts
+remain within schema bounds. Successful fetches now close their receipts while failed fetches
+retain theirs. Fragment removal occurs inside the HTTPS fetch transport while the original
+discovered URL remains provenance.
+
+A REPLAY-mode Strands test now executes:
+
+```text
+AGENT_SEARCH -> SEARCH_CANDIDATES -> rejected fabricated reference
+-> valid current candidate selected -> SOURCE_FETCHED -> CLAIM_EXTRACTED
+-> EVIDENCE_RECORDED -> DETERMINISTIC_ELIGIBILITY -> DETERMINISTIC_DECISION
+```
+
+It performs one recorded search, zero AWS/Bedrock calls, recovers without another search,
+admits one fetched-source EvidenceRecord, links that record to a critical technology rule,
+and returns deterministic `FAIL / SKIP` for the synthetic mismatch. The result is not tuned
+to APPLY. Search snippets remain unable to prove hard eligibility, citations survive, and
+the trace contains action events rather than model reasoning.
+
+The final offline suite contains **556 passing tests** (19 above the B3E baseline), with the
+two existing upstream dependency deprecation warnings unchanged.
+
+Final gate counts, exact commit and push state are recorded in the Result Packet. The next
+step is owner authorization for one live proof run of this repaired boundary; no live claim
+is made by this offline checkpoint.
+
+# Previous checkpoint: live handoff localized (03B3D BLOCKED)
 
 ## Final authorized diagnostic run: QUALOR-03B3D
 

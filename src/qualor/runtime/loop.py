@@ -1,5 +1,8 @@
 """Run memory and deterministic tool actions. No shell, file, IAM or final-verdict tool."""
 
+from urllib.parse import urlsplit
+from uuid import uuid4
+
 from .budget import BudgetLimitExceeded
 from .claims import FIELD_CATEGORY, ExtractedClaim, validate_claim
 from .diagnostics import BoundaryEvent, reject, shape
@@ -7,6 +10,7 @@ from .handoff import compute_decision
 from .mode import ProviderBoundaryError, RuntimeMode
 from .providers import FetchRequest, SearchRequest
 from .run_models import AgentRunResult, SourceCitation, StudioInput, TraceEvent
+from .urls import RegisteredCandidate, canonical_url_identity, sanitized_public_url
 
 
 class OpportunityRun:
@@ -37,6 +41,7 @@ class OpportunityRun:
         self.max_steps = max_steps
         self.steps = self.no_progress = self.failures = self.search_calls = 0
         self.candidates, self.sources, self.claims = {}, {}, {}
+        self._candidate_identities = {}
         self.trace = []
         self.boundary_events = []
         self.actions = set()
@@ -66,6 +71,14 @@ class OpportunityRun:
         output_value=None,
         ids=(),
         rejection=None,
+        requested_url_sanitized=None,
+        candidate_url_count=0,
+        candidate_domains=(),
+        closest_candidate_urls_sanitized=(),
+        budget_current_cost_usd=None,
+        budget_attempted_cost_usd=None,
+        budget_remaining_cost_usd=None,
+        budget_projected_cost_usd=None,
     ):
         if len(self.boundary_events) >= 160:
             return
@@ -83,6 +96,14 @@ class OpportunityRun:
                 recoverable=rejection.recoverable if rejection else "NO",
                 missing_fields=rejection.missing_fields if rejection else (),
                 validation_issues=rejection.validation_issues if rejection else (),
+                requested_url_sanitized=requested_url_sanitized,
+                candidate_url_count=candidate_url_count,
+                candidate_domains=candidate_domains,
+                closest_candidate_urls_sanitized=closest_candidate_urls_sanitized,
+                budget_current_cost_usd=budget_current_cost_usd,
+                budget_attempted_cost_usd=budget_attempted_cost_usd,
+                budget_remaining_cost_usd=budget_remaining_cost_usd,
+                budget_projected_cost_usd=budget_projected_cost_usd,
             )
         )
 
@@ -116,6 +137,15 @@ class OpportunityRun:
             code="BUDGET_EXHAUSTED" if isinstance(exc, BudgetLimitExceeded) else code,
         )
         output = info.model_dump(mode="json")
+        budget_values = {}
+        if isinstance(exc, BudgetLimitExceeded) and exc.current_cost_usd is not None:
+            budget_values = {
+                "current_cost_usd": str(exc.current_cost_usd),
+                "attempted_cost_usd": str(exc.attempted_cost_usd),
+                "remaining_cost_usd": str(exc.remaining_cost_usd),
+                "projected_cost_usd": str(exc.projected_cost_usd),
+            }
+            output["budget"] = budget_values
         if self.termination_reason:
             output["recoverable"] = "NO"
         output["termination_reason"] = self.termination_reason
@@ -129,6 +159,10 @@ class OpportunityRun:
             input_value=input_value,
             output_value=output,
             rejection=info,
+            budget_current_cost_usd=budget_values.get("current_cost_usd"),
+            budget_attempted_cost_usd=budget_values.get("attempted_cost_usd"),
+            budget_remaining_cost_usd=budget_values.get("remaining_cost_usd"),
+            budget_projected_cost_usd=budget_values.get("projected_cost_usd"),
         )
         return output
 
@@ -144,9 +178,24 @@ class OpportunityRun:
             self.event("SEARCH_REQUESTED", "DISCOVERY_ONLY")
             self.search_calls += 1
             results = self.search.search(request)
+            returned = []
             for candidate in results:
                 if candidate.citable_for_user_output:
-                    self.candidates[candidate.url] = candidate
+                    identity = canonical_url_identity(candidate.url or "")
+                    if identity not in self._candidate_identities:
+                        candidate_id = "candidate_" + uuid4().hex[:20]
+                        self._candidate_identities[identity] = candidate_id
+                        self.candidates[candidate_id] = RegisteredCandidate(
+                            candidate_id=candidate_id,
+                            observation=candidate,
+                            fetch_url=candidate.url or "",
+                            provenance=(
+                                "SEARCH_CANDIDATE_EXACT"
+                                if candidate.url == identity
+                                else "SEARCH_CANDIDATE_CANONICAL_EQUIVALENT"
+                            ),
+                        )
+                    returned.append((self._candidate_identities[identity], candidate))
             self.event(
                 "SEARCH_RESULTS_RECEIVED", "SNIPPETS_ARE_NOT_HARD_EVIDENCE", count=len(results)
             )
@@ -154,28 +203,42 @@ class OpportunityRun:
                 "mode": self.mode,
                 "results": [
                     {
+                        "candidate_id": candidate_id,
                         "url": c.url,
                         "title": c.title,
                         "snippet": c.snippet[:500],
                         "published_date": c.published_date,
                     }
-                    for c in results
-                    if c.citable_for_user_output
+                    for candidate_id, c in returned
                 ],
             }
         except (ValueError, RuntimeError, OSError) as exc:
             return self.failure(exc, component="search_web", input_value={"query": query})
 
-    def fetch_official_source(self, url: str, focus: str = ""):
-        if not self.enter("fetch:" + url + ":" + focus):
+    def _available_candidate_references(self):
+        return [
+            {
+                "candidate_id": candidate_id,
+                "title": candidate.title[:200] if candidate.title else None,
+                "url": sanitized_public_url(candidate.url or ""),
+            }
+            for candidate_id, registered in list(self.candidates.items())[:5]
+            for candidate in (registered.observation,)
+        ]
+
+    def fetch_official_source(self, candidate_id: str, focus: str = ""):
+        if not self.enter("fetch:" + candidate_id + ":" + focus):
             return {"status": "STOPPED", "reason": self.termination_reason or "NO_PROGRESS"}
         try:
-            if url not in self.candidates:
-                raise ValueError("URL_NOT_DISCOVERED")
-            existing = next((s for s in self.sources.values() if s.original_url == url), None)
+            if candidate_id not in self.candidates:
+                raise ValueError("CANDIDATE_NOT_FOUND")
+            registered = self.candidates[candidate_id]
+            fetch_url = registered.fetch_url
+            self.event("CANDIDATE_SELECTED", "CURRENT_RUN_CAPABILITY_REFERENCE")
+            existing = next((s for s in self.sources.values() if s.original_url == fetch_url), None)
             if existing is None:
                 self.event("SOURCE_SELECTED", "OFFICIAL_CANDIDATE_SELECTED")
-                existing = self.fetcher.fetch(FetchRequest(url))
+                existing = self.fetcher.fetch(FetchRequest(fetch_url))
                 self.sources[existing.id] = existing
                 self.event("SOURCE_FETCHED", "SOURCE_TEXT_UNTRUSTED_DATA", (existing.id,))
             position = existing.text.casefold().find(focus.casefold()) if focus else 0
@@ -194,18 +257,44 @@ class OpportunityRun:
                 "ACCEPTED",
                 "FETCHED_SOURCE_AVAILABLE",
                 "Bounded source text is available for claims.",
-                input_value={"url": url, "focus": focus},
+                input_value={"candidate_id": candidate_id, "focus": focus},
                 output_value=output,
                 ids=(existing.id,),
             )
             return output
         except (ValueError, RuntimeError, OSError) as exc:
-            return self.failure(
+            result = self.failure(
                 exc,
                 component="fetch_official_source",
                 event="SOURCE_FETCH_RESULT",
-                input_value={"url": url, "focus": focus},
+                input_value={"candidate_id": candidate_id, "focus": focus},
             )
+            if str(exc) == "CANDIDATE_NOT_FOUND":
+                available = self._available_candidate_references()
+                result["available_candidates"] = available
+                requested_url = sanitized_public_url(candidate_id)
+                domains = tuple(
+                    dict.fromkeys(
+                        host
+                        for item in available
+                        if (host := urlsplit(item["url"] or "").hostname) is not None
+                    )
+                )[:10]
+                closest = tuple(
+                    sanitized
+                    for item in available[:5]
+                    if (sanitized := sanitized_public_url(item["url"] or "")) is not None
+                )
+                event = self.boundary_events[-1]
+                self.boundary_events[-1] = event.model_copy(
+                    update={
+                        "requested_url_sanitized": requested_url,
+                        "candidate_url_count": min(len(self.candidates), 25),
+                        "candidate_domains": domains,
+                        "closest_candidate_urls_sanitized": closest,
+                    }
+                )
+            return result
 
     def record_evidence(self, claim: dict):
         if not self.enter("claim:" + str(claim)):

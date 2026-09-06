@@ -127,6 +127,7 @@ def test_S07_S09_S10_dynamic_name_and_filters_reach_wire():
         "filters": filters,
     }
     assert candidates[0].run_id == "run-owned"
+    assert p.budget.open_reservation_count == 0
 
 
 def test_S08_missing_filter_schema_prevents_search():
@@ -200,6 +201,7 @@ def test_S18_failed_request_consumes_reservation_without_retry():
         p.search(SearchRequest("q"))
     assert budget.snapshot().search_calls == 1
     assert budget.snapshot().reserved_cost_usd > 0
+    assert budget.open_reservation_count == 1
     with pytest.raises(BudgetLimitExceeded):
         p.search(SearchRequest("retry"))
     assert [m for m, _ in rpc.requests].count("tools/call") == 1

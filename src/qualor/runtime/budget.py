@@ -18,7 +18,30 @@ class LiveCallKind(StrEnum):
 
 
 class BudgetLimitExceeded(RuntimeError):
-    pass
+    def __init__(
+        self,
+        message: str,
+        *,
+        current_cost_usd: Decimal | None = None,
+        attempted_cost_usd: Decimal | None = None,
+        cost_cap_usd: Decimal | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.current_cost_usd = current_cost_usd
+        self.attempted_cost_usd = attempted_cost_usd
+        self.cost_cap_usd = cost_cap_usd
+
+    @property
+    def remaining_cost_usd(self) -> Decimal | None:
+        if self.current_cost_usd is None or self.cost_cap_usd is None:
+            return None
+        return self.cost_cap_usd - self.current_cost_usd
+
+    @property
+    def projected_cost_usd(self) -> Decimal | None:
+        if self.current_cost_usd is None or self.attempted_cost_usd is None:
+            return None
+        return self.current_cost_usd + self.attempted_cost_usd
 
 
 @dataclass(frozen=True)
@@ -27,6 +50,7 @@ class LiveBudgetPolicy:
     search_max_calls: int = LIVE_SEARCH_MAX_CALLS_PER_RUN
     fetch_max_documents: int = LIVE_FETCH_MAX_DOCUMENTS_PER_RUN
     cost_cap_usd: Decimal = QUALOR_03_DEVELOPMENT_COST_CAP_USD
+    model_max_output_tokens: int = 1600
     authorization: Literal["BASELINE", "QUALOR_03B3"] = "BASELINE"
 
     def limit_for(self, kind: LiveCallKind) -> int:
@@ -74,6 +98,10 @@ class LiveBudgetGuard:
             or self.policy.cost_cap_usd > QUALOR_03_DEVELOPMENT_COST_CAP_USD
         ):
             raise ValueError("Configured cost cap exceeds a QUALOR-03 hard ceiling")
+        if type(self.policy.model_max_output_tokens) is not int or not (
+            64 <= self.policy.model_max_output_tokens <= 1600
+        ):
+            raise ValueError("Configured model output limit exceeds a QUALOR-03 hard ceiling")
 
     def reserve(self, kind: LiveCallKind, *, estimated_cost_usd: Decimal = Decimal("0")) -> int:
         kind = LiveCallKind(kind)
@@ -85,7 +113,12 @@ class LiveBudgetGuard:
             raise BudgetLimitExceeded(f"{kind.value} call cap reached")
         next_cost = self._reserved_cost_usd + estimated_cost_usd
         if next_cost > self.policy.cost_cap_usd:
-            raise BudgetLimitExceeded("Development cost cap would be exceeded")
+            raise BudgetLimitExceeded(
+                "Development cost cap would be exceeded",
+                current_cost_usd=self._reserved_cost_usd,
+                attempted_cost_usd=estimated_cost_usd,
+                cost_cap_usd=self.policy.cost_cap_usd,
+            )
         self._calls[kind] += 1
         self._reserved_cost_usd = next_cost
         self._next_receipt += 1
@@ -103,6 +136,17 @@ class LiveBudgetGuard:
             raise ValueError("Invalid or already reconciled cost reservation")
         self._reserved_cost_usd -= reserved - actual_cost_usd
         del self._reservations[receipt]
+
+    def commit(self, receipt: int) -> None:
+        """Mark a fixed-price reservation complete without changing its committed cost."""
+
+        if receipt not in self._reservations:
+            raise ValueError("Invalid or already completed cost reservation")
+        del self._reservations[receipt]
+
+    @property
+    def open_reservation_count(self) -> int:
+        return len(self._reservations)
 
     def calls_used(self, kind: LiveCallKind) -> int:
         return self._calls[LiveCallKind(kind)]

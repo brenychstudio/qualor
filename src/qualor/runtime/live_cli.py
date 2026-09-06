@@ -15,6 +15,7 @@ def diagnostic_policy() -> LiveBudgetPolicy:
         search_max_calls=3,
         fetch_max_documents=5,
         cost_cap_usd=Decimal("0.15"),
+        model_max_output_tokens=512,
         authorization="QUALOR_03B3",
     )
 

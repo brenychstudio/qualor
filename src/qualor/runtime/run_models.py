@@ -27,6 +27,7 @@ class TraceEvent(Contract):
     event: Literal[
         "SEARCH_REQUESTED",
         "SEARCH_RESULTS_RECEIVED",
+        "CANDIDATE_SELECTED",
         "SOURCE_SELECTED",
         "SOURCE_FETCHED",
         "CLAIM_EXTRACTED",

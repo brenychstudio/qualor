@@ -62,10 +62,11 @@ def test_redirect_is_revalidated_before_second_connection():
 def test_html_ignores_scripts_and_preserves_quote_and_hash():
     from qualor.runtime.sources import OfficialSourceFetcher
 
+    budget = LiveBudgetGuard()
     f = OfficialSourceFetcher(
         mode="LIVE",
         allowed_hosts=("example.org",),
-        budget=LiveBudgetGuard(),
+        budget=budget,
         resolver=lambda h: ["93.184.216.34"],
         request=lambda u, a: (
             200,
@@ -79,6 +80,30 @@ def test_html_ignores_scripts_and_preserves_quote_and_hash():
     assert "Projects must use Widget SDK." in d.text
     assert len(d.content_hash) == 64 and d.retrieved_at <= datetime.now(UTC)
     assert d.authority == "OFFICIAL_RULES"
+    assert budget.open_reservation_count == 0
+
+
+def test_discovered_fragment_is_not_sent_over_http_but_original_provenance_is_retained():
+    from qualor.runtime.sources import OfficialSourceFetcher
+
+    requested = []
+    fetcher = OfficialSourceFetcher(
+        mode="LIVE",
+        allowed_hosts=("example.org",),
+        budget=LiveBudgetGuard(),
+        resolver=lambda _host: ["93.184.216.34"],
+        request=lambda url, _address: (
+            requested.append(url) or 200,
+            {"content-type": "text/plain"},
+            b"Official source",
+        ),
+    )
+
+    source = fetcher.fetch(FetchRequest("https://example.org/rules#eligibility"))
+
+    assert requested == ["https://example.org/rules"]
+    assert source.original_url == "https://example.org/rules#eligibility"
+    assert source.final_url == "https://example.org/rules"
 
 
 @pytest.mark.parametrize("mode", ["FIXTURE", "REPLAY"])
