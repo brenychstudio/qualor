@@ -1,0 +1,2134 @@
+{
+  "$defs": {
+    "ActiveSubmission": {
+      "additionalProperties": false,
+      "properties": {
+        "code_origin": {
+          "$ref": "#/$defs/Fact_CodeProvenance_",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "conflict_rules": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ConflictRule"
+          },
+          "title": "Conflict Rules",
+          "type": "array"
+        },
+        "contest": {
+          "minLength": 1,
+          "title": "Contest",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "facts_provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "license": {
+          "$ref": "#/$defs/Fact_Annotated_str__StringConstraints__",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "project_id": {
+          "minLength": 1,
+          "title": "Project Id",
+          "type": "string"
+        },
+        "project_lineage": {
+          "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "reused_components": {
+          "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "rules_evidence_refs": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Rules Evidence Refs",
+          "type": "array"
+        },
+        "schema_version": {
+          "const": "1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "sponsor_support": {
+          "$ref": "#/$defs/Fact_Annotated_bool__Strict_strict_True___",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "submission_dates": {
+          "default": [],
+          "items": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "format": "date-time",
+                "type": "string"
+              }
+            ]
+          },
+          "title": "Submission Dates",
+          "type": "array"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "version",
+        "created_at",
+        "updated_at",
+        "provenance",
+        "contest",
+        "project_id",
+        "facts_provenance"
+      ],
+      "title": "ActiveSubmission",
+      "type": "object"
+    },
+    "BoolValue": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "bool",
+          "default": "bool",
+          "title": "Kind",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "title": "BoolValue",
+      "type": "object"
+    },
+    "Category": {
+      "enum": [
+        "DEADLINE",
+        "ENTRANT_TYPE",
+        "GEOGRAPHY",
+        "LEGAL_ENTITY",
+        "PROJECT_POLICY",
+        "LICENSE",
+        "REQUIRED_TECHNOLOGY",
+        "FINANCIAL_SUPPORT",
+        "REWARD_CONDITIONS"
+      ],
+      "title": "Category",
+      "type": "string"
+    },
+    "CodeProvenance": {
+      "enum": [
+        "ORIGINAL",
+        "REUSED",
+        "MIXED",
+        "UNKNOWN"
+      ],
+      "title": "CodeProvenance",
+      "type": "string"
+    },
+    "Confidence": {
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH",
+        "UNKNOWN"
+      ],
+      "title": "Confidence",
+      "type": "string"
+    },
+    "ConflictCategory": {
+      "enum": [
+        "NEW_PROJECT",
+        "EXCLUSIVE_SUBMISSION",
+        "LICENSE",
+        "SPONSOR_SUPPORT",
+        "SAME_PROJECT",
+        "EXISTING_PROJECT",
+        "DISCLOSURE"
+      ],
+      "title": "ConflictCategory",
+      "type": "string"
+    },
+    "ConflictRule": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_licenses": {
+          "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "applies": {
+          "$ref": "#/$defs/Fact_Annotated_bool__Strict_strict_True___",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "category": {
+          "$ref": "#/$defs/ConflictCategory"
+        },
+        "evidence_ids": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "supported": {
+          "title": "Supported",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "supported"
+      ],
+      "title": "ConflictRule",
+      "type": "object"
+    },
+    "CostKind": {
+      "enum": [
+        "CASH_SPEND",
+        "ENTRY_FEE",
+        "TRAVEL",
+        "CLOUD_CREDIT",
+        "EQUITY_REQUIREMENT"
+      ],
+      "title": "CostKind",
+      "type": "string"
+    },
+    "Criticality": {
+      "enum": [
+        "CRITICAL",
+        "NON_CRITICAL"
+      ],
+      "title": "Criticality",
+      "type": "string"
+    },
+    "DateValue": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "date",
+          "default": "date",
+          "title": "Kind",
+          "type": "string"
+        },
+        "value": {
+          "format": "date",
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "title": "DateValue",
+      "type": "object"
+    },
+    "EffortAssumptions": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/EffortItem"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "EffortAssumptions",
+      "type": "object"
+    },
+    "EffortCategory": {
+      "enum": [
+        "INTEGRATION",
+        "EVIDENCE",
+        "REPO_LICENSE_CLEANUP",
+        "DEMO",
+        "NARRATIVE",
+        "SUBMISSION"
+      ],
+      "title": "EffortCategory",
+      "type": "string"
+    },
+    "EffortItem": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "$ref": "#/$defs/EffortCategory"
+        },
+        "confidence": {
+          "$ref": "#/$defs/Confidence"
+        },
+        "hours": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HourRange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "category",
+        "hours",
+        "confidence",
+        "reason"
+      ],
+      "title": "EffortItem",
+      "type": "object"
+    },
+    "EvidenceRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "content_hash": {
+          "pattern": "^[a-fA-F0-9]{64}$",
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "extraction_state": {
+          "$ref": "#/$defs/ExtractionState"
+        },
+        "final_url": {
+          "minLength": 1,
+          "title": "Final Url",
+          "type": "string"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "last_refresh_failed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Refresh Failed At"
+        },
+        "normalized_field": {
+          "$ref": "#/$defs/Category"
+        },
+        "original_url": {
+          "minLength": 1,
+          "title": "Original Url",
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "retrieved_at": {
+          "format": "date-time",
+          "title": "Retrieved At",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "source_type": {
+          "$ref": "#/$defs/SourceType"
+        },
+        "supporting_excerpt": {
+          "minLength": 1,
+          "title": "Supporting Excerpt",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "version",
+        "created_at",
+        "updated_at",
+        "provenance",
+        "original_url",
+        "final_url",
+        "retrieved_at",
+        "source_type",
+        "content_hash",
+        "supporting_excerpt",
+        "normalized_field",
+        "extraction_state"
+      ],
+      "title": "EvidenceRecord",
+      "type": "object"
+    },
+    "ExtractionState": {
+      "enum": [
+        "REVIEWED",
+        "UNVERIFIED",
+        "FAILED"
+      ],
+      "title": "ExtractionState",
+      "type": "string"
+    },
+    "Fact_Annotated_Decimal__BeforeValidator__FieldInfo_annotation_NoneType__required_True__metadata___PydanticGeneralMetadata_allow_inf_nan_False_____FieldInfo_annotation_NoneType__required_True__metadata__Ge_ge_0_____": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_refs": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "default": "UNKNOWN"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "ge": 0,
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "title": "Fact[Annotated[Decimal, BeforeValidator, FieldInfo(annotation=NoneType, required=True, metadata=[_PydanticGeneralMetadata(allow_inf_nan=False)]), FieldInfo(annotation=NoneType, required=True, metadata=[Ge(ge=0)])]]",
+      "type": "object"
+    },
+    "Fact_Annotated_bool__Strict_strict_True___": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_refs": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "default": "UNKNOWN"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "title": "Fact[Annotated[bool, Strict(strict=True)]]",
+      "type": "object"
+    },
+    "Fact_Annotated_date__BeforeValidator__": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_refs": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "default": "UNKNOWN"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "title": "Fact[Annotated[date, BeforeValidator]]",
+      "type": "object"
+    },
+    "Fact_Annotated_int__Strict_strict_True___FieldInfo_annotation_NoneType__required_True__metadata__Ge_ge_1_____": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_refs": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "default": "UNKNOWN"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "title": "Fact[Annotated[int, Strict(strict=True), FieldInfo(annotation=NoneType, required=True, metadata=[Ge(ge=1)])]]",
+      "type": "object"
+    },
+    "Fact_Annotated_str__StringConstraints__": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_refs": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "default": "UNKNOWN"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "title": "Fact[Annotated[str, StringConstraints]]",
+      "type": "object"
+    },
+    "Fact_CodeProvenance_": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_refs": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "default": "UNKNOWN"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CodeProvenance"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "Fact[CodeProvenance]",
+      "type": "object"
+    },
+    "Fact_LegalForm_": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_refs": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "default": "UNKNOWN"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LegalForm"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "Fact[LegalForm]",
+      "type": "object"
+    },
+    "Fact_Money_": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_refs": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "default": "UNKNOWN"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "Fact[Money]",
+      "type": "object"
+    },
+    "Fact_ProjectStage_": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_refs": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "default": "UNKNOWN"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProjectStage"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "Fact[ProjectStage]",
+      "type": "object"
+    },
+    "Fact_tuple_Annotated_str__StringConstraints___________": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_refs": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "default": "UNKNOWN"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "items": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "title": "Fact[tuple[Annotated[str, StringConstraints], ...]]",
+      "type": "object"
+    },
+    "Fact_tuple_ProjectStage__________": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_refs": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance",
+          "default": "UNKNOWN"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/ProjectStage"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "title": "Fact[tuple[ProjectStage, ...]]",
+      "type": "object"
+    },
+    "FounderProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "available_hours": {
+          "$ref": "#/$defs/Fact_Annotated_Decimal__BeforeValidator__FieldInfo_annotation_NoneType__required_True__metadata___PydanticGeneralMetadata_allow_inf_nan_False_____FieldInfo_annotation_NoneType__required_True__metadata__Ge_ge_0_____",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "citizenship": {
+          "$ref": "#/$defs/Fact_Annotated_str__StringConstraints__",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "constraints": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Constraints",
+          "type": "array"
+        },
+        "country_of_residence": {
+          "$ref": "#/$defs/Fact_Annotated_str__StringConstraints__",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "incorporation_date": {
+          "$ref": "#/$defs/Fact_Annotated_date__BeforeValidator__",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "legal_form": {
+          "$ref": "#/$defs/Fact_LegalForm_",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "max_cash_commitment": {
+          "$ref": "#/$defs/Fact_Money_",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "open_source_willingness": {
+          "$ref": "#/$defs/Fact_Annotated_bool__Strict_strict_True___",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "schema_version": {
+          "const": "1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "strategic_goals": {
+          "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "team_size": {
+          "$ref": "#/$defs/Fact_Annotated_int__Strict_strict_True___FieldInfo_annotation_NoneType__required_True__metadata__Ge_ge_1_____",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "verified_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Verified At"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "version",
+        "created_at",
+        "updated_at",
+        "provenance"
+      ],
+      "title": "FounderProfile",
+      "type": "object"
+    },
+    "HourRange": {
+      "additionalProperties": false,
+      "properties": {
+        "max_hours": {
+          "ge": 0,
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "title": "Max Hours",
+          "type": "string"
+        },
+        "min_hours": {
+          "ge": 0,
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "title": "Min Hours",
+          "type": "string"
+        }
+      },
+      "required": [
+        "min_hours",
+        "max_hours"
+      ],
+      "title": "HourRange",
+      "type": "object"
+    },
+    "InstantValue": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "instant",
+          "default": "instant",
+          "title": "Kind",
+          "type": "string"
+        },
+        "value": {
+          "format": "date-time",
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "title": "InstantValue",
+      "type": "object"
+    },
+    "LegalForm": {
+      "enum": [
+        "INDIVIDUAL",
+        "SOLE_TRADER",
+        "INCORPORATED_COMPANY",
+        "NONPROFIT",
+        "UNKNOWN"
+      ],
+      "title": "LegalForm",
+      "type": "string"
+    },
+    "MatchingRequirements": {
+      "additionalProperties": false,
+      "properties": {
+        "audience_labels": {
+          "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "features": {
+          "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "licenses": {
+          "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "materials": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/MaterialRequirement"
+          },
+          "title": "Materials",
+          "type": "array"
+        },
+        "max_adaptation_hours": {
+          "$ref": "#/$defs/Fact_Annotated_Decimal__BeforeValidator__FieldInfo_annotation_NoneType__required_True__metadata___PydanticGeneralMetadata_allow_inf_nan_False_____FieldInfo_annotation_NoneType__required_True__metadata__Ge_ge_0_____",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "original_code_required": {
+          "$ref": "#/$defs/Fact_Annotated_bool__Strict_strict_True___",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "problem_labels": {
+          "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "stages": {
+          "$ref": "#/$defs/Fact_tuple_ProjectStage__________",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "technologies": {
+          "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        }
+      },
+      "title": "MatchingRequirements",
+      "type": "object"
+    },
+    "MaterialKind": {
+      "enum": [
+        "REPOSITORY",
+        "LICENSE",
+        "DEMO",
+        "ARCHITECTURE_DIAGRAM",
+        "TECHNICAL_INTEGRATION",
+        "NARRATIVE",
+        "PUBLIC_AVAILABILITY",
+        "OTHER"
+      ],
+      "title": "MaterialKind",
+      "type": "string"
+    },
+    "MaterialReadiness": {
+      "additionalProperties": false,
+      "properties": {
+        "gap_executable": {
+          "$ref": "#/$defs/Fact_Annotated_bool__Strict_strict_True___",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "kind": {
+          "$ref": "#/$defs/MaterialKind"
+        },
+        "ready": {
+          "$ref": "#/$defs/Fact_Annotated_bool__Strict_strict_True___",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "MaterialReadiness",
+      "type": "object"
+    },
+    "MaterialRequirement": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/MaterialKind"
+        },
+        "required": {
+          "$ref": "#/$defs/Fact_Annotated_bool__Strict_strict_True___",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "MaterialRequirement",
+      "type": "object"
+    },
+    "Money": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "ge": 0,
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "title": "Amount",
+          "type": "string"
+        },
+        "currency": {
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency",
+          "type": "string"
+        }
+      },
+      "required": [
+        "currency",
+        "amount"
+      ],
+      "title": "Money",
+      "type": "object"
+    },
+    "NumberValue": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "number",
+          "default": "number",
+          "title": "Kind",
+          "type": "string"
+        },
+        "value": {
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "title": "NumberValue",
+      "type": "object"
+    },
+    "Operator": {
+      "enum": [
+        "EQ",
+        "IN",
+        "GTE",
+        "LTE",
+        "BETWEEN",
+        "DATE_BETWEEN",
+        "BOOL_IS",
+        "AND",
+        "OR"
+      ],
+      "title": "Operator",
+      "type": "string"
+    },
+    "OpportunityRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "application_url": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Application Url"
+        },
+        "canonical_rules_url": {
+          "minLength": 1,
+          "title": "Canonical Rules Url",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "deadlines": {
+          "default": [],
+          "items": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "format": "date-time",
+                "type": "string"
+              }
+            ]
+          },
+          "title": "Deadlines",
+          "type": "array"
+        },
+        "deliverables": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Deliverables",
+          "type": "array"
+        },
+        "edition": {
+          "minLength": 1,
+          "title": "Edition",
+          "type": "string"
+        },
+        "geographic_scope": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Geographic Scope"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "matching_requirements": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MatchingRequirements"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "organizer": {
+          "minLength": 1,
+          "title": "Organizer",
+          "type": "string"
+        },
+        "program_name": {
+          "minLength": 1,
+          "title": "Program Name",
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "rewards": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Reward"
+          },
+          "title": "Rewards",
+          "type": "array"
+        },
+        "schema_version": {
+          "const": "1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "source_versions": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Source Versions",
+          "type": "array"
+        },
+        "status": {
+          "$ref": "#/$defs/OpportunityStatus",
+          "default": "UNKNOWN"
+        },
+        "strategic_benefits": {
+          "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "tracks": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Tracks",
+          "type": "array"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "version",
+        "created_at",
+        "updated_at",
+        "provenance",
+        "organizer",
+        "program_name",
+        "edition",
+        "canonical_rules_url"
+      ],
+      "title": "OpportunityRecord",
+      "type": "object"
+    },
+    "OpportunityStatus": {
+      "enum": [
+        "OPEN",
+        "CLOSED",
+        "UNKNOWN"
+      ],
+      "title": "OpportunityStatus",
+      "type": "string"
+    },
+    "ParticipationCost": {
+      "additionalProperties": false,
+      "properties": {
+        "accepted": {
+          "$ref": "#/$defs/Fact_Annotated_bool__Strict_strict_True___"
+        },
+        "amount": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "covered": {
+          "$ref": "#/$defs/Fact_Annotated_bool__Strict_strict_True___"
+        },
+        "kind": {
+          "$ref": "#/$defs/CostKind"
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "amount",
+        "covered",
+        "accepted",
+        "reason"
+      ],
+      "title": "ParticipationCost",
+      "type": "object"
+    },
+    "ParticipationCosts": {
+      "additionalProperties": false,
+      "properties": {
+        "complete": {
+          "$ref": "#/$defs/Fact_Annotated_bool__Strict_strict_True___"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ParticipationCost"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "complete",
+        "items"
+      ],
+      "title": "ParticipationCosts",
+      "type": "object"
+    },
+    "ProjectDecisionInput": {
+      "additionalProperties": false,
+      "properties": {
+        "effort": {
+          "$ref": "#/$defs/EffortAssumptions"
+        },
+        "project": {
+          "$ref": "#/$defs/ProjectProfile"
+        }
+      },
+      "required": [
+        "project",
+        "effort"
+      ],
+      "title": "ProjectDecisionInput",
+      "type": "object"
+    },
+    "ProjectProfile": {
+      "additionalProperties": false,
+      "properties": {
+        "audience": {
+          "$ref": "#/$defs/Fact_Annotated_str__StringConstraints__",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "available_features": {
+          "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "code_provenance": {
+          "$ref": "#/$defs/Fact_CodeProvenance_",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "estimated_adaptation_hours": {
+          "$ref": "#/$defs/Fact_Annotated_Decimal__BeforeValidator__FieldInfo_annotation_NoneType__required_True__metadata___PydanticGeneralMetadata_allow_inf_nan_False_____FieldInfo_annotation_NoneType__required_True__metadata__Ge_ge_0_____",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "facts_verified_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Facts Verified At"
+        },
+        "has_sponsor_support": {
+          "$ref": "#/$defs/Fact_Annotated_bool__Strict_strict_True___",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "is_new_project": {
+          "$ref": "#/$defs/Fact_Annotated_bool__Strict_strict_True___",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "license_intent": {
+          "$ref": "#/$defs/Fact_Annotated_str__StringConstraints__",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "material_readiness": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/MaterialReadiness"
+          },
+          "title": "Material Readiness",
+          "type": "array"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "prior_submissions": {
+          "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "problem": {
+          "$ref": "#/$defs/Fact_Annotated_str__StringConstraints__",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "project_lineage": {
+          "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "public_evidence_refs": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Public Evidence Refs",
+          "type": "array"
+        },
+        "reuse_disclosed": {
+          "$ref": "#/$defs/Fact_Annotated_bool__Strict_strict_True___",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "reused_components": {
+          "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "reward_conditions_met": {
+          "$ref": "#/$defs/Fact_Annotated_bool__Strict_strict_True___",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "schema_version": {
+          "const": "1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "stage": {
+          "$ref": "#/$defs/Fact_ProjectStage_",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "technology_stack": {
+          "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "version",
+        "created_at",
+        "updated_at",
+        "provenance",
+        "name"
+      ],
+      "title": "ProjectProfile",
+      "type": "object"
+    },
+    "ProjectStage": {
+      "enum": [
+        "IDEA",
+        "PROTOTYPE",
+        "MVP",
+        "PRODUCTION",
+        "UNKNOWN"
+      ],
+      "title": "ProjectStage",
+      "type": "string"
+    },
+    "Provenance": {
+      "enum": [
+        "USER_ASSERTED",
+        "DOCUMENTED",
+        "UNKNOWN"
+      ],
+      "title": "Provenance",
+      "type": "string"
+    },
+    "Reward": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "amount_max": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "amount_min": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Money"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "conditions": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Conditions",
+          "type": "array"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "eligibility_note": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Eligibility Note"
+        },
+        "expiry": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expiry"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "is_total_pool": {
+          "default": false,
+          "title": "Is Total Pool",
+          "type": "boolean"
+        },
+        "kind": {
+          "$ref": "#/$defs/RewardKind"
+        },
+        "payment_timing": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Payment Timing"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "schema_version": {
+          "const": "1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "version",
+        "created_at",
+        "updated_at",
+        "provenance",
+        "kind"
+      ],
+      "title": "Reward",
+      "type": "object"
+    },
+    "RewardKind": {
+      "enum": [
+        "CASH_PRIZE",
+        "CLOUD_CREDIT",
+        "GRANT",
+        "EQUITY_INVESTMENT",
+        "IN_KIND"
+      ],
+      "title": "RewardKind",
+      "type": "string"
+    },
+    "RuleCandidate": {
+      "additionalProperties": false,
+      "properties": {
+        "children": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/RuleCandidate"
+          },
+          "title": "Children",
+          "type": "array"
+        },
+        "contradiction": {
+          "default": false,
+          "title": "Contradiction",
+          "type": "boolean"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "criticality": {
+          "$ref": "#/$defs/Criticality"
+        },
+        "evidence_ids": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "not_applicable_reason": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Not Applicable Reason"
+        },
+        "operands": {
+          "default": [],
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "bool": "#/$defs/BoolValue",
+                "date": "#/$defs/DateValue",
+                "instant": "#/$defs/InstantValue",
+                "number": "#/$defs/NumberValue",
+                "text": "#/$defs/TextValue"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/TextValue"
+              },
+              {
+                "$ref": "#/$defs/NumberValue"
+              },
+              {
+                "$ref": "#/$defs/BoolValue"
+              },
+              {
+                "$ref": "#/$defs/DateValue"
+              },
+              {
+                "$ref": "#/$defs/InstantValue"
+              }
+            ]
+          },
+          "title": "Operands",
+          "type": "array"
+        },
+        "operator": {
+          "$ref": "#/$defs/Operator"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "rule_type": {
+          "$ref": "#/$defs/Category"
+        },
+        "schema_version": {
+          "const": "1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "source_text_summary": {
+          "minLength": 1,
+          "title": "Source Text Summary",
+          "type": "string"
+        },
+        "subject_reference": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SubjectReference"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "supported": {
+          "title": "Supported",
+          "type": "boolean"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "version",
+        "created_at",
+        "updated_at",
+        "provenance",
+        "rule_type",
+        "operator",
+        "criticality",
+        "evidence_ids",
+        "supported",
+        "source_text_summary"
+      ],
+      "title": "RuleCandidate",
+      "type": "object"
+    },
+    "SourceType": {
+      "enum": [
+        "OFFICIAL_RULES",
+        "OFFICIAL_FAQ",
+        "OFFICIAL_APPLICATION",
+        "OFFICIAL_ANNOUNCEMENT",
+        "OTHER_OFFICIAL",
+        "THIRD_PARTY",
+        "SYNTHETIC_FIXTURE",
+        "SEARCH_SNIPPET"
+      ],
+      "title": "SourceType",
+      "type": "string"
+    },
+    "SubjectReference": {
+      "enum": [
+        "founder.country_of_residence",
+        "founder.citizenship",
+        "founder.legal_form",
+        "founder.incorporation_date",
+        "founder.team_size",
+        "founder.open_source_willingness",
+        "project.is_new_project",
+        "project.license_intent",
+        "project.technology_stack",
+        "project.has_sponsor_support",
+        "project.reward_conditions_met",
+        "context.evaluated_at"
+      ],
+      "title": "SubjectReference",
+      "type": "string"
+    },
+    "TextValue": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "text",
+          "default": "text",
+          "title": "Kind",
+          "type": "string"
+        },
+        "value": {
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "title": "TextValue",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "active_submissions": {
+      "items": {
+        "$ref": "#/$defs/ActiveSubmission"
+      },
+      "title": "Active Submissions",
+      "type": "array"
+    },
+    "conflict_rules": {
+      "items": {
+        "$ref": "#/$defs/ConflictRule"
+      },
+      "title": "Conflict Rules",
+      "type": "array"
+    },
+    "eligibility_rules": {
+      "items": {
+        "$ref": "#/$defs/RuleCandidate"
+      },
+      "maxItems": 100,
+      "title": "Eligibility Rules",
+      "type": "array"
+    },
+    "evaluated_at": {
+      "format": "date-time",
+      "title": "Evaluated At",
+      "type": "string"
+    },
+    "evidence": {
+      "items": {
+        "$ref": "#/$defs/EvidenceRecord"
+      },
+      "maxItems": 500,
+      "title": "Evidence",
+      "type": "array"
+    },
+    "founder": {
+      "$ref": "#/$defs/FounderProfile"
+    },
+    "mode": {
+      "enum": [
+        "FIXTURE",
+        "REPLAY",
+        "LIVE"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "opportunity": {
+      "$ref": "#/$defs/OpportunityRecord"
+    },
+    "participation_costs": {
+      "$ref": "#/$defs/ParticipationCosts"
+    },
+    "projects": {
+      "items": {
+        "$ref": "#/$defs/ProjectDecisionInput"
+      },
+      "maxItems": 5,
+      "minItems": 1,
+      "title": "Projects",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "1",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "mode",
+    "founder",
+    "opportunity",
+    "projects",
+    "eligibility_rules",
+    "evidence",
+    "conflict_rules",
+    "active_submissions",
+    "participation_costs",
+    "evaluated_at"
+  ],
+  "title": "DecisionInput",
+  "type": "object"
+}

@@ -22,6 +22,10 @@ EXPECTED = {
     "DecisionRecord",
     "DecisionFixture",
     "DecisionResult",
+    "DecisionInput",
+    "DecisionOutput",
+    "StudioInput",
+    "AgentRunResult",
 }
 
 

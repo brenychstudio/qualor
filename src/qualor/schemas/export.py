@@ -5,8 +5,8 @@ import json
 from pathlib import Path
 
 from qualor.conflicts import ActiveSubmission, ConflictAssessment
-from qualor.decisions.fixture import DecisionFixture
-from qualor.decisions.model import DecisionRecord, DecisionResult
+from qualor.decisions.fixture import DecisionFixture, DecisionInput
+from qualor.decisions.model import DecisionOutput, DecisionRecord, DecisionResult
 from qualor.domain import (
     EligibilityGate,
     EvidenceRecord,
@@ -19,6 +19,7 @@ from qualor.domain import (
 )
 from qualor.effort import AffordabilityAssessment, CapacityAssessment, EffortEstimate
 from qualor.matching import ProjectMatch, ProjectSelection, ReadinessAssessment
+from qualor.runtime.run_models import AgentRunResult, StudioInput
 from qualor.strategy import StrategyAssessment
 
 CONTRACTS = (
@@ -42,6 +43,10 @@ CONTRACTS = (
     DecisionRecord,
     DecisionFixture,
     DecisionResult,
+    DecisionInput,
+    DecisionOutput,
+    StudioInput,
+    AgentRunResult,
 )
 DEFAULT_OUTPUT = Path(__file__).resolve().parents[3] / "schemas"
 

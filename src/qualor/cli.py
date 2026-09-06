@@ -18,6 +18,41 @@ app = typer.Typer(help="QUALOR bootstrap utilities.", add_completion=False)
 CANONICAL_SHA256 = "440db7b600d6ec170778035e39d93ce8cd5b8f20d49fd99bccf3174978536829"
 
 
+@app.command("run-live-opportunity")
+def run_live_opportunity(
+    profile: Annotated[Path, typer.Option()],
+    mode: str = typer.Option("FIXTURE"),
+    gateway_id: str = typer.Option("", envvar="QUALOR_GATEWAY_ID"),
+) -> None:
+    """One explicitly authorized live run; no submission or model-authored verdict."""
+    if mode != "LIVE":
+        typer.echo("LIVE_REQUIRES_EXPLICIT_MODE", err=True)
+        raise typer.Exit(2)
+    from qualor.runtime.live_cli import run_command, summary
+
+    try:
+        result, metrics = run_command(profile, gateway_id)
+    except (ValueError, RuntimeError, OSError):
+        typer.echo("LIVE_RUN_FAILED_CLOSED", err=True)
+        raise typer.Exit(1) from None
+    for key, value in summary(result, metrics).items():
+        typer.echo(f"{key}={value}")
+    for url in result.citation_urls:
+        typer.echo("CITATION=" + json.dumps(url))
+    for candidate in result.decision.candidates:
+        typer.echo(
+            "PROJECT_RESULT="
+            + json.dumps(
+                {
+                    "project_id": candidate.project_id,
+                    "eligibility": candidate.eligibility_gate.state,
+                    "recommendation": candidate.recommendation,
+                    "reason_codes": candidate.reason_codes,
+                }
+            )
+        )
+
+
 @app.callback()
 def main() -> None:
     """QUALOR — Autonomous Opportunity Intelligence."""

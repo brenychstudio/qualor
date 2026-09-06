@@ -12,7 +12,7 @@ from qualor.domain.enums import (
     ReasonCode,
     RuleStatus,
 )
-from qualor.domain.fixture import EvaluationContext
+from qualor.domain.fixture import EvaluationInput as EvaluationContext
 from qualor.domain.rules import EligibilityGate, RuleCandidate, RuleEvaluation
 
 from .coverage import evaluate_coverage

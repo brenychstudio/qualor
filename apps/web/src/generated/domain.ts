@@ -6,9 +6,12 @@
 export type QualorDomain =
   | ActiveSubmission
   | AffordabilityAssessment
+  | AgentRunResult
   | CapacityAssessment
   | ConflictAssessment
   | DecisionFixture
+  | DecisionInput
+  | DecisionOutput
   | DecisionRecord
   | DecisionResult
   | EffortEstimate
@@ -23,7 +26,8 @@ export type QualorDomain =
   | Reward
   | RuleCandidate
   | RuleEvaluation
-  | StrategyAssessment;
+  | StrategyAssessment
+  | StudioInput;
 export type EvidenceRefs = string[];
 export type Provenance = "USER_ASSERTED" | "DOCUMENTED" | "UNKNOWN";
 export type CodeProvenance = "ORIGINAL" | "REUSED" | "MIXED" | "UNKNOWN";
@@ -65,6 +69,69 @@ export type MissingInformation = string[];
 export type PolicyVersion = 1;
 export type Reasons = string[];
 export type AffordabilityState = "SUFFICIENT" | "INSUFFICIENT" | "UNKNOWN";
+export type AgentSteps = number;
+export type CitationUrls = string[];
+export type Confidence = "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
+export type Excerpt = string;
+export type Field =
+  | "organizer"
+  | "program"
+  | "edition"
+  | "deadline"
+  | "entrant_type"
+  | "geography"
+  | "legal_entity"
+  | "project_policy"
+  | "license"
+  | "required_technology"
+  | "financial_support"
+  | "reward_conditions"
+  | "deliverables";
+export type NotApplicableReason = string | null;
+export type SourceId = string;
+export type SourceUrl = string;
+export type State = "CANDIDATE" | "UNKNOWN" | "NOT_APPLICABLE";
+export type Value3 = string | string[] | null;
+export type ContentHash = string;
+export type CreatedAt1 = string;
+export type ExtractionState = "REVIEWED" | "UNVERIFIED" | "FAILED";
+export type FinalUrl = string;
+export type Id2 = string;
+export type LastRefreshFailedAt = string | null;
+export type Category =
+  | "DEADLINE"
+  | "ENTRANT_TYPE"
+  | "GEOGRAPHY"
+  | "LEGAL_ENTITY"
+  | "PROJECT_POLICY"
+  | "LICENSE"
+  | "REQUIRED_TECHNOLOGY"
+  | "FINANCIAL_SUPPORT"
+  | "REWARD_CONDITIONS";
+export type OriginalUrl = string;
+export type RetrievedAt = string;
+export type SchemaVersion1 = "1";
+export type SourceType =
+  | "OFFICIAL_RULES"
+  | "OFFICIAL_FAQ"
+  | "OFFICIAL_APPLICATION"
+  | "OFFICIAL_ANNOUNCEMENT"
+  | "OTHER_OFFICIAL"
+  | "THIRD_PARTY"
+  | "SYNTHETIC_FIXTURE"
+  | "SEARCH_SNIPPET";
+export type SupportingExcerpt = string;
+export type UpdatedAt1 = string;
+export type Version1 = number;
+export type NormalizedValue = string | string[] | null;
+export type SupportState = "CONTROLLED_CLAUSE_VERIFIED" | "QUOTE_ONLY" | "UNKNOWN";
+/**
+ * @maxItems 40
+ */
+export type Claims = ValidatedClaim[];
+export type Contradictions = string[];
+export type BestProjectId = string | null;
+export type CandidateSemantics = "CONDITIONAL_PER_PROJECT";
 export type AvailableHours = string | null;
 export type EvaluatedAt1 = string;
 export type MissingInformation1 = string[];
@@ -81,200 +148,30 @@ export type MissingRuleCategories = [unknown, unknown][];
 export type PolicyVersion2 = 1;
 export type Reasons2 = string[];
 export type ConflictStatus = "BLOCKED_BY_EXPLICIT_RULE" | "REVIEW_REQUIRED" | "NO_CONFLICT_DETECTED_IN_CHECKED_RULES";
-export type ActiveSubmissions = ActiveSubmission[];
-export type ConflictRules1 = ConflictRule[];
-export type Children = RuleCandidate[];
-export type Contradiction = boolean;
-export type CreatedAt1 = string;
-export type Criticality = "CRITICAL" | "NON_CRITICAL";
-export type EvidenceIds2 = string[];
-export type Id2 = string;
-export type NotApplicableReason = string | null;
-export type Kind = "text";
-export type Value3 = string;
-export type Kind1 = "number";
-export type Value4 = string;
-export type Kind2 = "bool";
-export type Value5 = boolean;
-export type Kind3 = "date";
-export type Value6 = string;
-export type Kind4 = "instant";
-export type Value7 = string;
-export type Operands = (TextValue | NumberValue | BoolValue | DateValue | InstantValue)[];
-export type Operator = "EQ" | "IN" | "GTE" | "LTE" | "BETWEEN" | "DATE_BETWEEN" | "BOOL_IS" | "AND" | "OR";
-export type Category =
-  | "DEADLINE"
-  | "ENTRANT_TYPE"
-  | "GEOGRAPHY"
-  | "LEGAL_ENTITY"
-  | "PROJECT_POLICY"
-  | "LICENSE"
-  | "REQUIRED_TECHNOLOGY"
-  | "FINANCIAL_SUPPORT"
-  | "REWARD_CONDITIONS";
-export type SchemaVersion1 = "1";
-export type SourceTextSummary = string;
-export type SubjectReference =
-  | "founder.country_of_residence"
-  | "founder.citizenship"
-  | "founder.legal_form"
-  | "founder.incorporation_date"
-  | "founder.team_size"
-  | "founder.open_source_willingness"
-  | "project.is_new_project"
-  | "project.license_intent"
-  | "project.technology_stack"
-  | "project.has_sponsor_support"
-  | "project.reward_conditions_met"
-  | "context.evaluated_at";
-export type Supported1 = boolean;
-export type UpdatedAt1 = string;
-export type Version1 = number;
-/**
- * @maxItems 100
- */
-export type EligibilityRules = RuleCandidate[];
-export type EvaluatedAt3 = string;
-export type ContentHash = string;
 export type CreatedAt2 = string;
-export type ExtractionState = "REVIEWED" | "UNVERIFIED" | "FAILED";
-export type FinalUrl = string;
-export type Id3 = string;
-export type LastRefreshFailedAt = string | null;
-export type OriginalUrl = string;
-export type RetrievedAt = string;
-export type SchemaVersion2 = "1";
-export type SourceType =
-  | "OFFICIAL_RULES"
-  | "OFFICIAL_FAQ"
-  | "OFFICIAL_APPLICATION"
-  | "OFFICIAL_ANNOUNCEMENT"
-  | "OTHER_OFFICIAL"
-  | "THIRD_PARTY"
-  | "SYNTHETIC_FIXTURE"
-  | "SEARCH_SNIPPET";
-export type SupportingExcerpt = string;
-export type UpdatedAt2 = string;
-export type Version2 = number;
-/**
- * @maxItems 500
- */
-export type Evidence = EvidenceRecord[];
-export type EvidenceRefs4 = string[];
-export type Provenance5 = "USER_ASSERTED" | "DOCUMENTED" | "UNKNOWN";
-export type Value8 = string | null;
-export type Constraints = string[];
-export type CreatedAt3 = string;
-export type Id4 = string;
-export type EvidenceRefs5 = string[];
-export type Provenance6 = "USER_ASSERTED" | "DOCUMENTED" | "UNKNOWN";
-export type Value9 = string | null;
-export type EvidenceRefs6 = string[];
-export type Provenance7 = "USER_ASSERTED" | "DOCUMENTED" | "UNKNOWN";
-export type LegalForm = "INDIVIDUAL" | "SOLE_TRADER" | "INCORPORATED_COMPANY" | "NONPROFIT" | "UNKNOWN";
-export type EvidenceRefs7 = string[];
-export type Provenance8 = "USER_ASSERTED" | "DOCUMENTED" | "UNKNOWN";
-export type SchemaVersion3 = "1";
-export type EvidenceRefs8 = string[];
-export type Provenance9 = "USER_ASSERTED" | "DOCUMENTED" | "UNKNOWN";
-export type Value10 = number | null;
-export type UpdatedAt3 = string;
-export type VerifiedAt = string | null;
-export type Version3 = number;
-export type Mode = "FIXTURE";
-export type ApplicationUrl = string | null;
-export type CanonicalRulesUrl = string;
-export type CreatedAt4 = string;
-export type Deadlines = string[];
-export type Deliverables = string[];
-export type Edition = string;
-export type GeographicScope = string | null;
-export type Id5 = string;
-export type MaterialKind =
-  | "REPOSITORY"
-  | "LICENSE"
-  | "DEMO"
-  | "ARCHITECTURE_DIAGRAM"
-  | "TECHNICAL_INTEGRATION"
-  | "NARRATIVE"
-  | "PUBLIC_AVAILABILITY"
-  | "OTHER";
-export type Materials = MaterialRequirement[];
-export type EvidenceRefs9 = string[];
-export type Provenance10 = "USER_ASSERTED" | "DOCUMENTED" | "UNKNOWN";
-export type Value11 = ProjectStage[] | null;
-export type ProjectStage = "IDEA" | "PROTOTYPE" | "MVP" | "PRODUCTION" | "UNKNOWN";
-export type Organizer = string;
-export type ProgramName = string;
-export type Conditions = string[];
-export type CreatedAt5 = string;
-export type EligibilityNote = string | null;
-export type Expiry = string | null;
-export type Id6 = string;
-export type IsTotalPool = boolean;
-export type RewardKind = "CASH_PRIZE" | "CLOUD_CREDIT" | "GRANT" | "EQUITY_INVESTMENT" | "IN_KIND";
-export type PaymentTiming = string | null;
-export type SchemaVersion4 = "1";
-export type UpdatedAt4 = string;
-export type Version4 = number;
-export type Rewards = Reward[];
-export type SchemaVersion5 = "1";
-export type SourceVersions = string[];
-export type OpportunityStatus = "OPEN" | "CLOSED" | "UNKNOWN";
-export type Tracks = string[];
-export type UpdatedAt5 = string;
-export type Version5 = number;
-export type CostKind = "CASH_SPEND" | "ENTRY_FEE" | "TRAVEL" | "CLOUD_CREDIT" | "EQUITY_REQUIREMENT";
-export type Reason = string;
-export type Items = ParticipationCost[];
-/**
- * @minItems 1
- * @maxItems 5
- */
-export type Projects =
-  | [ProjectDecisionInput]
-  | [ProjectDecisionInput, ProjectDecisionInput]
-  | [ProjectDecisionInput, ProjectDecisionInput, ProjectDecisionInput]
-  | [ProjectDecisionInput, ProjectDecisionInput, ProjectDecisionInput, ProjectDecisionInput]
-  | [ProjectDecisionInput, ProjectDecisionInput, ProjectDecisionInput, ProjectDecisionInput, ProjectDecisionInput];
-export type EffortCategory = "INTEGRATION" | "EVIDENCE" | "REPO_LICENSE_CLEANUP" | "DEMO" | "NARRATIVE" | "SUBMISSION";
-export type Confidence = "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
 export type MaxHours = string;
 export type MinHours = string;
-export type Reason1 = string;
-export type Items1 = EffortItem[];
-export type CreatedAt6 = string;
-export type FactsVerifiedAt = string | null;
-export type Id7 = string;
-export type Reason2 = string | null;
-export type MaterialReadiness = MaterialReadiness1[];
-export type Name = string;
-export type PublicEvidenceRefs = string[];
-export type SchemaVersion6 = "1";
-export type EvidenceRefs10 = string[];
-export type Provenance11 = "USER_ASSERTED" | "DOCUMENTED" | "UNKNOWN";
-export type UpdatedAt6 = string;
-export type Version6 = number;
-export type SchemaVersion7 = "1";
-export type CreatedAt7 = string;
+export type EffortCategory = "INTEGRATION" | "EVIDENCE" | "REPO_LICENSE_CLEANUP" | "DEMO" | "NARRATIVE" | "SUBMISSION";
+export type Confidence1 = "LOW" | "MEDIUM" | "HIGH" | "UNKNOWN";
+export type Reason = string;
 export type Breakdown = EffortItem[];
-export type EvaluatedAt4 = string;
+export type EvaluatedAt3 = string;
 export type MaxTotal = string | null;
 export type MinTotal = string | null;
 export type MissingInformation2 = string[];
 export type PolicyVersion3 = 1;
 export type Reasons3 = string[];
-export type CreatedAt8 = string;
+export type CreatedAt3 = string;
 export type Reasons4 = string[];
 export type RuleIds = string[];
 export type CoverageState = "EVALUATED" | "NOT_APPLICABLE_WITH_REASON" | "UNKNOWN" | "MISSING";
 export type CriticalCoverage = CoverageEntry[];
+export type EvaluatedAt4 = string;
+export type Children = RuleEvaluation[];
+export type CreatedAt4 = string;
 export type EvaluatedAt5 = string;
-export type Children1 = RuleEvaluation[];
-export type CreatedAt9 = string;
-export type EvaluatedAt6 = string;
-export type EvidenceIds3 = string[];
-export type Id8 = string;
+export type EvidenceIds2 = string[];
+export type Id3 = string;
 export type PolicyVersion4 = number;
 export type ReasonCode =
   | "MATCH"
@@ -293,22 +190,35 @@ export type ReasonCode =
   | "CRITICAL_UNKNOWN";
 export type ReasonCodes = ReasonCode[];
 export type RuleId = string;
-export type SchemaVersion8 = "1";
+export type SchemaVersion2 = "1";
 export type RuleStatus = "PASS" | "FAIL" | "UNKNOWN" | "NOT_APPLICABLE";
-export type UpdatedAt7 = string;
-export type Version7 = number;
+export type SubjectReference =
+  | "founder.country_of_residence"
+  | "founder.citizenship"
+  | "founder.legal_form"
+  | "founder.incorporation_date"
+  | "founder.team_size"
+  | "founder.open_source_willingness"
+  | "project.is_new_project"
+  | "project.license_intent"
+  | "project.technology_stack"
+  | "project.has_sponsor_support"
+  | "project.reward_conditions_met"
+  | "context.evaluated_at";
+export type UpdatedAt2 = string;
+export type Version2 = number;
 export type Evaluations = RuleEvaluation[];
-export type Id9 = string;
+export type Id4 = string;
 export type MissingInformation3 = string[];
 export type PolicyVersion5 = number;
 export type ReasonCodes1 = ReasonCode[];
-export type SchemaVersion9 = "1";
+export type SchemaVersion3 = "1";
 export type GateState = "PASS" | "FAIL" | "REVIEW_REQUIRED";
-export type UpdatedAt8 = string;
-export type Version8 = number;
+export type UpdatedAt3 = string;
+export type Version3 = number;
 export type Explanation = string;
 export type FreshnessStatus = "FRESH" | "STALE" | "UNKNOWN";
-export type Id10 = string;
+export type Id5 = string;
 export type MissingInformation4 = string[];
 export type NextAction = string;
 export type OpportunityId = string;
@@ -323,7 +233,7 @@ export type ProfileVersion = number;
 export type ProjectId1 = string;
 export type BlockingGaps = string[];
 export type ComparableScore = number | null;
-export type EvaluatedAt7 = string;
+export type EvaluatedAt6 = string;
 export type FactRefs = string[];
 export type Factor = string;
 export type Rating = number | null;
@@ -338,35 +248,42 @@ export type PolicyVersion6 = 1;
 export type ProjectId2 = string;
 export type Rating1 = number | null;
 export type ProjectVersion = number;
-export type EvaluatedAt8 = string;
+export type EvaluatedAt7 = string;
 export type FactorResults1 = FactorResult[];
+export type MaterialKind =
+  | "REPOSITORY"
+  | "LICENSE"
+  | "DEMO"
+  | "ARCHITECTURE_DIAGRAM"
+  | "TECHNICAL_INTEGRATION"
+  | "NARRATIVE"
+  | "PUBLIC_AVAILABILITY"
+  | "OTHER";
 export type Gaps = MaterialKind[];
 export type MissingInformation5 = string[];
 export type PolicyVersion7 = 1;
 export type ReadinessState = "READY" | "GAPS_EXECUTABLE" | "NOT_READY" | "UNKNOWN";
 export type ReasonCodes2 = string[];
 export type Recommendation = "APPLY" | "PREPARE" | "WATCH" | "SKIP";
-export type SchemaVersion10 = "1";
+export type SchemaVersion4 = "1";
 export type Contribution = string | null;
 export type Factor1 = string;
 export type Rating2 = number | null;
 export type Weight = number;
 export type Breakdown1 = StrategyContribution[];
-export type EvaluatedAt9 = string;
+export type EvaluatedAt8 = string;
 export type MissingStrategyFactors = string[];
 export type PolicyVersion8 = 1;
 export type Score = number | null;
 export type Semantics = "PRIORITIZATION_NOT_WIN_PROBABILITY";
 export type StrategyBreakdown = StrategyContribution[];
 export type StrategyScore = number | null;
-export type UpdatedAt9 = string;
-export type Version9 = number;
-export type BestProjectId = string | null;
-export type CandidateSemantics = "CONDITIONAL_PER_PROJECT";
+export type UpdatedAt4 = string;
+export type Version4 = number;
 export type Candidates = DecisionRecord[];
 export type Explanation1 = string;
 export type MissingInformation6 = string[];
-export type Mode1 = "FIXTURE";
+export type Mode = "FIXTURE" | "REPLAY" | "LIVE";
 export type Reasons6 = string[];
 export type BestProjectId1 = string | null;
 /**
@@ -380,6 +297,260 @@ export type Candidates1 =
   | [ProjectMatch, ProjectMatch, ProjectMatch, ProjectMatch]
   | [ProjectMatch, ProjectMatch, ProjectMatch, ProjectMatch, ProjectMatch];
 export type Reasons7 = string[];
+export type FetchedDocuments = number;
+export type Mode1 = "LIVE" | "FIXTURE" | "REPLAY";
+export type OfficialSourceCount = number;
+export type SearchCalls = number;
+/**
+ * @maxItems 10
+ */
+export type Sources =
+  | []
+  | [SourceCitation]
+  | [SourceCitation, SourceCitation]
+  | [SourceCitation, SourceCitation, SourceCitation]
+  | [SourceCitation, SourceCitation, SourceCitation, SourceCitation]
+  | [SourceCitation, SourceCitation, SourceCitation, SourceCitation, SourceCitation]
+  | [SourceCitation, SourceCitation, SourceCitation, SourceCitation, SourceCitation, SourceCitation]
+  | [SourceCitation, SourceCitation, SourceCitation, SourceCitation, SourceCitation, SourceCitation, SourceCitation]
+  | [
+      SourceCitation,
+      SourceCitation,
+      SourceCitation,
+      SourceCitation,
+      SourceCitation,
+      SourceCitation,
+      SourceCitation,
+      SourceCitation
+    ]
+  | [
+      SourceCitation,
+      SourceCitation,
+      SourceCitation,
+      SourceCitation,
+      SourceCitation,
+      SourceCitation,
+      SourceCitation,
+      SourceCitation,
+      SourceCitation
+    ]
+  | [
+      SourceCitation,
+      SourceCitation,
+      SourceCitation,
+      SourceCitation,
+      SourceCitation,
+      SourceCitation,
+      SourceCitation,
+      SourceCitation,
+      SourceCitation,
+      SourceCitation
+    ];
+export type ContentHash1 = string;
+export type FinalUrl1 = string;
+export type Id6 = string;
+export type RetrievedAt1 = string;
+export type Truncated = boolean;
+export type TerminationReason =
+  | "SUFFICIENT_CRITICAL_EVIDENCE"
+  | "HARD_FAIL_CONFIRMED"
+  | "BUDGET_EXHAUSTED"
+  | "NO_PROGRESS"
+  | "TOOL_FAILURE_BOUND_REACHED"
+  | "MAX_STEPS";
+export type Count = number;
+export type Event =
+  | "SEARCH_REQUESTED"
+  | "SEARCH_RESULTS_RECEIVED"
+  | "SOURCE_SELECTED"
+  | "SOURCE_FETCHED"
+  | "CLAIM_EXTRACTED"
+  | "EVIDENCE_RECORDED"
+  | "ELIGIBILITY_EVALUATED"
+  | "DECISION_EVALUATED"
+  | "HUMAN_REVIEW_NEEDED"
+  | "RUN_TERMINATED";
+export type ReasonCode1 = string;
+export type SourceIds = string[];
+/**
+ * @maxItems 100
+ */
+export type Trace = TraceEvent[];
+export type ActiveSubmissions = ActiveSubmission[];
+export type ConflictRules1 = ConflictRule[];
+export type Children1 = RuleCandidate[];
+export type Contradiction = boolean;
+export type CreatedAt5 = string;
+export type Criticality = "CRITICAL" | "NON_CRITICAL";
+export type EvidenceIds3 = string[];
+export type Id7 = string;
+export type NotApplicableReason1 = string | null;
+export type Kind = "text";
+export type Value4 = string;
+export type Kind1 = "number";
+export type Value5 = string;
+export type Kind2 = "bool";
+export type Value6 = boolean;
+export type Kind3 = "date";
+export type Value7 = string;
+export type Kind4 = "instant";
+export type Value8 = string;
+export type Operands = (TextValue | NumberValue | BoolValue | DateValue | InstantValue)[];
+export type Operator = "EQ" | "IN" | "GTE" | "LTE" | "BETWEEN" | "DATE_BETWEEN" | "BOOL_IS" | "AND" | "OR";
+export type SchemaVersion5 = "1";
+export type SourceTextSummary = string;
+export type Supported1 = boolean;
+export type UpdatedAt5 = string;
+export type Version5 = number;
+/**
+ * @maxItems 100
+ */
+export type EligibilityRules = RuleCandidate[];
+export type EvaluatedAt9 = string;
+/**
+ * @maxItems 500
+ */
+export type Evidence = EvidenceRecord[];
+export type EvidenceRefs4 = string[];
+export type Provenance5 = "USER_ASSERTED" | "DOCUMENTED" | "UNKNOWN";
+export type Value9 = string | null;
+export type Constraints = string[];
+export type CreatedAt6 = string;
+export type Id8 = string;
+export type EvidenceRefs5 = string[];
+export type Provenance6 = "USER_ASSERTED" | "DOCUMENTED" | "UNKNOWN";
+export type Value10 = string | null;
+export type EvidenceRefs6 = string[];
+export type Provenance7 = "USER_ASSERTED" | "DOCUMENTED" | "UNKNOWN";
+export type LegalForm = "INDIVIDUAL" | "SOLE_TRADER" | "INCORPORATED_COMPANY" | "NONPROFIT" | "UNKNOWN";
+export type EvidenceRefs7 = string[];
+export type Provenance8 = "USER_ASSERTED" | "DOCUMENTED" | "UNKNOWN";
+export type SchemaVersion6 = "1";
+export type EvidenceRefs8 = string[];
+export type Provenance9 = "USER_ASSERTED" | "DOCUMENTED" | "UNKNOWN";
+export type Value11 = number | null;
+export type UpdatedAt6 = string;
+export type VerifiedAt = string | null;
+export type Version6 = number;
+export type Mode2 = "FIXTURE";
+export type ApplicationUrl = string | null;
+export type CanonicalRulesUrl = string;
+export type CreatedAt7 = string;
+export type Deadlines = string[];
+export type Deliverables = string[];
+export type Edition = string;
+export type GeographicScope = string | null;
+export type Id9 = string;
+export type Materials = MaterialRequirement[];
+export type EvidenceRefs9 = string[];
+export type Provenance10 = "USER_ASSERTED" | "DOCUMENTED" | "UNKNOWN";
+export type Value12 = ProjectStage[] | null;
+export type ProjectStage = "IDEA" | "PROTOTYPE" | "MVP" | "PRODUCTION" | "UNKNOWN";
+export type Organizer = string;
+export type ProgramName = string;
+export type Conditions = string[];
+export type CreatedAt8 = string;
+export type EligibilityNote = string | null;
+export type Expiry = string | null;
+export type Id10 = string;
+export type IsTotalPool = boolean;
+export type RewardKind = "CASH_PRIZE" | "CLOUD_CREDIT" | "GRANT" | "EQUITY_INVESTMENT" | "IN_KIND";
+export type PaymentTiming = string | null;
+export type SchemaVersion7 = "1";
+export type UpdatedAt7 = string;
+export type Version7 = number;
+export type Rewards = Reward[];
+export type SchemaVersion8 = "1";
+export type SourceVersions = string[];
+export type OpportunityStatus = "OPEN" | "CLOSED" | "UNKNOWN";
+export type Tracks = string[];
+export type UpdatedAt8 = string;
+export type Version8 = number;
+export type CostKind = "CASH_SPEND" | "ENTRY_FEE" | "TRAVEL" | "CLOUD_CREDIT" | "EQUITY_REQUIREMENT";
+export type Reason1 = string;
+export type Items = ParticipationCost[];
+/**
+ * @minItems 1
+ * @maxItems 5
+ */
+export type Projects =
+  | [ProjectDecisionInput]
+  | [ProjectDecisionInput, ProjectDecisionInput]
+  | [ProjectDecisionInput, ProjectDecisionInput, ProjectDecisionInput]
+  | [ProjectDecisionInput, ProjectDecisionInput, ProjectDecisionInput, ProjectDecisionInput]
+  | [ProjectDecisionInput, ProjectDecisionInput, ProjectDecisionInput, ProjectDecisionInput, ProjectDecisionInput];
+export type Items1 = EffortItem[];
+export type CreatedAt9 = string;
+export type FactsVerifiedAt = string | null;
+export type Id11 = string;
+export type Reason2 = string | null;
+export type MaterialReadiness = MaterialReadiness1[];
+export type Name = string;
+export type PublicEvidenceRefs = string[];
+export type SchemaVersion9 = "1";
+export type EvidenceRefs10 = string[];
+export type Provenance11 = "USER_ASSERTED" | "DOCUMENTED" | "UNKNOWN";
+export type UpdatedAt9 = string;
+export type Version9 = number;
+export type SchemaVersion10 = "1";
+export type ActiveSubmissions1 = ActiveSubmission[];
+export type ConflictRules2 = ConflictRule[];
+/**
+ * @maxItems 100
+ */
+export type EligibilityRules1 = RuleCandidate[];
+export type EvaluatedAt10 = string;
+/**
+ * @maxItems 500
+ */
+export type Evidence1 = EvidenceRecord[];
+export type Mode3 = "FIXTURE" | "REPLAY" | "LIVE";
+/**
+ * @minItems 1
+ * @maxItems 5
+ */
+export type Projects1 =
+  | [ProjectDecisionInput]
+  | [ProjectDecisionInput, ProjectDecisionInput]
+  | [ProjectDecisionInput, ProjectDecisionInput, ProjectDecisionInput]
+  | [ProjectDecisionInput, ProjectDecisionInput, ProjectDecisionInput, ProjectDecisionInput]
+  | [ProjectDecisionInput, ProjectDecisionInput, ProjectDecisionInput, ProjectDecisionInput, ProjectDecisionInput];
+export type SchemaVersion11 = "1";
+export type BestProjectId2 = string | null;
+export type CandidateSemantics1 = "CONDITIONAL_PER_PROJECT";
+export type Candidates2 = DecisionRecord[];
+export type Explanation2 = string;
+export type MissingInformation7 = string[];
+export type Mode4 = "FIXTURE";
+export type Reasons8 = string[];
+/**
+ * @minItems 1
+ * @maxItems 10
+ */
+export type AllowedHosts =
+  | [string]
+  | [string, string]
+  | [string, string, string]
+  | [string, string, string, string]
+  | [string, string, string, string, string]
+  | [string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string];
+export type Goal = string;
+/**
+ * @minItems 1
+ * @maxItems 5
+ */
+export type Projects2 =
+  | [ProjectDecisionInput]
+  | [ProjectDecisionInput, ProjectDecisionInput]
+  | [ProjectDecisionInput, ProjectDecisionInput, ProjectDecisionInput]
+  | [ProjectDecisionInput, ProjectDecisionInput, ProjectDecisionInput, ProjectDecisionInput]
+  | [ProjectDecisionInput, ProjectDecisionInput, ProjectDecisionInput, ProjectDecisionInput, ProjectDecisionInput];
+export type Sanitized = true;
+export type SchemaVersion12 = "1";
 
 export interface ActiveSubmission {
   code_origin?: FactCodeProvenance;
@@ -456,6 +627,104 @@ export interface Money {
   amount: Amount;
   currency: Currency;
 }
+export interface AgentRunResult {
+  agent_steps: AgentSteps;
+  citation_urls: CitationUrls;
+  claims: Claims;
+  contradictions: Contradictions;
+  decision: DecisionOutput;
+  fetched_documents: FetchedDocuments;
+  mode: Mode1;
+  official_source_count: OfficialSourceCount;
+  search_calls: SearchCalls;
+  sources?: Sources;
+  termination_reason: TerminationReason;
+  trace: Trace;
+}
+export interface ValidatedClaim {
+  claim: ExtractedClaim;
+  evidence: EvidenceRecord;
+  normalized_value: NormalizedValue;
+  support_state: SupportState;
+}
+export interface ExtractedClaim {
+  confidence: Confidence;
+  excerpt: Excerpt;
+  field: Field;
+  not_applicable_reason?: NotApplicableReason;
+  source_id: SourceId;
+  source_url: SourceUrl;
+  state: State;
+  value: Value3;
+}
+export interface EvidenceRecord {
+  content_hash: ContentHash;
+  created_at: CreatedAt1;
+  extraction_state: ExtractionState;
+  final_url: FinalUrl;
+  id: Id2;
+  last_refresh_failed_at?: LastRefreshFailedAt;
+  normalized_field: Category;
+  original_url: OriginalUrl;
+  provenance: Provenance3;
+  retrieved_at: RetrievedAt;
+  schema_version: SchemaVersion1;
+  source_type: SourceType;
+  supporting_excerpt: SupportingExcerpt;
+  updated_at: UpdatedAt1;
+  version: Version1;
+}
+export interface DecisionOutput {
+  affordability: AffordabilityAssessment | null;
+  best_project_id: BestProjectId;
+  candidate_semantics?: CandidateSemantics;
+  candidates: Candidates;
+  capacity: CapacityAssessment | null;
+  conflict: ConflictAssessment | null;
+  effort: EffortEstimate | null;
+  eligibility: GateState | null;
+  explanation: Explanation1;
+  missing_information: MissingInformation6;
+  mode: Mode;
+  project_match: ProjectMatch | null;
+  readiness: ReadinessAssessment | null;
+  reasons: Reasons6;
+  recommendation: Recommendation;
+  selected_decision: DecisionRecord | null;
+  selection: ProjectSelection;
+  strategy: StrategyAssessment | null;
+}
+export interface DecisionRecord {
+  affordability: AffordabilityAssessment;
+  capacity: CapacityAssessment;
+  conflict: ConflictAssessment;
+  conflict_status: ConflictStatus;
+  created_at: CreatedAt2;
+  effort: EffortEstimate;
+  eligibility_gate: EligibilityGate;
+  explanation: Explanation;
+  freshness_status: FreshnessStatus;
+  id: Id5;
+  missing_information: MissingInformation4;
+  next_action: NextAction;
+  opportunity_id: OpportunityId;
+  opportunity_version: OpportunityVersion;
+  policy_versions: PolicyVersions;
+  profile_version: ProfileVersion;
+  project_id: ProjectId1;
+  project_match: ProjectMatch;
+  project_version: ProjectVersion;
+  provenance: Provenance3;
+  readiness: ReadinessAssessment;
+  reason_codes: ReasonCodes2;
+  recommendation: Recommendation;
+  schema_version: SchemaVersion4;
+  strategy: StrategyAssessment;
+  strategy_breakdown: StrategyBreakdown;
+  strategy_score: StrategyScore;
+  updated_at: UpdatedAt4;
+  version: Version4;
+}
 export interface CapacityAssessment {
   available_hours: AvailableHours;
   evaluated_at: EvaluatedAt1;
@@ -476,98 +745,209 @@ export interface ConflictAssessment {
   reasons: Reasons2;
   status: ConflictStatus;
 }
+export interface EffortEstimate {
+  adaptation_range: HourRange | null;
+  breakdown: Breakdown;
+  evaluated_at: EvaluatedAt3;
+  max_total: MaxTotal;
+  min_total: MinTotal;
+  missing_information: MissingInformation2;
+  policy_version?: PolicyVersion3;
+  reasons: Reasons3;
+}
+export interface HourRange {
+  max_hours: MaxHours;
+  min_hours: MinHours;
+}
+export interface EffortItem {
+  category: EffortCategory;
+  confidence: Confidence1;
+  hours: HourRange | null;
+  reason: Reason;
+}
+export interface EligibilityGate {
+  created_at: CreatedAt3;
+  critical_coverage: CriticalCoverage;
+  evaluated_at: EvaluatedAt4;
+  evaluations: Evaluations;
+  id: Id4;
+  missing_information: MissingInformation3;
+  policy_version: PolicyVersion5;
+  provenance: Provenance3;
+  reason_codes: ReasonCodes1;
+  schema_version: SchemaVersion3;
+  state: GateState;
+  updated_at: UpdatedAt3;
+  version: Version3;
+}
+export interface CoverageEntry {
+  category: Category;
+  reasons?: Reasons4;
+  rule_ids?: RuleIds;
+  state: CoverageState;
+}
+export interface RuleEvaluation {
+  children?: Children;
+  created_at: CreatedAt4;
+  evaluated_at: EvaluatedAt5;
+  evidence_ids: EvidenceIds2;
+  id: Id3;
+  policy_version: PolicyVersion4;
+  provenance: Provenance3;
+  reason_code: ReasonCode;
+  reason_codes: ReasonCodes;
+  rule_id: RuleId;
+  schema_version: SchemaVersion2;
+  status: RuleStatus;
+  subject_reference: SubjectReference | null;
+  updated_at: UpdatedAt2;
+  version: Version2;
+}
+export interface PolicyVersions {
+  conflicts: Conflicts;
+  decisions: Decisions;
+  effort: Effort;
+  eligibility: Eligibility;
+  matching: Matching;
+  strategy: Strategy;
+}
+export interface ProjectMatch {
+  adaptation_hours: HourRange | null;
+  blocking_gaps: BlockingGaps;
+  comparable_score: ComparableScore;
+  evaluated_at: EvaluatedAt6;
+  factor_results: FactorResults;
+  match_status: MatchStatus;
+  matched_requirements: MatchedRequirements;
+  missing_project_facts: MissingProjectFacts;
+  opportunity_id: OpportunityId1;
+  policy_version?: PolicyVersion6;
+  project_id: ProjectId2;
+  rating: Rating1;
+}
+export interface FactorResult {
+  fact_refs: FactRefs;
+  factor: Factor;
+  rating: Rating;
+  reasons: Reasons5;
+  requirement_refs: RequirementRefs;
+}
+export interface ReadinessAssessment {
+  evaluated_at: EvaluatedAt7;
+  factor_results: FactorResults1;
+  gaps: Gaps;
+  missing_information: MissingInformation5;
+  policy_version?: PolicyVersion7;
+  state: ReadinessState;
+}
+export interface StrategyAssessment {
+  breakdown: Breakdown1;
+  evaluated_at: EvaluatedAt8;
+  missing_strategy_factors: MissingStrategyFactors;
+  policy_version?: PolicyVersion8;
+  score: Score;
+  semantics?: Semantics;
+}
+export interface StrategyContribution {
+  contribution: Contribution;
+  factor: Factor1;
+  rating: Rating2;
+  weight: Weight;
+}
+export interface ProjectSelection {
+  best_project_id: BestProjectId1;
+  candidates: Candidates1;
+  reasons: Reasons7;
+}
+export interface SourceCitation {
+  authority: SourceType;
+  content_hash: ContentHash1;
+  final_url: FinalUrl1;
+  id: Id6;
+  retrieved_at: RetrievedAt1;
+  truncated: Truncated;
+}
+export interface TraceEvent {
+  count?: Count;
+  event: Event;
+  reason_code: ReasonCode1;
+  source_ids?: SourceIds;
+}
 export interface DecisionFixture {
   active_submissions: ActiveSubmissions;
   conflict_rules: ConflictRules1;
   eligibility_rules: EligibilityRules;
-  evaluated_at: EvaluatedAt3;
+  evaluated_at: EvaluatedAt9;
   evidence: Evidence;
   founder: FounderProfile;
-  mode: Mode;
+  mode: Mode2;
   opportunity: OpportunityRecord;
   participation_costs: ParticipationCosts;
   projects: Projects;
-  schema_version: SchemaVersion7;
+  schema_version: SchemaVersion10;
 }
 export interface RuleCandidate {
-  children?: Children;
+  children?: Children1;
   contradiction?: Contradiction;
-  created_at: CreatedAt1;
+  created_at: CreatedAt5;
   criticality: Criticality;
-  evidence_ids: EvidenceIds2;
-  id: Id2;
-  not_applicable_reason?: NotApplicableReason;
+  evidence_ids: EvidenceIds3;
+  id: Id7;
+  not_applicable_reason?: NotApplicableReason1;
   operands?: Operands;
   operator: Operator;
   provenance: Provenance3;
   rule_type: Category;
-  schema_version: SchemaVersion1;
+  schema_version: SchemaVersion5;
   source_text_summary: SourceTextSummary;
   subject_reference?: SubjectReference | null;
   supported: Supported1;
-  updated_at: UpdatedAt1;
-  version: Version1;
+  updated_at: UpdatedAt5;
+  version: Version5;
 }
 export interface TextValue {
   kind?: Kind;
-  value: Value3;
+  value: Value4;
 }
 export interface NumberValue {
   kind?: Kind1;
-  value: Value4;
+  value: Value5;
 }
 export interface BoolValue {
   kind?: Kind2;
-  value: Value5;
+  value: Value6;
 }
 export interface DateValue {
   kind?: Kind3;
-  value: Value6;
+  value: Value7;
 }
 export interface InstantValue {
   kind?: Kind4;
-  value: Value7;
-}
-export interface EvidenceRecord {
-  content_hash: ContentHash;
-  created_at: CreatedAt2;
-  extraction_state: ExtractionState;
-  final_url: FinalUrl;
-  id: Id3;
-  last_refresh_failed_at?: LastRefreshFailedAt;
-  normalized_field: Category;
-  original_url: OriginalUrl;
-  provenance: Provenance3;
-  retrieved_at: RetrievedAt;
-  schema_version: SchemaVersion2;
-  source_type: SourceType;
-  supporting_excerpt: SupportingExcerpt;
-  updated_at: UpdatedAt2;
-  version: Version2;
+  value: Value8;
 }
 export interface FounderProfile {
   available_hours?: FactAnnotatedDecimalBeforeValidatorFieldInfoAnnotationNoneTypeRequiredTrueMetadata_PydanticGeneralMetadataAllowInfNanFalseFieldInfoAnnotationNoneTypeRequiredTrueMetadataGeGe0;
   citizenship?: FactAnnotatedStrStringConstraints1;
   constraints?: Constraints;
   country_of_residence?: FactAnnotatedStrStringConstraints2;
-  created_at: CreatedAt3;
-  id: Id4;
+  created_at: CreatedAt6;
+  id: Id8;
   incorporation_date?: FactAnnotatedDateBeforeValidator;
   legal_form?: FactLegalForm;
   max_cash_commitment?: FactMoney;
   open_source_willingness?: FactAnnotatedBoolStrictStrictTrue2;
   provenance: Provenance3;
-  schema_version: SchemaVersion3;
+  schema_version: SchemaVersion6;
   strategic_goals?: FactTupleAnnotatedStrStringConstraints3;
   team_size?: FactAnnotatedIntStrictStrictTrueFieldInfoAnnotationNoneTypeRequiredTrueMetadataGeGe1;
-  updated_at: UpdatedAt3;
+  updated_at: UpdatedAt6;
   verified_at?: VerifiedAt;
-  version: Version3;
+  version: Version6;
 }
 export interface FactAnnotatedDecimalBeforeValidatorFieldInfoAnnotationNoneTypeRequiredTrueMetadata_PydanticGeneralMetadataAllowInfNanFalseFieldInfoAnnotationNoneTypeRequiredTrueMetadataGeGe0 {
   evidence_refs?: EvidenceRefs4;
   provenance?: Provenance5;
-  value?: Value8;
+  value?: Value9;
 }
 export interface FactAnnotatedStrStringConstraints1 {
   evidence_refs?: EvidenceRefs3;
@@ -582,7 +962,7 @@ export interface FactAnnotatedStrStringConstraints2 {
 export interface FactAnnotatedDateBeforeValidator {
   evidence_refs?: EvidenceRefs5;
   provenance?: Provenance6;
-  value?: Value9;
+  value?: Value10;
 }
 export interface FactLegalForm {
   evidence_refs?: EvidenceRefs6;
@@ -607,29 +987,29 @@ export interface FactTupleAnnotatedStrStringConstraints3 {
 export interface FactAnnotatedIntStrictStrictTrueFieldInfoAnnotationNoneTypeRequiredTrueMetadataGeGe1 {
   evidence_refs?: EvidenceRefs8;
   provenance?: Provenance9;
-  value?: Value10;
+  value?: Value11;
 }
 export interface OpportunityRecord {
   application_url?: ApplicationUrl;
   canonical_rules_url: CanonicalRulesUrl;
-  created_at: CreatedAt4;
+  created_at: CreatedAt7;
   deadlines?: Deadlines;
   deliverables?: Deliverables;
   edition: Edition;
   geographic_scope?: GeographicScope;
-  id: Id5;
+  id: Id9;
   matching_requirements?: MatchingRequirements | null;
   organizer: Organizer;
   program_name: ProgramName;
   provenance: Provenance3;
   rewards?: Rewards;
-  schema_version: SchemaVersion5;
+  schema_version: SchemaVersion8;
   source_versions?: SourceVersions;
   status?: OpportunityStatus;
   strategic_benefits?: FactTupleAnnotatedStrStringConstraints9;
   tracks?: Tracks;
-  updated_at: UpdatedAt5;
-  version: Version5;
+  updated_at: UpdatedAt8;
+  version: Version8;
 }
 export interface MatchingRequirements {
   audience_labels?: FactTupleAnnotatedStrStringConstraints4;
@@ -669,7 +1049,7 @@ export interface FactAnnotatedBoolStrictStrictTrue3 {
 export interface FactAnnotatedDecimalBeforeValidatorFieldInfoAnnotationNoneTypeRequiredTrueMetadata_PydanticGeneralMetadataAllowInfNanFalseFieldInfoAnnotationNoneTypeRequiredTrueMetadataGeGe01 {
   evidence_refs?: EvidenceRefs4;
   provenance?: Provenance5;
-  value?: Value8;
+  value?: Value9;
 }
 export interface FactAnnotatedBoolStrictStrictTrue4 {
   evidence_refs?: EvidenceRefs2;
@@ -684,7 +1064,7 @@ export interface FactTupleAnnotatedStrStringConstraints7 {
 export interface FactTupleProjectStage {
   evidence_refs?: EvidenceRefs9;
   provenance?: Provenance10;
-  value?: Value11;
+  value?: Value12;
 }
 export interface FactTupleAnnotatedStrStringConstraints8 {
   evidence_refs?: EvidenceRefs1;
@@ -696,17 +1076,17 @@ export interface Reward {
   amount_max?: Money | null;
   amount_min?: Money | null;
   conditions?: Conditions;
-  created_at: CreatedAt5;
+  created_at: CreatedAt8;
   eligibility_note?: EligibilityNote;
   expiry?: Expiry;
-  id: Id6;
+  id: Id10;
   is_total_pool?: IsTotalPool;
   kind: RewardKind;
   payment_timing?: PaymentTiming;
   provenance: Provenance3;
-  schema_version: SchemaVersion4;
-  updated_at: UpdatedAt4;
-  version: Version4;
+  schema_version: SchemaVersion7;
+  updated_at: UpdatedAt7;
+  version: Version7;
 }
 export interface FactTupleAnnotatedStrStringConstraints9 {
   evidence_refs?: EvidenceRefs1;
@@ -727,7 +1107,7 @@ export interface ParticipationCost {
   amount: Money | null;
   covered: FactAnnotatedBoolStrictStrictTrue5;
   kind: CostKind;
-  reason: Reason;
+  reason: Reason1;
 }
 export interface ProjectDecisionInput {
   effort: EffortAssumptions;
@@ -736,25 +1116,15 @@ export interface ProjectDecisionInput {
 export interface EffortAssumptions {
   items: Items1;
 }
-export interface EffortItem {
-  category: EffortCategory;
-  confidence: Confidence;
-  hours: HourRange | null;
-  reason: Reason1;
-}
-export interface HourRange {
-  max_hours: MaxHours;
-  min_hours: MinHours;
-}
 export interface ProjectProfile {
   audience?: FactAnnotatedStrStringConstraints3;
   available_features?: FactTupleAnnotatedStrStringConstraints10;
   code_provenance?: FactCodeProvenance1;
-  created_at: CreatedAt6;
+  created_at: CreatedAt9;
   estimated_adaptation_hours?: FactAnnotatedDecimalBeforeValidatorFieldInfoAnnotationNoneTypeRequiredTrueMetadata_PydanticGeneralMetadataAllowInfNanFalseFieldInfoAnnotationNoneTypeRequiredTrueMetadataGeGe02;
   facts_verified_at?: FactsVerifiedAt;
   has_sponsor_support?: FactAnnotatedBoolStrictStrictTrue6;
-  id: Id7;
+  id: Id11;
   is_new_project?: FactAnnotatedBoolStrictStrictTrue7;
   license_intent?: FactAnnotatedStrStringConstraints4;
   material_readiness?: MaterialReadiness;
@@ -767,11 +1137,11 @@ export interface ProjectProfile {
   reuse_disclosed?: FactAnnotatedBoolStrictStrictTrue10;
   reused_components?: FactTupleAnnotatedStrStringConstraints13;
   reward_conditions_met?: FactAnnotatedBoolStrictStrictTrue11;
-  schema_version: SchemaVersion6;
+  schema_version: SchemaVersion9;
   stage?: FactProjectStage;
   technology_stack?: FactTupleAnnotatedStrStringConstraints14;
-  updated_at: UpdatedAt6;
-  version: Version6;
+  updated_at: UpdatedAt9;
+  version: Version9;
 }
 export interface FactAnnotatedStrStringConstraints3 {
   evidence_refs?: EvidenceRefs3;
@@ -791,7 +1161,7 @@ export interface FactCodeProvenance1 {
 export interface FactAnnotatedDecimalBeforeValidatorFieldInfoAnnotationNoneTypeRequiredTrueMetadata_PydanticGeneralMetadataAllowInfNanFalseFieldInfoAnnotationNoneTypeRequiredTrueMetadataGeGe02 {
   evidence_refs?: EvidenceRefs4;
   provenance?: Provenance5;
-  value?: Value8;
+  value?: Value9;
 }
 export interface FactAnnotatedBoolStrictStrictTrue6 {
   evidence_refs?: EvidenceRefs2;
@@ -864,158 +1234,44 @@ export interface FactTupleAnnotatedStrStringConstraints14 {
   provenance?: Provenance1;
   value?: Value;
 }
-export interface DecisionRecord {
-  affordability: AffordabilityAssessment;
-  capacity: CapacityAssessment;
-  conflict: ConflictAssessment;
-  conflict_status: ConflictStatus;
-  created_at: CreatedAt7;
-  effort: EffortEstimate;
-  eligibility_gate: EligibilityGate;
-  explanation: Explanation;
-  freshness_status: FreshnessStatus;
-  id: Id10;
-  missing_information: MissingInformation4;
-  next_action: NextAction;
-  opportunity_id: OpportunityId;
-  opportunity_version: OpportunityVersion;
-  policy_versions: PolicyVersions;
-  profile_version: ProfileVersion;
-  project_id: ProjectId1;
-  project_match: ProjectMatch;
-  project_version: ProjectVersion;
-  provenance: Provenance3;
-  readiness: ReadinessAssessment;
-  reason_codes: ReasonCodes2;
-  recommendation: Recommendation;
-  schema_version: SchemaVersion10;
-  strategy: StrategyAssessment;
-  strategy_breakdown: StrategyBreakdown;
-  strategy_score: StrategyScore;
-  updated_at: UpdatedAt9;
-  version: Version9;
-}
-export interface EffortEstimate {
-  adaptation_range: HourRange | null;
-  breakdown: Breakdown;
-  evaluated_at: EvaluatedAt4;
-  max_total: MaxTotal;
-  min_total: MinTotal;
-  missing_information: MissingInformation2;
-  policy_version?: PolicyVersion3;
-  reasons: Reasons3;
-}
-export interface EligibilityGate {
-  created_at: CreatedAt8;
-  critical_coverage: CriticalCoverage;
-  evaluated_at: EvaluatedAt5;
-  evaluations: Evaluations;
-  id: Id9;
-  missing_information: MissingInformation3;
-  policy_version: PolicyVersion5;
-  provenance: Provenance3;
-  reason_codes: ReasonCodes1;
-  schema_version: SchemaVersion9;
-  state: GateState;
-  updated_at: UpdatedAt8;
-  version: Version8;
-}
-export interface CoverageEntry {
-  category: Category;
-  reasons?: Reasons4;
-  rule_ids?: RuleIds;
-  state: CoverageState;
-}
-export interface RuleEvaluation {
-  children?: Children1;
-  created_at: CreatedAt9;
-  evaluated_at: EvaluatedAt6;
-  evidence_ids: EvidenceIds3;
-  id: Id8;
-  policy_version: PolicyVersion4;
-  provenance: Provenance3;
-  reason_code: ReasonCode;
-  reason_codes: ReasonCodes;
-  rule_id: RuleId;
-  schema_version: SchemaVersion8;
-  status: RuleStatus;
-  subject_reference: SubjectReference | null;
-  updated_at: UpdatedAt7;
-  version: Version7;
-}
-export interface PolicyVersions {
-  conflicts: Conflicts;
-  decisions: Decisions;
-  effort: Effort;
-  eligibility: Eligibility;
-  matching: Matching;
-  strategy: Strategy;
-}
-export interface ProjectMatch {
-  adaptation_hours: HourRange | null;
-  blocking_gaps: BlockingGaps;
-  comparable_score: ComparableScore;
-  evaluated_at: EvaluatedAt7;
-  factor_results: FactorResults;
-  match_status: MatchStatus;
-  matched_requirements: MatchedRequirements;
-  missing_project_facts: MissingProjectFacts;
-  opportunity_id: OpportunityId1;
-  policy_version?: PolicyVersion6;
-  project_id: ProjectId2;
-  rating: Rating1;
-}
-export interface FactorResult {
-  fact_refs: FactRefs;
-  factor: Factor;
-  rating: Rating;
-  reasons: Reasons5;
-  requirement_refs: RequirementRefs;
-}
-export interface ReadinessAssessment {
-  evaluated_at: EvaluatedAt8;
-  factor_results: FactorResults1;
-  gaps: Gaps;
-  missing_information: MissingInformation5;
-  policy_version?: PolicyVersion7;
-  state: ReadinessState;
-}
-export interface StrategyAssessment {
-  breakdown: Breakdown1;
-  evaluated_at: EvaluatedAt9;
-  missing_strategy_factors: MissingStrategyFactors;
-  policy_version?: PolicyVersion8;
-  score: Score;
-  semantics?: Semantics;
-}
-export interface StrategyContribution {
-  contribution: Contribution;
-  factor: Factor1;
-  rating: Rating2;
-  weight: Weight;
+export interface DecisionInput {
+  active_submissions: ActiveSubmissions1;
+  conflict_rules: ConflictRules2;
+  eligibility_rules: EligibilityRules1;
+  evaluated_at: EvaluatedAt10;
+  evidence: Evidence1;
+  founder: FounderProfile;
+  mode: Mode3;
+  opportunity: OpportunityRecord;
+  participation_costs: ParticipationCosts;
+  projects: Projects1;
+  schema_version: SchemaVersion11;
 }
 export interface DecisionResult {
   affordability: AffordabilityAssessment | null;
-  best_project_id: BestProjectId;
-  candidate_semantics?: CandidateSemantics;
-  candidates: Candidates;
+  best_project_id: BestProjectId2;
+  candidate_semantics?: CandidateSemantics1;
+  candidates: Candidates2;
   capacity: CapacityAssessment | null;
   conflict: ConflictAssessment | null;
   effort: EffortEstimate | null;
   eligibility: GateState | null;
-  explanation: Explanation1;
-  missing_information: MissingInformation6;
-  mode?: Mode1;
+  explanation: Explanation2;
+  missing_information: MissingInformation7;
+  mode?: Mode4;
   project_match: ProjectMatch | null;
   readiness: ReadinessAssessment | null;
-  reasons: Reasons6;
+  reasons: Reasons8;
   recommendation: Recommendation;
   selected_decision: DecisionRecord | null;
   selection: ProjectSelection;
   strategy: StrategyAssessment | null;
 }
-export interface ProjectSelection {
-  best_project_id: BestProjectId1;
-  candidates: Candidates1;
-  reasons: Reasons7;
+export interface StudioInput {
+  allowed_hosts: AllowedHosts;
+  founder: FounderProfile;
+  goal: Goal;
+  projects: Projects2;
+  sanitized: Sanitized;
+  schema_version: SchemaVersion12;
 }

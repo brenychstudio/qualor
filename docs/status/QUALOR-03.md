@@ -1,4 +1,107 @@
-# QUALOR-03 checkpoint: bounded Web Search (03B2)
+# QUALOR-03 checkpoint: autonomous loop (03B3 PARTIAL)
+
+## Current checkpoint: 2026-09-06
+
+Starting HEAD: `06e3133a39a0559fbf8cb71f354e16d290e384db` on
+`qualor-03-live-agent`. Canonical bytes and dependency locks are unchanged.
+The implementation and offline gates pass; **the live evidence handoff does not**.
+This checkpoint is not ready for protected merge or QUALOR-04A.
+
+### Implemented and verified offline
+
+- One Strands **1.54.0** Agent, model `global.anthropic.claude-sonnet-4-6`, temperature
+  zero, output capped at 1,600 tokens. Four tools: search, approved-source fetch,
+  typed evidence proposal, deterministic state evaluation. No model verdict setter.
+- Actual SDK planning loop tested with an offline model choosing tools from previous
+  observations. LIVE uses the existing SigV4 AgentCore SearchProvider. FIXTURE/REPLAY
+  reject production AWS/network providers and reuse the same orchestration contract.
+- HTTPS fetch with approved host registry, public-address DNS validation, pinned
+  connection with original TLS hostname/SNI, bounded redirects/body/timeouts and
+  HTML/JSON/plain extraction. No browser, PDF platform or full-page repository storage.
+- Pydantic claims preserve source reference, excerpt and extraction state. Unsupported
+  values, amounts/timezones and N/A are rejected. Narrow controlled clauses can feed
+  existing rule operators; other legal interpretation remains unknown. Official-source
+  disagreements force review. The model cannot set eligibility or recommendation.
+- Three explicitly fictional project profiles and effort assumptions; no private
+  financial data. Unknown opportunity requirements, costs and conflict rules remain
+  unknown. Mode-correct engine inputs preserve strict legacy fixture contracts.
+- Shared reservation guard: at most six model calls, five searches, ten documents,
+  USD 0.20. Physical Converse requests are reserved, including any SDK repair path;
+  automatic retries are disabled. Successful usage reconciles cost downward.
+- New public schemas: DecisionInput, DecisionOutput, StudioInput, AgentRunResult.
+  All **24 schemas** and generated `apps/web/src/generated/domain.ts` are reproducible.
+
+RED/GREEN tests covered the new boundaries and reproduced two discovered defects:
+partial technology-name admission and duplicate session/region arguments to the pinned
+Strands constructor. Both are fixed without a dependency upgrade. After live observation,
+additional RED/GREEN tests added specific safe failure codes and retained fetched-source
+citation metadata even when no claim is admitted. Those observability fixes have been
+verified **offline only**, not demonstrated in another live run.
+
+Independent code review then identified three additional boundary defects, reproduced
+with failing offline tests and fixed: quote punctuation hiding adjacent exceptions,
+equivalent/additive technology claims producing false contradictions, and a body-read
+deadline that did not interrupt slow responses. The reviewer confirmed the corrections
+by read-only diff inspection. None of these fixes was used to justify another paid run.
+
+### Actual bounded live observation
+
+The first launch failed before Agent construction: Strands rejects simultaneous
+`boto_session` and `region_name`. The constructor failure was reproduced offline;
+no inference or search was reached. Its local marker was archived separately.
+
+After the constructor fix and 522 passing offline tests, exactly **one actual live
+dogfood run** investigated AWS Agents for Humans Professional Agents. It instantiated
+one Strands Agent and made **5 tool calls**, **3 Bedrock Converse calls**, **1 real
+Web Search query**, **4 Gateway MCP HTTP requests**, and **1 successful official-source
+fetch**. It stopped at `TOOL_FAILURE_BOUND_REACHED` after three model turns.
+
+**Admitted EvidenceRecord count: 0. Critical evidence citations: 0.** The original
+trace did not retain the specific rejected-tool error, tool names, or the fetched URL
+when no claims were accepted. Its generic rejection events do not prove whether the
+failure was source coverage, URL admission or SDK argument validation. No root cause
+is invented. The original local result is preserved; it has not been retroactively
+rewritten using the subsequent observability fixes. No source citation is fabricated.
+
+The deterministic engines returned **REVIEW_REQUIRED / WATCH** for all three projects
+with empty-rule-set and incomplete-critical-coverage reasons. Best project remained
+unresolved; portfolio strategy, effort and readiness remained unknown. This demonstrates
+fail-closed authority, but does not yet demonstrate the requested non-trivial live
+eligibility or project-selection judgment. It is more than search-only transport, but
+it is **not** an accepted end-to-end evidence-first demonstration.
+
+No second paid dogfood run was attempted: the task permits a second only after a
+specific recoverable search-coverage fix, and the retained evidence does not establish
+that condition. Another diagnostic live run requires owner authorization.
+
+### Cost and security evidence
+
+Reported model usage: 11,573 input tokens and 434 output tokens. Estimated model cost:
+USD 0.041229. One search plus conservatively charging all four Gateway requests adds
+USD 0.007020, for **USD 0.048249 estimated task cost**. The shared guard retained
+USD 0.050229 including its search overhead allowance, below USD 0.20.
+These are engineering estimates, not observed billing. Pricing basis is recorded
+in [ADR 0003](../decisions/0003-live-evidence-authority.md) and the historical B2 section.
+
+STS and preflight passed as the expected non-root IAM user with temporary credentials.
+Gateway and target remained READY. No IAM changes, access keys, new infrastructure,
+Bedrock Runtime deployment, submissions or raw third-party pages were committed.
+The general preflight still reports the intentionally unavailable
+`bedrock-agentcore:ListAgentRuntimes`; it performs no model/search inference itself.
+
+### Final local gates and next action
+
+**529 pytest tests passed**, including all 472 baseline tests. Ruff, npm ci/build,
+schema/type generation and diff whitespace checks passed. The two inherited upstream
+Python deprecation warnings remain. The clean-tree `scripts/verify.ps1` gate is run
+after committing; its exact result and resulting HEAD are reported in the Result Packet.
+
+Remaining blocker: `LIVE_EVIDENCE_HANDOFF_UNPROVEN`. The next useful action is owner
+review and authorization for one diagnostic run using the improved bounded trace,
+with an explicit remaining task budget. Do not merge on the strength of offline tests.
+No QUALOR-04A work, final PR or merge is included.
+
+## Historical checkpoint: bounded Web Search (03B2)
 
 Date: 2026-09-06. Repository: `brenychstudio/qualor`, branch `qualor-03-live-agent`.
 Starting HEAD: `5da6d0badbbb3961143df0ca602e8026c9b51b7e`.

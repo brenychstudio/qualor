@@ -11,13 +11,13 @@ from .profiles import FounderProfile, ProjectProfile
 from .rules import RuleCandidate
 
 
-class EvaluationContext(Contract):
+class EvaluationInput(Contract):
     founder: FounderProfile
     project: ProjectProfile
     opportunity: OpportunityRecord
     evidence: Annotated[tuple[EvidenceRecord, ...], Field(max_length=500)]
     evaluated_at: UtcInstant
-    mode: Literal["FIXTURE"]
+    mode: Literal["FIXTURE", "REPLAY", "LIVE"]
 
     @model_validator(mode="after")
     def unique_evidence(self) -> Self:
@@ -25,6 +25,10 @@ class EvaluationContext(Contract):
         if len(ids) != len(set(ids)):
             raise ValueError("Duplicate evidence IDs")
         return self
+
+
+class EvaluationContext(EvaluationInput):
+    mode: Literal["FIXTURE"]
 
 
 class FixtureInput(Contract):

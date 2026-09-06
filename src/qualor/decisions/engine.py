@@ -5,7 +5,7 @@ from datetime import datetime
 
 from qualor.conflicts import assess_conflicts
 from qualor.domain.enums import FreshnessStatus, OpportunityStatus, Provenance
-from qualor.domain.fixture import EvaluationContext
+from qualor.domain.fixture import EvaluationInput
 from qualor.domain.opportunity import OpportunityRecord
 from qualor.effort import assess_affordability, assess_capacity, estimate_effort
 from qualor.eligibility import aggregate_eligibility, evaluate_freshness
@@ -13,25 +13,30 @@ from qualor.eligibility.evidence import effective_deadlines
 from qualor.matching import assess_readiness, match_project, select_best_project
 from qualor.strategy import derive_strategy
 
-from .fixture import DecisionFixture
-from .model import DecisionRecord, DecisionResult, PolicyVersions, Recommendation
+from .fixture import DecisionFixture, DecisionInput
+from .model import DecisionOutput, DecisionRecord, DecisionResult, PolicyVersions, Recommendation
 from .policy import DECISION_POLICY_VERSION, PORTFOLIO_EXPLANATION, outcome, recommend
 
 
 def decide_fixture(fixture: DecisionFixture) -> DecisionResult:
     fixture = DecisionFixture.model_validate(fixture)
+    return DecisionResult.model_validate(decide(DecisionInput.model_validate(fixture)).model_dump())
+
+
+def decide(fixture: DecisionInput) -> DecisionOutput:
+    fixture = DecisionInput.model_validate(fixture)
     now, opportunity = fixture.evaluated_at, fixture.opportunity
     records = []
     digest = hashlib.sha256(fixture.model_dump_json().encode("utf-8")).hexdigest()
     for item in fixture.projects:
         project = item.project
-        context = EvaluationContext(
+        context = EvaluationInput(
             founder=fixture.founder,
             project=project,
             opportunity=opportunity,
             evidence=fixture.evidence,
             evaluated_at=now,
-            mode="FIXTURE",
+            mode=fixture.mode,
         )
         gate = aggregate_eligibility(fixture.eligibility_rules, context)
         deadlines = effective_deadlines(fixture.eligibility_rules, context)
@@ -173,7 +178,8 @@ def decide_fixture(fixture: DecisionFixture) -> DecisionResult:
             )
         )
     )
-    return DecisionResult(
+    return DecisionOutput(
+        mode=fixture.mode,
         best_project_id=selection.best_project_id,
         selection=selection,
         candidates=tuple(records),
