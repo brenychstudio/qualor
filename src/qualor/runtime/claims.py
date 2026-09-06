@@ -158,6 +158,7 @@ def validate_claim(claim: ExtractedClaim, sources: dict[str, SourceDocument]) ->
         created_at=source.retrieved_at,
         updated_at=source.retrieved_at,
         provenance=Provenance.DOCUMENTED,
+        source_id=source.id,
         original_url=source.original_url,
         final_url=source.final_url,
         retrieved_at=source.retrieved_at,

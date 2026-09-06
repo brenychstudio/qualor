@@ -43,6 +43,11 @@ FIELDS = frozenset(
         "focus",
         "claims",
         "source_id",
+        "span_id",
+        "supporting_span_id",
+        "normalized_field",
+        "candidate_value",
+        "extraction_state",
         "source_url",
         "field",
         "value",
@@ -169,6 +174,14 @@ CODEBOOK = {
     ),
     "SOURCE_REFERENCE_NOT_FOUND": (
         "Use one current-run source_id returned by fetch_official_source.",
+        "YES",
+    ),
+    "SPAN_REFERENCE_NOT_FOUND": (
+        "Use one current-source span_id supplied to structured extraction.",
+        "YES",
+    ),
+    "SPAN_SOURCE_MISMATCH": (
+        "The selected span belongs to a different fetched source.",
         "YES",
     ),
     "EXTRACTOR_NOT_CONFIGURED": (

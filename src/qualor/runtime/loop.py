@@ -67,10 +67,16 @@ class OpportunityRun:
         self.decision = None
         self.contradictions = ()
 
-    def event(self, event, reason, ids=(), count=0):
+    def event(self, event, reason, ids=(), count=0, *, span_ids=()):
         if len(self.trace) < 99:
             self.trace.append(
-                TraceEvent(event=event, reason_code=reason, source_ids=ids, count=count)
+                TraceEvent(
+                    event=event,
+                    reason_code=reason,
+                    source_ids=ids,
+                    span_ids=span_ids,
+                    count=count,
+                )
             )
 
     def stop(self, reason):
@@ -368,6 +374,18 @@ class OpportunityRun:
                 for claim in claims
             ):
                 raise ValueError("EXTRACTION_SOURCE_REFERENCE_MISMATCH")
+            self.event("STRUCTURED_EXTRACTION", "MODEL_POWERED_TOOL", (source_id,), len(claims))
+            selected_span_ids = tuple(
+                str(item) for item in getattr(self.extractor, "last_selected_span_ids", ())
+            )
+            if selected_span_ids:
+                self.event(
+                    "SOURCE_SPAN_SELECTED",
+                    "RUNTIME_GROUNDED_SOURCE_CAPABILITY",
+                    (source_id,),
+                    len(selected_span_ids),
+                    span_ids=selected_span_ids,
+                )
             claim_payloads = [claim.model_dump(mode="json") for claim in claims]
             anticipated_observations = []
             for claim in claims:
@@ -391,7 +409,6 @@ class OpportunityRun:
                     "observations": anticipated_observations,
                 }
             )
-            self.event("STRUCTURED_EXTRACTION", "MODEL_POWERED_TOOL", (source_id,), len(claims))
             observations = [self.record_evidence(claim) for claim in claim_payloads]
             output = {
                 "status": "EXTRACTED",

@@ -1,8 +1,29 @@
 {
   "$defs": {
-    "ExtractedClaim": {
+    "ExtractedClaimTransport": {
       "additionalProperties": false,
+      "description": "Strict JSON-facing claim; source text authority remains in the runtime registry.",
       "properties": {
+        "candidate_value": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 12,
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Candidate Value"
+        },
         "confidence": {
           "enum": [
             "HIGH",
@@ -13,13 +34,16 @@
           "title": "Confidence",
           "type": "string"
         },
-        "excerpt": {
-          "maxLength": 700,
-          "minLength": 1,
-          "title": "Excerpt",
+        "extraction_state": {
+          "enum": [
+            "CANDIDATE",
+            "UNKNOWN",
+            "NOT_APPLICABLE"
+          ],
+          "title": "Extraction State",
           "type": "string"
         },
-        "field": {
+        "normalized_field": {
           "enum": [
             "organizer",
             "program",
@@ -35,7 +59,7 @@
             "reward_conditions",
             "deliverables"
           ],
-          "title": "Field",
+          "title": "Normalized Field",
           "type": "string"
         },
         "not_applicable_reason": {
@@ -56,49 +80,21 @@
           "title": "Source Id",
           "type": "string"
         },
-        "source_url": {
-          "minLength": 1,
-          "title": "Source Url",
+        "supporting_span_id": {
+          "pattern": "^span_[a-f0-9]{32}$",
+          "title": "Supporting Span Id",
           "type": "string"
-        },
-        "state": {
-          "enum": [
-            "CANDIDATE",
-            "UNKNOWN",
-            "NOT_APPLICABLE"
-          ],
-          "title": "State",
-          "type": "string"
-        },
-        "value": {
-          "anyOf": [
-            {
-              "maxLength": 500,
-              "type": "string"
-            },
-            {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "title": "Value"
         }
       },
       "required": [
         "source_id",
-        "source_url",
-        "field",
-        "value",
-        "excerpt",
-        "state",
+        "normalized_field",
+        "candidate_value",
+        "supporting_span_id",
+        "extraction_state",
         "confidence"
       ],
-      "title": "ExtractedClaim",
+      "title": "ExtractedClaimTransport",
       "type": "object"
     }
   },
@@ -107,7 +103,7 @@
   "properties": {
     "claims": {
       "items": {
-        "$ref": "#/$defs/ExtractedClaim"
+        "$ref": "#/$defs/ExtractedClaimTransport"
       },
       "maxItems": 2,
       "title": "Claims",

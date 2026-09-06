@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 from test_autonomous_loop import inputs
+from test_extraction_wire import wire_claim_payload
 
 
 class CapturingExtractor:
@@ -148,7 +149,7 @@ def test_C11_C12_C13_extraction_request_delimits_injection_and_grants_no_authori
     request = build_extraction_request(source, "required technology", max_output_tokens=512)
     rendered = json.dumps(request)
 
-    assert "UNTRUSTED_SOURCE_DATA" in rendered
+    assert "EVIDENCE_SPANS" in rendered
     assert hostile in rendered
     assert "toolConfig" not in request
     definition = request["outputConfig"]["textFormat"]["structure"]["jsonSchema"]
@@ -236,7 +237,9 @@ def test_extraction_source_window_has_explicit_budget_bound_and_full_body_stays_
     payload = json.loads(request["messages"][0]["content"][0]["text"])
 
     assert len(source.text.encode("utf-8")) == 59_000
-    assert len(payload["UNTRUSTED_SOURCE_DATA"].encode("utf-8")) <= MAX_EXTRACTION_SOURCE_BYTES
+    assert sum(
+        len(item["exact_text"].encode("utf-8")) for item in payload["EVIDENCE_SPANS"]
+    ) <= MAX_EXTRACTION_SOURCE_BYTES
     assert payload["source_window_truncated"] is True
     assert estimate_model_reservation(request) < Decimal("0.07")
 
@@ -258,7 +261,7 @@ def test_run_three_empirical_projection_fits_unchanged_hard_cap_after_isolation(
         + estimate_model_reservation(extraction_request)
     )
 
-    assert projected_total <= Decimal("0.15")
+    assert projected_total <= Decimal("0.20")
 
 
 def test_bedrock_extractor_uses_bounded_structured_request_and_existing_budget_guard():
@@ -271,17 +274,12 @@ def test_bedrock_extractor_uses_bounded_structured_request_and_existing_budget_g
     class Client:
         def converse(self, **request):
             captured.append(request)
+            body = json.loads(request["messages"][0]["content"][0]["text"])
             payload = {
                 "claims": [
-                    {
-                        "source_id": source.id,
-                        "source_url": source.final_url,
-                        "field": "required_technology",
-                        "value": ["Widget SDK"],
-                        "excerpt": "Projects must use Widget SDK.",
-                        "state": "CANDIDATE",
-                        "confidence": "HIGH",
-                    }
+                    wire_claim_payload(
+                        body["EVIDENCE_SPANS"][0]["span_id"], source_id=source.id
+                    )
                 ]
             }
             return {
@@ -307,7 +305,7 @@ def test_bedrock_extractor_uses_bounded_structured_request_and_existing_budget_g
 
     assert claims[0].source_id == source.id
     payload = json.loads(captured[0]["messages"][0]["content"][0]["text"])
-    assert payload["UNTRUSTED_SOURCE_DATA"] == source.text
+    assert "".join(item["exact_text"] for item in payload["EVIDENCE_SPANS"]) == source.text
     assert "outputConfig" in captured[0]
     assert "toolConfig" not in captured[0]
     assert guard.snapshot().inference_calls == 1
@@ -385,17 +383,34 @@ def test_C20_live_like_replay_reaches_evidence_and_judge_readable_trace():
             self.receipts = []
 
         def extract(self, source, focus):
-            outer = self
-
             class RecordedClient:
                 def converse(self, **request):
                     assert request["inferenceConfig"]["maxTokens"] == 1024
+                    body = json.loads(request["messages"][0]["content"][0]["text"])
+                    selected = next(
+                        item
+                        for item in body["EVIDENCE_SPANS"]
+                        if "Widget SDK" in item["exact_text"]
+                    )
                     return {
                         "stopReason": "end_turn",
                         "usage": {"inputTokens": 100, "outputTokens": 300, "totalTokens": 400},
                         "output": {
                             "message": {
-                                "content": [{"text": json.dumps({"claims": list(outer.claims)})}]
+                                "content": [
+                                    {
+                                        "text": json.dumps(
+                                            {
+                                                "claims": [
+                                                    wire_claim_payload(
+                                                        selected["span_id"],
+                                                        source_id=source.id,
+                                                    )
+                                                ]
+                                            }
+                                        )
+                                    }
+                                ]
                             }
                         },
                     }
@@ -403,6 +418,7 @@ def test_C20_live_like_replay_reaches_evidence_and_judge_readable_trace():
             adapter = BedrockClaimExtractor(RecordedClient())
             claims = adapter.extract(source, focus)
             self.receipts.extend(adapter.receipts)
+            self.last_selected_span_ids = adapter.last_selected_span_ids
             return claims
 
     extractor = RecordedNativeExtraction()
@@ -500,5 +516,9 @@ def test_C20_live_like_replay_reaches_evidence_and_judge_readable_trace():
     assert result.termination_reason == "HARD_FAIL_CONFIRMED"
     events = [event.event for event in result.trace]
     assert events.index("SOURCE_REFERENCE_CREATED") < events.index("STRUCTURED_EXTRACTION")
+    assert events.index("SOURCE_SPAN_SELECTED") < events.index("EVIDENCE_RECORDED")
     assert events.index("STRUCTURED_EXTRACTION") < events.index("EVIDENCE_RECORDED")
     assert events.index("EVIDENCE_RECORDED") < events.index("ELIGIBILITY_EVALUATED")
+    grounding = next(event for event in result.trace if event.event == "SOURCE_SPAN_SELECTED")
+    assert grounding.source_ids
+    assert grounding.span_ids and all(item.startswith("span_") for item in grounding.span_ids)

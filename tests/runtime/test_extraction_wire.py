@@ -18,22 +18,35 @@ def claim_payload(**changes):
     return value
 
 
+def wire_claim_payload(span_id="span_" + "a" * 32, **changes):
+    value = {
+        "source_id": "source_current",
+        "normalized_field": "required_technology",
+        "candidate_value": ["Widget SDK"],
+        "supporting_span_id": span_id,
+        "extraction_state": "CANDIDATE",
+        "confidence": "HIGH",
+    }
+    value.update(changes)
+    return value
+
+
 def test_X01_X02_canonical_wrapped_json_array_validates_without_tuple_impedance():
     from qualor.runtime.extraction import validate_extraction_payload
 
-    batch = validate_extraction_payload({"claims": [claim_payload()]})
+    batch = validate_extraction_payload({"claims": [wire_claim_payload()]})
 
-    assert isinstance(batch.claims, tuple)
-    assert batch.claims[0].value == ("Widget SDK",)
+    assert isinstance(batch.claims, list)
+    assert batch.claims[0].candidate_value == ["Widget SDK"]
 
 
 def test_X03_X04_missing_wrapper_and_bare_array_are_rejected():
     from qualor.runtime.extraction import validate_extraction_payload
 
     with pytest.raises(ValidationError) as missing:
-        validate_extraction_payload(claim_payload())
+        validate_extraction_payload(wire_claim_payload())
     with pytest.raises(ValidationError) as bare:
-        validate_extraction_payload([claim_payload()])
+        validate_extraction_payload([wire_claim_payload()])
 
     assert missing.value.errors()[0]["type"] == "missing"
     assert bare.value.errors()[0]["type"] == "model_type"
@@ -46,7 +59,7 @@ def test_live_non_array_claims_error_class_is_reproduced_without_accepting_it():
         ExtractedClaimBatch.model_validate({"claims": claim_payload()})
 
     with pytest.raises(ValidationError) as invalid_collection:
-        validate_extraction_payload({"claims": claim_payload()})
+        validate_extraction_payload({"claims": wire_claim_payload()})
 
     assert live_shape.value.errors()[0]["loc"] == ("claims",)
     assert live_shape.value.errors()[0]["type"] == "tuple_type"
@@ -58,16 +71,18 @@ def test_wire_contract_rejects_python_tuple_even_though_domain_uses_tuple():
     from qualor.runtime.extraction import validate_extraction_payload
 
     with pytest.raises(ValidationError):
-        validate_extraction_payload({"claims": (claim_payload(),)})
+        validate_extraction_payload({"claims": (wire_claim_payload(),)})
 
 
 def test_X05_X06_malformed_or_extra_claim_fields_are_rejected():
     from qualor.runtime.extraction import validate_extraction_payload
 
     with pytest.raises(ValidationError):
-        validate_extraction_payload({"claims": [claim_payload(field="unsupported")]})
+        validate_extraction_payload(
+            {"claims": [wire_claim_payload(normalized_field="unsupported")]}
+        )
     with pytest.raises(ValidationError) as extra:
-        validate_extraction_payload({"claims": [claim_payload(invented=True)]})
+        validate_extraction_payload({"claims": [wire_claim_payload(invented=True)]})
 
     assert extra.value.errors()[0]["type"] == "extra_forbidden"
 
@@ -75,26 +90,48 @@ def test_X05_X06_malformed_or_extra_claim_fields_are_rejected():
 def test_X07_empty_claim_batch_is_an_explicit_valid_no_findings_result():
     from qualor.runtime.extraction import validate_extraction_payload
 
-    assert validate_extraction_payload({"claims": []}).claims == ()
+    assert validate_extraction_payload({"claims": []}).claims == []
 
 
 def test_X08_unknown_claim_survives_wire_and_domain_validation():
     from qualor.runtime.extraction import validate_extraction_payload
 
-    claim = claim_payload(value=None, state="UNKNOWN", confidence="UNKNOWN")
+    claim = wire_claim_payload(
+        candidate_value=None, extraction_state="UNKNOWN", confidence="UNKNOWN"
+    )
 
     batch = validate_extraction_payload({"claims": [claim]})
 
-    assert batch.claims[0].state == "UNKNOWN"
-    assert batch.claims[0].value is None
+    assert batch.claims[0].extraction_state == "UNKNOWN"
+    assert batch.claims[0].candidate_value is None
 
 
 def test_X09_X10_wire_list_converts_to_immutable_domain_tuple():
-    from qualor.runtime.extraction import ExtractedClaimBatchTransport
+    from datetime import UTC, datetime
 
-    transport = ExtractedClaimBatchTransport.model_validate({"claims": [claim_payload()]})
+    from qualor.runtime.extraction import (
+        ExtractedClaimBatchTransport,
+        ground_extraction_payload,
+    )
+    from qualor.runtime.sources import SourceDocument
+    from qualor.runtime.spans import EvidenceSpanRegistry
+
+    source = SourceDocument(
+        id="source_current",
+        original_url="https://example.org/rules",
+        final_url="https://example.org/rules",
+        retrieved_at=datetime.now(UTC),
+        content_hash="a" * 64,
+        authority="OFFICIAL_RULES",
+        text="Projects must use Widget SDK.",
+    )
+    registry = EvidenceSpanRegistry(secret=b"a" * 32)
+    span = registry.register(source, "technology")[0]
+    transport = ExtractedClaimBatchTransport.model_validate(
+        {"claims": [wire_claim_payload(span.span_id)]}
+    )
     transport.claims.append(transport.claims[0])
-    domain = transport.to_domain()
+    domain = ground_extraction_payload(transport, source, registry)
 
     assert isinstance(transport.claims, list)
     assert isinstance(domain.claims, tuple)
@@ -202,11 +239,24 @@ def test_X11_X17_native_structured_text_reaches_existing_domain_claim_contract()
     class Client:
         def converse(self, **request):
             assert "outputConfig" in request
+            body = json.loads(request["messages"][0]["content"][0]["text"])
             return {
                 "stopReason": "end_turn",
                 "output": {
                     "message": {
-                        "content": [{"text": json.dumps({"claims": [claim_payload()]})}]
+                        "content": [
+                            {
+                                "text": json.dumps(
+                                    {
+                                        "claims": [
+                                            wire_claim_payload(
+                                                body["EVIDENCE_SPANS"][0]["span_id"]
+                                            )
+                                        ]
+                                    }
+                                )
+                            }
+                        ]
                     }
                 }
             }
@@ -231,11 +281,12 @@ def test_X11_X14_canonical_wire_replay_reaches_evidence_and_deterministic_decisi
             class Client:
                 def converse(self, **request):
                     assert "outputConfig" in request
+                    body = json.loads(request["messages"][0]["content"][0]["text"])
                     payload = {
                         "claims": [
-                            claim_payload(
+                            wire_claim_payload(
+                                body["EVIDENCE_SPANS"][0]["span_id"],
                                 source_id=source.id,
-                                source_url=source.final_url,
                             )
                         ]
                     }

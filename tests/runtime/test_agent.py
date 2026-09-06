@@ -99,7 +99,6 @@ def test_actual_strands_loop_chooses_tools_from_observations_and_cannot_set_verd
                 "search_web",
                 "fetch_official_source",
                 "extract_official_claims",
-                "record_evidence",
                 "evaluate_current_state",
             }
             fetch_schema = next(t for t in tools if t["name"] == "fetch_official_source")[
@@ -118,11 +117,6 @@ def test_actual_strands_loop_chooses_tools_from_observations_and_cannot_set_verd
                     "source_id": observations[-1]["source_id"],
                     "focus": "required technology",
                 }
-            elif self.turns == 4:
-                name, args = (
-                    "record_evidence",
-                    {"claims": observations[-1]["claims"]},
-                )
             else:
                 name, args = "evaluate_current_state", {}
             yield {"messageStart": {"role": "assistant"}}
@@ -200,19 +194,6 @@ def test_U16_U19_replay_recovers_reference_and_reaches_deterministic_evidence_ha
                     "source_id": source["source_id"],
                     "focus": "required technology",
                 }
-            elif self.turns == 5:
-                observations = [
-                    json.loads(content["text"])
-                    for message in messages
-                    for block in message.get("content", [])
-                    if "toolResult" in block
-                    for content in block["toolResult"].get("content", [])
-                    if isinstance(content.get("text"), str)
-                ]
-                name, args = (
-                    "record_evidence",
-                    {"claims": observations[-1]["claims"]},
-                )
             else:
                 name, args = "evaluate_current_state", {}
             yield {"messageStart": {"role": "assistant"}}

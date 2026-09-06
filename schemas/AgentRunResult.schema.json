@@ -1198,6 +1198,19 @@
           "title": "Schema Version",
           "type": "string"
         },
+        "source_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Id"
+        },
         "source_type": {
           "$ref": "#/$defs/SourceType"
         },
@@ -2099,6 +2112,7 @@
             "SOURCE_FETCHED",
             "SOURCE_REFERENCE_CREATED",
             "STRUCTURED_EXTRACTION",
+            "SOURCE_SPAN_SELECTED",
             "CLAIM_EXTRACTED",
             "EVIDENCE_RECORDED",
             "ELIGIBILITY_EVALUATED",
@@ -2121,6 +2135,15 @@
             "type": "string"
           },
           "title": "Source Ids",
+          "type": "array"
+        },
+        "span_ids": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Span Ids",
           "type": "array"
         }
       },

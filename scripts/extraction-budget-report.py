@@ -17,8 +17,7 @@ from qualor.runtime.sources import SourceDocument
 def owned_output(count):
     base = {
         "source_id": "source_" + "a" * 32,
-        "source_url": "https://example.org/official/professional-agents/rules",
-        "state": "CANDIDATE",
+        "extraction_state": "CANDIDATE",
         "confidence": "HIGH",
         "not_applicable_reason": None,
     }
@@ -55,8 +54,13 @@ def owned_output(count):
     ]
     return {
         "claims": [
-            {**base, "field": field, "value": value, "excerpt": excerpt}
-            for field, value, excerpt in facts[:count]
+            {
+                **base,
+                "normalized_field": field,
+                "candidate_value": value,
+                "supporting_span_id": "span_" + str(index).zfill(32),
+            }
+            for index, (field, value, _excerpt) in enumerate(facts[:count], start=1)
         ]
     }
 
@@ -68,13 +72,13 @@ def measure():
     }
     source = SourceDocument(
         id="source_" + "a" * 32,
-        original_url=owned_output(1)["claims"][0]["source_url"],
-        final_url=owned_output(1)["claims"][0]["source_url"],
+        original_url="https://example.org/official/professional-agents/rules",
+        final_url="https://example.org/official/professional-agents/rules",
         retrieved_at=datetime(2026, 9, 6, tzinfo=UTC),
         content_hash="a" * 64,
         authority="OFFICIAL_RULES",
         content_type="text/html",
-        text=(owned_output(1)["claims"][0]["excerpt"] + " x" * 30_000)[:60_000],
+        text=("Projects must use Widget SDK." + " x" * 30_000)[:60_000],
     )
     request = build_extraction_request(
         source, "required technology", max_output_tokens=EXTRACTION_MAX_OUTPUT_TOKENS

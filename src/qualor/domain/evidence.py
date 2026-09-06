@@ -10,6 +10,7 @@ from .opportunity import OriginalSourceUrl
 
 
 class EvidenceRecord(Record):
+    source_id: NonEmpty | None = None
     original_url: OriginalSourceUrl
     final_url: OriginalSourceUrl
     retrieved_at: UtcInstant

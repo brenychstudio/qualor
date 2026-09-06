@@ -289,6 +289,7 @@ export type Category =
 export type OriginalUrl = string;
 export type RetrievedAt = string;
 export type SchemaVersion1 = "1";
+export type SourceId1 = string | null;
 export type SourceType =
   | "OFFICIAL_RULES"
   | "OFFICIAL_FAQ"
@@ -545,6 +546,7 @@ export type Event1 =
   | "SOURCE_FETCHED"
   | "SOURCE_REFERENCE_CREATED"
   | "STRUCTURED_EXTRACTION"
+  | "SOURCE_SPAN_SELECTED"
   | "CLAIM_EXTRACTED"
   | "EVIDENCE_RECORDED"
   | "ELIGIBILITY_EVALUATED"
@@ -553,6 +555,7 @@ export type Event1 =
   | "RUN_TERMINATED";
 export type ReasonCode2 = string;
 export type SourceIds1 = string[];
+export type SpanIds = string[];
 /**
  * @maxItems 100
  */
@@ -711,13 +714,47 @@ export type Claims1 = [] | [ExtractedClaim] | [ExtractedClaim, ExtractedClaim];
 /**
  * @maxItems 2
  */
-export type Claims2 = [] | [ExtractedClaim] | [ExtractedClaim, ExtractedClaim];
+export type Claims2 = [] | [ExtractedClaimTransport] | [ExtractedClaimTransport, ExtractedClaimTransport];
+export type CandidateValue =
+  | string
+  | [string]
+  | [string, string]
+  | [string, string, string]
+  | [string, string, string, string]
+  | [string, string, string, string, string]
+  | [string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string, string, string]
+  | null;
+export type Confidence2 = "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
+export type ExtractionState1 = "CANDIDATE" | "UNKNOWN" | "NOT_APPLICABLE";
+export type NormalizedField =
+  | "organizer"
+  | "program"
+  | "edition"
+  | "deadline"
+  | "entrant_type"
+  | "geography"
+  | "legal_entity"
+  | "project_policy"
+  | "license"
+  | "required_technology"
+  | "financial_support"
+  | "reward_conditions"
+  | "deliverables";
+export type NotApplicableReason2 = string | null;
+export type SourceId2 = string;
+export type SupportingSpanId = string;
 export type BoundedExcerpt = string;
 export type CandidateId = string;
 export type ContentLength = number;
 export type ContentType = string;
 export type RetrievedAt2 = string;
-export type SourceId1 = string;
+export type SourceId3 = string;
 export type SourceUrl1 = string;
 export type Title = string | null;
 export type Url = string;
@@ -890,6 +927,7 @@ export interface EvidenceRecord {
   provenance: Provenance3;
   retrieved_at: RetrievedAt;
   schema_version: SchemaVersion1;
+  source_id?: SourceId1;
   source_type: SourceType;
   supporting_excerpt: SupportingExcerpt;
   updated_at: UpdatedAt1;
@@ -1093,6 +1131,7 @@ export interface TraceEvent {
   event: Event1;
   reason_code: ReasonCode2;
   source_ids?: SourceIds1;
+  span_ids?: SpanIds;
 }
 export interface DecisionFixture {
   active_submissions: ActiveSubmissions;
@@ -1497,13 +1536,25 @@ export interface ExtractedClaimBatch {
 export interface ExtractedClaimBatchTransport {
   claims: Claims2;
 }
+/**
+ * Strict JSON-facing claim; source text authority remains in the runtime registry.
+ */
+export interface ExtractedClaimTransport {
+  candidate_value: CandidateValue;
+  confidence: Confidence2;
+  extraction_state: ExtractionState1;
+  normalized_field: NormalizedField;
+  not_applicable_reason?: NotApplicableReason2;
+  source_id: SourceId2;
+  supporting_span_id: SupportingSpanId;
+}
 export interface FetchedSourceRef {
   bounded_excerpt: BoundedExcerpt;
   candidate_id: CandidateId;
   content_length: ContentLength;
   content_type: ContentType;
   retrieved_at: RetrievedAt2;
-  source_id: SourceId1;
+  source_id: SourceId3;
   source_type: SourceType;
   source_url: SourceUrl1;
   title?: Title;

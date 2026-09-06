@@ -86,15 +86,13 @@ def test_diagnostic_run_policy_is_tighter_and_repeat_marker_fails_before_aws(tmp
         cli.run_command(profile, "gateway", diagnostic=True)
 
 
-@pytest.mark.parametrize("case", ["missing", "unsupported_field"])
-def test_actual_strands_schema_rejection_reaches_model_as_safe_actionable_result(case):
+def test_strands_has_no_direct_model_authored_evidence_admission_capability():
     from strands.models.model import Model
 
     from qualor.runtime.agent import run_agent
 
-    class InvalidClaimModel(Model):
-        turns = 0
-        received = None
+    class InspectingModel(Model):
+        inspected = False
 
         def update_config(self, **kwargs):
             pass
@@ -107,65 +105,18 @@ def test_actual_strands_schema_rejection_reaches_model_as_safe_actionable_result
             yield
 
         async def stream(self, messages, tool_specs=None, system_prompt=None, **kwargs):
-            self.turns += 1
-            record_schema = next(t for t in tool_specs if t["name"] == "record_evidence")
-            schema = record_schema["inputSchema"]["json"]
-            claim_schema = schema["$defs"]["ExtractedClaim"]
-            assert claim_schema["additionalProperties"] is False
-            assert "source_id" in claim_schema["required"]
-            assert "source_url" in claim_schema["required"]
-            assert "retrieved_at" not in claim_schema["properties"]
-            assert "evidence_id" not in claim_schema["properties"]
-            if self.turns == 1:
-                candidate = {"source_id": "private-input-value"}
-                if case == "unsupported_field":
-                    candidate.update(
-                        source_url="https://example.org/rules",
-                        field="invented-field",
-                        value="quoted",
-                        excerpt="quoted",
-                        state="CANDIDATE",
-                        confidence="HIGH",
-                    )
-                yield {"messageStart": {"role": "assistant"}}
-                yield {
-                    "contentBlockStart": {
-                        "contentBlockIndex": 0,
-                        "start": {
-                            "toolUse": {"toolUseId": "invalid-claim", "name": "record_evidence"}
-                        },
-                    }
-                }
-                yield {
-                    "contentBlockDelta": {
-                        "contentBlockIndex": 0,
-                        "delta": {"toolUse": {"input": json.dumps({"claims": [candidate]})}},
-                    }
-                }
-                yield {"contentBlockStop": {"contentBlockIndex": 0}}
-                yield {"messageStop": {"stopReason": "tool_use"}}
-            else:
-                self.received = next(
-                    b["toolResult"]
-                    for m in reversed(messages)
-                    for b in m["content"]
-                    if "toolResult" in b
-                )
-                payload = json.loads(self.received["content"][0]["text"])
-                assert payload["status"] == "REJECTED"
-                assert payload["reason_code"] == (
-                    "TOOL_ARGUMENT_VALIDATION_FAILED"
-                    if case == "missing"
-                    else "CLAIM_FIELD_UNSUPPORTED"
-                )
-                assert payload["recoverable"] == "YES"
-                if case == "missing":
-                    assert any(f.endswith("source_url") for f in payload["missing_fields"])
-                else:
-                    assert "claims.0.field:literal_error" in payload["validation_issues"]
-                assert "private-input-value" not in json.dumps(self.received)
-                yield {"messageStart": {"role": "assistant"}}
-                yield {"messageStop": {"stopReason": "end_turn"}}
+            del messages, system_prompt, kwargs
+            names = {item["name"] for item in tool_specs}
+            assert names == {
+                "search_web",
+                "fetch_official_source",
+                "extract_official_claims",
+                "evaluate_current_state",
+            }
+            assert "record_evidence" not in names
+            self.inspected = True
+            yield {"messageStart": {"role": "assistant"}}
+            yield {"messageStop": {"stopReason": "end_turn"}}
             yield {
                 "metadata": {
                     "usage": {"inputTokens": 1, "outputTokens": 1, "totalTokens": 2},
@@ -173,9 +124,7 @@ def test_actual_strands_schema_rejection_reaches_model_as_safe_actionable_result
                 }
             }
 
-    model = InvalidClaimModel()
+    model = InspectingModel()
     result, metrics = run_agent(make_run(), model=model)
-    assert model.received is not None, metrics
+    assert model.inspected, metrics
     assert not result.claims
-    assert "private-input-value" not in result.model_dump_json()
-    assert any(e.status == "REJECTED" and e.validation_issues for e in result.boundary_events)

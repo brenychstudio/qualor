@@ -32,6 +32,7 @@ class TraceEvent(Contract):
         "SOURCE_FETCHED",
         "SOURCE_REFERENCE_CREATED",
         "STRUCTURED_EXTRACTION",
+        "SOURCE_SPAN_SELECTED",
         "CLAIM_EXTRACTED",
         "EVIDENCE_RECORDED",
         "ELIGIBILITY_EVALUATED",
@@ -41,6 +42,7 @@ class TraceEvent(Contract):
     ]
     reason_code: NonEmpty
     source_ids: tuple[NonEmpty, ...] = ()
+    span_ids: tuple[NonEmpty, ...] = ()
     count: int = Field(default=0, ge=0)
 
 

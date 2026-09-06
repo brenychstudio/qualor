@@ -1,4 +1,68 @@
-# QUALOR-03 checkpoint: extraction envelope and token policy (03B3K)
+# QUALOR-03 checkpoint: deterministic claim grounding (03B3M)
+
+## QUALOR-03B3M: offline source-span authority
+
+Date: 2026-09-06. Baseline: `30f189c8e941be673626817307bbfc2828853afa`.
+This checkpoint made zero Bedrock inference, Web Search or paid AWS calls and made
+no IAM or infrastructure changes.
+
+### Root cause and source representations
+
+The latest live run retained the two rejection codes but intentionally did not
+retain model-authored excerpts or raw pages, so the historical excerpt values and
+their direct raw/normalized comparisons are unavailable. Code tracing nevertheless
+establishes the failing class. The HTTP fetcher decodes UTF-8 with replacement;
+HTML uses entity conversion, removes script/style/noscript/SVG text, collapses
+whitespace within text nodes and joins visible nodes with line breaks. JSON is
+parsed and serialized deterministically; plain text remains decoded text. That
+result is the single canonical `SourceDocument.text` stored in run memory.
+
+The extraction request used a bounded substring of that same `SourceDocument.text`.
+The evidence validator checked the full same value, with case folding and whitespace
+collapse only for membership. Any exact extraction-input quote therefore had to be
+present in the validation source. Both `CLAIM_EXCERPT_MISSING` results establish that
+the model-authored quote was not grounded even under this normalized comparison.
+The primary root-cause class is **MODEL_PARAPHRASED_EXCERPT**; no representation
+mismatch or fuzzy matching fix was justified.
+
+### Capability-safe grounding
+
+The extraction JSON transport now accepts `supporting_span_id` instead of a
+model-authored excerpt. Before extraction, QUALOR deterministically segments the
+bounded canonical source window into semantically bounded blocks of at most 800
+UTF-8 bytes. Each `EvidenceSpan` records exact text and source character offsets.
+Its ID is an HMAC capability created with a random per-extractor secret, binding
+source ID, offsets and text hash. Unknown, cross-source and prior-run IDs fail
+closed. No same-domain inference, fuzzy match, semantic similarity or quote repair
+can establish evidence authority.
+
+The model receives labelled exact spans and may select a span ID. The runtime
+resolves that ID, constructs the immutable domain claim with the registered exact
+text, and then calls the unchanged evidence validator. New EvidenceRecords retain
+the run source ID, exact excerpt, citation URL, retrieval time and normalized field.
+The public Strands tool set no longer exposes direct `record_evidence`; evidence
+admission is an internal deterministic step after structured extraction. The trace
+adds `SOURCE_SPAN_SELECTED` with separate source and span references, without raw
+page content or model reasoning.
+
+### Cost, replay and verification
+
+The top-level `{"claims":[...]}` JSON contract, native array, two-claim limit,
+1024-token extraction limit, prompt-injection boundary and exact evidence checks
+remain. Span labels produce a conditional five-call projection of **USD 0.154353**:
+input $0.090273, output $0.046080, search $0.014 and Gateway allowance $0.004.
+This remains below the unchanged $0.20 hard cap. The output-size bounds for one and
+two grounded transport claims are 297 and 573 UTF-8 bytes respectively.
+
+The offline live-like replay traverses search, candidate capability, fetch, bounded
+source reference, structured span selection, exact evidence admission, linked
+critical rule and deterministic **SKIP**. It emits a judge-readable source-grounding
+event and performs zero AWS calls. The evidence-admission strictness is unchanged;
+search snippets remain ineligible for hard evidence. Full regression results and
+the final commit are recorded in the B3M Result Packet. A further live run requires
+separate owner authorization.
+
+# Historical checkpoint: extraction envelope and token policy (03B3K)
 
 ## QUALOR-03B3K: offline response semantics and output sizing
 

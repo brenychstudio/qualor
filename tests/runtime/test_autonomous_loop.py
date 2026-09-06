@@ -217,7 +217,8 @@ def test_A24_A25_trace_is_bounded_action_only_and_final_engine_owns_result():
     assert "reasoning" not in result.model_dump_json().lower()
     assert len(result.trace) <= 100
     assert all(
-        set(e.model_dump()) == {"event", "reason_code", "source_ids", "count"} for e in result.trace
+        set(e.model_dump()) == {"event", "reason_code", "source_ids", "span_ids", "count"}
+        for e in result.trace
     )
 
 
