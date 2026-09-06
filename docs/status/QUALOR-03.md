@@ -15,6 +15,14 @@ that qualified clause `AMBIGUOUS`, so the EvidenceRecord remained `UNVERIFIED` a
 the rule remained unsupported. A second grounded `project_policy` proposal was
 rejected as `CLAIM_VALUE_UNSUPPORTED`. No normalization result was `SUPPORTED`.
 
+The accepted live cutoff retains the normalizer coverage limitation explicitly:
+
+```text
+NORMALIZATION_SUPPORTED_COUNT=0
+NORMALIZATION_AMBIGUOUS_COUNT=1
+NORMALIZATION_UNSUPPORTED_COUNT=1
+```
+
 The run therefore did not meet the final authoritative-evidence acceptance gate.
 The deterministic engines failed closed with unresolved portfolio eligibility and
 `WATCH`; they did not promote the ambiguous claim. The earliest acceptance failure
