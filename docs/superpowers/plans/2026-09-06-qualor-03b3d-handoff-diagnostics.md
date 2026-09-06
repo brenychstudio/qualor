@@ -64,3 +64,13 @@ rejection, not downstream symptoms. If evidence admission fails, no further fix/
 
 Update status documentation with factual outcome. Run full verification, secret scan,
 commit/push only task changes. No IAM/resource mutation, final merge or QUALOR-04A.
+
+## Execution outcome
+
+Baseline and pre-run clean verification passed. Eight diagnostic tests were added,
+including actual Strands SDK missing/unsupported-field rejections. All 537 tests passed.
+One authorized run-2 executed on commit `3d967dc9c2989d9a72f7bbabd074f4fe4e6835c2`.
+First rejection: B3 URL_NOT_DISCOVERED. Official FAQ subsequently fetched; after a
+second search the cost guard blocked the next model call. record_evidence was never
+called. No candidate validator/admission defect is inferred. No third run or speculative
+post-run code fix. See docs/status/QUALOR-03.md for exact counters, costs and blockers.

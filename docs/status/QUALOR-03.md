@@ -1,4 +1,87 @@
-# QUALOR-03 checkpoint: autonomous loop (03B3 PARTIAL)
+# QUALOR-03 checkpoint: live handoff localized (03B3D BLOCKED)
+
+## Final authorized diagnostic run: QUALOR-03B3D
+
+Date: 2026-09-06. Starting HEAD: `7ae18612109beeb3efd3878629c8bdfcda611dd0`.
+Instrumented run HEAD: `3d967dc9c2989d9a72f7bbabd074f4fe4e6835c2`.
+Status: **BLOCKED_ROOT_CAUSE_IDENTIFIED**. Evidence admission is still unproven;
+this is not a successful live handoff or permission to merge.
+
+The original run's root cause remains UNKNOWN because its rejection details were
+not retained. The new run precisely localizes the first failing boundary:
+
+- Boundary **B3: SearchCandidate registry -> fetch_official_source**.
+- Diagnostic event sequence **3**: `SOURCE_FETCH_RESULT`, status `REJECTED`,
+  reason `URL_NOT_DISCOVERED`, component `fetch_official_source`, recoverable `YES`.
+- Input shape: `object{url:string,focus:string}`. Output: structured rejection with
+  reason code, component, safe summary, recoverability and missing/invalid-field lists.
+- Exact behavior: the requested URL did not equal any URL registered by this run's
+  search results. The guard rejected it **before HTTP fetching**. The requested URL
+  value was not recorded, so a normalization bug versus a model-selected undiscovered
+  URL is not distinguished. No such speculative fix is claimed.
+
+The actual tool sequence was search -> rejected fetch -> accepted official FAQ fetch
+-> rejected fetch -> search. The accepted source was the [official competition FAQ](https://agentsforhumans.devpost.com/details/faqs),
+retrieved at `2026-09-06T11:21:09.181503Z`. Its URL, time, authority and body hash were
+retained; its full text was not committed. The second rejection had the same B3 code.
+The agent received actionable rejection results and issued a second search.
+
+The next model request was blocked by the **cost reservation guard**, before AWS:
+three model calls were used out of six, so this was the projected cost condition,
+not the model-call ceiling. Event 11 records `BUDGET_EXHAUSTED` in `strands_model`.
+The remaining reservation headroom was USD 0.088644; the proposed request exceeded it.
+The exact proposed reservation was not retained. Actual spend need not reach the cap
+for a conservative pre-call guard to stop. No model output from that request exists.
+
+Crucially, **record_evidence was never called**. There were no SDK tool errors,
+candidate claim validations, or evidence admission attempts in this run. A defect in
+B6/B7/B8 is therefore not demonstrated. `EXTRACTION_NO_CRITICAL_CLAIMS` at termination
+is a downstream observation, not the first causal rejection.
+
+### Counts and authority
+
+- One additional authorized live run, numbered **2**; no third run or post-run code fix.
+- One Strands Agent, 5 tool requests, 3 paid Bedrock calls, 2 Web Search calls,
+  5 Gateway MCP HTTP requests, 1 fetched official document, 1 retained source citation.
+- EvidenceRecord count **0**; critical evidence links **0**;
+  `LIVE_CRITICAL_RULE_WITH_EVIDENCE=NO`. No snippets promoted to evidence.
+- All three projects: deterministic `REVIEW_REQUIRED / WATCH` from missing critical
+  coverage. Best project unresolved; portfolio strategy/effort/readiness unknown.
+- Termination: `BUDGET_EXHAUSTED`; agent tool steps: 5.
+- Trace proves search, source selection/fetch and safe deterministic fallback. It does
+  not prove an evidence-bearing deterministic handoff. Failure diagnosis is readable;
+  the requested successful judge demonstration remains unfulfilled.
+
+### Cost and security
+
+Current-task limits: six model calls, three searches, five documents, USD 0.15.
+Reported usage: 11,992 input tokens, 492 output tokens. Model estimate USD 0.043356;
+search/Gateway estimate USD 0.014025; **task estimate USD 0.057381**. Guard accounting:
+USD 0.061356 including conservative search overhead. Pricing basis is unchanged from
+ADR 0003; estimates are not billing observations. Historical B3 spend is separate.
+
+The existing Gateway and target remain the only QUALOR resources (one each), READY.
+STS verified the expected non-root IAM user and temporary credentials. No IAM,
+credential, Gateway/target or other infrastructure changes occurred. Run-1 and run-2
+artifacts remain separate and gitignored; the run-2 exclusive marker prevents retry.
+
+### Offline verification and next action
+
+The pre-run clean commit passed **537 tests**, Ruff, full verification, schema/type
+generation, frontend build and secret scanning. Eight new diagnostics regressions
+cover strict SDK argument validation, actionable errors, source/claim events, privacy,
+and run-2 limits/repeat protection. An independent read-only diagnostic review led to
+retaining sanitized validation locations/types and restoring specific safe failure
+codes. No decision or claim-admission policy was loosened. All six requested handoff
+event types are implemented and exercised offline; unreached live stages are not faked.
+
+Post-run gates and exact final HEAD are reported in the Result Packet. The two existing
+upstream Python deprecation warnings and intentionally deferred Runtime permission
+gap remain unchanged. Next: owner review of B3 URL admission and the B5 model-context
+reservation boundary; any new implementation or paid run requires a separate task.
+No final PR, merge or QUALOR-04A work.
+
+## Historical QUALOR-03B3 checkpoint
 
 ## Current checkpoint: 2026-09-06
 
