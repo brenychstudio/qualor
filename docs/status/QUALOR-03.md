@@ -1,4 +1,90 @@
-# QUALOR-03 checkpoint: JSON-native extraction contract (03B3I)
+# QUALOR-03 checkpoint: extraction envelope and token policy (03B3K)
+
+## QUALOR-03B3K: offline response semantics and output sizing
+
+Date: 2026-09-06. Baseline: `b8be6658ed11d278ab377e47a5d021160ecb624b`.
+Zero inference, Web Search or paid AWS calls; no IAM/infrastructure changes.
+
+### Historical evidence and adapter diagnosis
+
+The ignored bounded J report retained extraction usage of 3293 input / 512 output
+tokens and `EXTRACTION_SCHEMA_REJECTED`, but no raw response, `stopReason`, response
+text length, JSON error or schema issue details. Historical stopReason is
+**UNAVAILABLE**. Output tokens equalling 512 does **not** prove truncation.
+
+Before this change, Converse returned a transient envelope to the extractor;
+`BudgetedBedrockClient` retained input/output usage for cost reconciliation. The
+extractor discarded termination, total tokens, content-block metadata and latency,
+and collapsed missing single-text content and JSON decode failures into schema
+rejection. `additionalModelResponseFields` was not requested or retained.
+
+The adapter now classifies `max_tokens` as `EXTRACTION_OUTPUT_TRUNCATED` before
+JSON/Pydantic. `malformed_model_output`/`malformed_tool_use`, `content_filtered`,
+`guardrail_intervened`, and `model_context_window_exceeded` have distinct bounded
+failure codes. Missing/unknown termination or provider exceptions fail closed.
+An `end_turn` response must contain the expected text envelope, valid JSON, then
+the canonical schema; JSON errors and schema errors remain separate. Stop names
+were checked against installed botocore and the official
+[Converse response contract](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html).
+
+Frozen receipts retain safe stop reason, input/output/total tokens, block count and
+known block types, text byte length, JSON/schema states, model ID, output limit,
+latency and response SHA-256. At most six enter run metrics. No raw text, source
+page, response prefix/suffix, exception prose, credentials or reasoning is retained.
+The existing tool rejection/trace path receives the precise failure code.
+
+### Measured output policy and conditional projection
+
+Reproduce locally: `uv run python scripts/extraction-budget-report.py`.
+Owned distinct synthetic claims extend the replay technology clause solely for
+sizing; they are not live opportunity rules. Default JSON serialization produces:
+
+| Claims | UTF-8 bytes / conservative output token bound |
+| --- | ---: |
+| 1 | 382 |
+| 2 | 801 |
+| 3 | 1121 |
+| 5 | 1813 |
+
+These are one-token-per-UTF-8-byte conservative estimates, not provider token
+counts. The retained maximum is **two focused claims**. Planning stays at 512;
+extraction uses **1024**: the measured two-claim bound exceeds both 512 and 768,
+and fits 1024 with 223 tokens of headroom. Arbitrarily verbose valid domain claims
+are not guaranteed to fit; truncation and batches exceeding two fail closed.
+The extraction prompt asks for concise focused claims, without a format-repair loop.
+No token estimator, $0.20 task cap, reservation/reconciliation or call count rule
+was relaxed. The guard checks the extraction-specific allowance independently.
+
+Five-call projection: four historical planner input counts (2402, 3575, 4401,
+4888), worst configured planner outputs (4 x 512), and one isolated extraction
+(1024 output; input bound is the larger of the reconstructed request and the
+historical 11972 bytes, plus the existing 2048 overhead). Cost components:
+input **$0.087858**, output **$0.046080**, two searches **$0.014**, Gateway allowance
+**$0.004**, total **$0.151938**. Rates reuse the existing model/search policy.
+Gateway amount is a conservative allowance, not measured billing.
+
+This projection is conditional on the observed planner input prefix and one
+successful focused extraction followed by deterministic finalization. It is not
+a worst-case forecast for arbitrary future agent actions. Each actual request
+still reserves before execution and reconciles actual usage; it can be stopped
+by the unchanged hard cap. No live run occurred to validate this new projection.
+
+### Replay and regression
+
+Initial adapter/policy RED suite: 12 expected failures. GREEN replay traverses one
+Strands planner, search candidate, source capability, bounded reference, recorded
+native canonical JSON, one admitted EvidenceRecord, a linked critical rule and
+deterministic **SKIP**. Receipt stop/usage/validation metadata survives into run
+metrics. Replay inference/search AWS calls are zero. The JSON wrapper/native array,
+immutable post-validation domain tuple, evidence admission and deterministic
+authority are unchanged. Full Python regression: **599 tests**, with the two
+existing upstream dependency deprecation warnings. Schema/type regeneration,
+frontend install/build and read-only AWS preflight passed. The local Node 22/npm 10
+engine warning remains; the project declares Node 24/npm 11. No dependency/runtime
+upgrades or warning suppression were included in this bounded task.
+
+Historical truncation remains unproven. A further paid proof requires explicit
+owner authorization; this checkpoint does not claim live evidence acceptance.
 
 ## QUALOR-03B3I: structured extraction transport closure
 

@@ -203,6 +203,7 @@ def test_X11_X17_native_structured_text_reaches_existing_domain_claim_contract()
         def converse(self, **request):
             assert "outputConfig" in request
             return {
+                "stopReason": "end_turn",
                 "output": {
                     "message": {
                         "content": [{"text": json.dumps({"claims": [claim_payload()]})}]
@@ -239,6 +240,7 @@ def test_X11_X14_canonical_wire_replay_reaches_evidence_and_deterministic_decisi
                         ]
                     }
                     return {
+                        "stopReason": "end_turn",
                         "output": {
                             "message": {"content": [{"text": json.dumps(payload)}]}
                         }

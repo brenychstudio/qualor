@@ -216,9 +216,7 @@ def test_complete_extraction_result_is_bounded_before_evidence_mutation():
     run.sources[reference["source_id"]] = source.model_copy(
         update={"original_url": long_url, "final_url": long_url}
     )
-    extractor.claims = tuple(
-        claim_for({**reference, "url": long_url}) for _ in range(2)
-    )
+    extractor.claims = tuple(claim_for({**reference, "url": long_url}) for _ in range(2))
 
     result = run.extract_official_claims(reference["source_id"], "technology")
 
@@ -287,11 +285,8 @@ def test_bedrock_extractor_uses_bounded_structured_request_and_existing_budget_g
                 ]
             }
             return {
-                "output": {
-                    "message": {
-                        "content": [{"text": json.dumps(payload)}]
-                    }
-                },
+                "stopReason": "end_turn",
+                "output": {"message": {"content": [{"text": json.dumps(payload)}]}},
                 "usage": {"inputTokens": 50, "outputTokens": 30},
             }
 
@@ -382,9 +377,35 @@ def test_C20_live_like_replay_reaches_evidence_and_judge_readable_trace():
     from strands.models.model import Model
 
     from qualor.runtime.agent import run_agent
-    from qualor.runtime.extraction import StaticClaimExtractor
+    from qualor.runtime.extraction import BedrockClaimExtractor, StaticClaimExtractor
 
-    extractor = StaticClaimExtractor()
+    class RecordedNativeExtraction(StaticClaimExtractor):
+        def __init__(self):
+            super().__init__()
+            self.receipts = []
+
+        def extract(self, source, focus):
+            outer = self
+
+            class RecordedClient:
+                def converse(self, **request):
+                    assert request["inferenceConfig"]["maxTokens"] == 1024
+                    return {
+                        "stopReason": "end_turn",
+                        "usage": {"inputTokens": 100, "outputTokens": 300, "totalTokens": 400},
+                        "output": {
+                            "message": {
+                                "content": [{"text": json.dumps({"claims": list(outer.claims)})}]
+                            }
+                        },
+                    }
+
+            adapter = BedrockClaimExtractor(RecordedClient())
+            claims = adapter.extract(source, focus)
+            self.receipts.extend(adapter.receipts)
+            return claims
+
+    extractor = RecordedNativeExtraction()
     run = fetched_run(extractor=extractor)
 
     class ReplayPlanner(Model):
@@ -429,10 +450,13 @@ def test_C20_live_like_replay_reaches_evidence_and_judge_readable_trace():
                         "confidence": "HIGH",
                     },
                 )
-                name, arguments = "extract_official_claims", {
-                    "source_id": source_id,
-                    "focus": "required technology",
-                }
+                name, arguments = (
+                    "extract_official_claims",
+                    {
+                        "source_id": source_id,
+                        "focus": "required technology",
+                    },
+                )
             elif self.turns == 4:
                 name, arguments = "evaluate_current_state", {}
             else:
@@ -468,6 +492,10 @@ def test_C20_live_like_replay_reaches_evidence_and_judge_readable_trace():
     assert run.budget.snapshot().search_calls == 0
     assert metrics["strands_tool_calls"] >= 4
     assert metrics["model_turns"] == 4
+    receipt = metrics["structured_extraction_receipts"][0]
+    assert receipt["stop_reason"] == "end_turn"
+    assert receipt["total_tokens"] == 400
+    assert receipt["schema_validation_state"] == "PASS"
     assert metrics["model_turns"] + 1 <= 6  # one isolated extraction model call
     assert result.termination_reason == "HARD_FAIL_CONFIRMED"
     events = [event.event for event in result.trace]

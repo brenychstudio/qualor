@@ -131,6 +131,15 @@ class BoundaryEvent(Contract):
 
 
 CODEBOOK = {
+    "EXTRACTION_OUTPUT_TRUNCATED": (
+        "Bedrock stopped at max_tokens; incomplete extraction is not admitted.", "NO"
+    ),
+    "BEDROCK_MALFORMED_MODEL_OUTPUT": ("Bedrock returned malformed model output.", "NO"),
+    "JSON_DECODE_FAILED": ("Completed extraction text is not valid JSON.", "NO"),
+    "BEDROCK_CONTENT_FILTERED": ("Bedrock filtered the extraction response.", "NO"),
+    "BEDROCK_GUARDRAIL_INTERVENED": ("Bedrock guardrail intervened in extraction.", "NO"),
+    "BEDROCK_CONTEXT_WINDOW_EXCEEDED": ("Bedrock reported context window exceeded.", "NO"),
+    "BEDROCK_PROVIDER_ERROR": ("Bedrock response was unavailable or incomplete.", "NO"),
     "MODEL_CALL_FAILED": (
         "The bounded model invocation failed; raw SDK error text is withheld.",
         "NO",

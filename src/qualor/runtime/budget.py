@@ -5,6 +5,8 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Literal
 
+from .model_policy import EXTRACTION_MAX_OUTPUT_TOKENS, STRANDS_MAX_OUTPUT_TOKENS
+
 LIVE_INFERENCE_MAX_CALLS_PER_RUN = 3
 LIVE_SEARCH_MAX_CALLS_PER_RUN = 5
 LIVE_FETCH_MAX_DOCUMENTS_PER_RUN = 10
@@ -50,7 +52,8 @@ class LiveBudgetPolicy:
     search_max_calls: int = LIVE_SEARCH_MAX_CALLS_PER_RUN
     fetch_max_documents: int = LIVE_FETCH_MAX_DOCUMENTS_PER_RUN
     cost_cap_usd: Decimal = QUALOR_03_DEVELOPMENT_COST_CAP_USD
-    model_max_output_tokens: int = 1600
+    model_max_output_tokens: int = STRANDS_MAX_OUTPUT_TOKENS
+    extraction_max_output_tokens: int = EXTRACTION_MAX_OUTPUT_TOKENS
     authorization: Literal["BASELINE", "QUALOR_03B3"] = "BASELINE"
 
     def limit_for(self, kind: LiveCallKind) -> int:
@@ -102,6 +105,10 @@ class LiveBudgetGuard:
             64 <= self.policy.model_max_output_tokens <= 1600
         ):
             raise ValueError("Configured model output limit exceeds a QUALOR-03 hard ceiling")
+        if type(self.policy.extraction_max_output_tokens) is not int or not (
+            64 <= self.policy.extraction_max_output_tokens <= EXTRACTION_MAX_OUTPUT_TOKENS
+        ):
+            raise ValueError("Configured extraction output limit exceeds measured policy")
 
     def reserve(self, kind: LiveCallKind, *, estimated_cost_usd: Decimal = Decimal("0")) -> int:
         kind = LiveCallKind(kind)

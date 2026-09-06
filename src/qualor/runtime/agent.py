@@ -1,6 +1,7 @@
 """One Strands information-planning agent with physically budgeted Bedrock calls."""
 
 import json
+from dataclasses import asdict
 from decimal import Decimal
 
 import boto3
@@ -124,10 +125,17 @@ class BudgetedBedrockClient:
         if request.get("modelId") != MODEL_ID:
             raise ValueError("Unapproved model")
         maximum = request.get("inferenceConfig", {}).get("maxTokens")
-        if (
-            type(maximum) is not int
-            or not 1 <= maximum <= self.budget.policy.model_max_output_tokens
-        ):
+        output_limit = (
+            self.budget.policy.extraction_max_output_tokens
+            if request.get("outputConfig", {})
+            .get("textFormat", {})
+            .get("structure", {})
+            .get("jsonSchema", {})
+            .get("name")
+            == "return_extracted_claims"
+            else self.budget.policy.model_max_output_tokens
+        )
+        if type(maximum) is not int or not 1 <= maximum <= output_limit:
             raise ValueError("Bounded output required")
         # Text/tools only: no image, document, cache or reasoning modes are enabled.
         self.request_metrics.append(model_request_metrics(request))
@@ -179,10 +187,10 @@ def live_model(budget):
 
 
 def live_extractor(model: BedrockModel) -> BedrockClaimExtractor:
-    """Share the already-budgeted client and output bound with the extraction tool."""
+    """Share the budgeted client, with a separate measured extraction output bound."""
 
     return BedrockClaimExtractor(
-        model.client, max_output_tokens=model.client.budget.policy.model_max_output_tokens
+        model.client, max_output_tokens=model.client.budget.policy.extraction_max_output_tokens
     )
 
 
@@ -222,11 +230,14 @@ def run_agent(run, *, model):
         bounded_agent_result(
             {"claims": [ExtractedClaim.model_validate(c).model_dump(mode="json") for c in claims]}
         )
-        return bounded_agent_result({
-            "observations": [
-                run.record_evidence(ExtractedClaim.model_validate(c).model_dump()) for c in claims
-            ]
-        })
+        return bounded_agent_result(
+            {
+                "observations": [
+                    run.record_evidence(ExtractedClaim.model_validate(c).model_dump())
+                    for c in claims
+                ]
+            }
+        )
 
     @tool
     def evaluate_current_state() -> dict:
@@ -382,4 +393,7 @@ def run_agent(run, *, model):
     if isinstance(model, BedrockModel):
         metrics["model_usage"] = model.client.usage
         metrics["model_request_metrics"] = model.client.request_metrics
+    metrics["structured_extraction_receipts"] = [
+        asdict(receipt) for receipt in getattr(run.extractor, "receipts", ())[-6:]
+    ]
     return run.finish(), metrics
