@@ -226,9 +226,11 @@ class BedrockClaimExtractor:
         self.max_output_tokens = max_output_tokens
         self.receipts = []
         self.span_registry = EvidenceSpanRegistry()
+        self.last_created_span_ids = ()
         self.last_selected_span_ids = ()
 
     def extract(self, source: SourceDocument, focus: str) -> tuple[ExtractedClaim, ...]:
+        self.last_created_span_ids = ()
         self.last_selected_span_ids = ()
         request = build_extraction_request(
             source,
@@ -236,6 +238,7 @@ class BedrockClaimExtractor:
             max_output_tokens=self.max_output_tokens,
             span_registry=self.span_registry,
         )
+        self.last_created_span_ids = self.span_registry.last_registered_span_ids
         receipt, _ = response_metadata(None, model_id=MODEL_ID, maximum=self.max_output_tokens)
         try:
             try:

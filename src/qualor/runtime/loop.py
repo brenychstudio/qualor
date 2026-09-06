@@ -374,6 +374,17 @@ class OpportunityRun:
                 for claim in claims
             ):
                 raise ValueError("EXTRACTION_SOURCE_REFERENCE_MISMATCH")
+            created_span_ids = tuple(
+                str(item) for item in getattr(self.extractor, "last_created_span_ids", ())
+            )
+            if created_span_ids:
+                self.event(
+                    "EVIDENCE_SPANS_CREATED",
+                    "DUAL_BOUNDED_SOURCE_CAPABILITIES",
+                    (source_id,),
+                    len(created_span_ids),
+                    span_ids=created_span_ids,
+                )
             self.event("STRUCTURED_EXTRACTION", "MODEL_POWERED_TOOL", (source_id,), len(claims))
             selected_span_ids = tuple(
                 str(item) for item in getattr(self.extractor, "last_selected_span_ids", ())

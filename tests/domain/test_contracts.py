@@ -212,3 +212,31 @@ def test_evidence_preserves_original_source_urls():
     )
     assert evidence.original_url == url
     assert evidence.final_url == url
+
+
+def test_evidence_excerpt_uses_canonical_700_character_contract():
+    from qualor.domain import EvidenceRecord
+    from qualor.domain.evidence import MAX_EVIDENCE_EXCERPT_CHARS
+
+    fields = {
+        **metadata(),
+        "original_url": "https://synthetic.example/rules",
+        "final_url": "https://synthetic.example/rules",
+        "retrieved_at": "2026-09-05T12:00:00Z",
+        "source_type": "SYNTHETIC_FIXTURE",
+        "content_hash": "a" * 64,
+        "normalized_field": "GEOGRAPHY",
+        "extraction_state": "REVIEWED",
+    }
+
+    assert len(
+        EvidenceRecord(
+            **fields,
+            supporting_excerpt="a" * MAX_EVIDENCE_EXCERPT_CHARS,
+        ).supporting_excerpt
+    ) == MAX_EVIDENCE_EXCERPT_CHARS
+    with pytest.raises(ValidationError):
+        EvidenceRecord(
+            **fields,
+            supporting_excerpt="a" * (MAX_EVIDENCE_EXCERPT_CHARS + 1),
+        )

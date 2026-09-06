@@ -124,6 +124,7 @@
       "$ref": "#/$defs/SourceType"
     },
     "supporting_excerpt": {
+      "maxLength": 700,
       "minLength": 1,
       "title": "Supporting Excerpt",
       "type": "string"

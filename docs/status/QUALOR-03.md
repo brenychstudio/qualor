@@ -1,4 +1,39 @@
-# QUALOR-03 checkpoint: deterministic claim grounding (03B3M)
+# QUALOR-03 checkpoint: dual-bounded evidence spans (03B3O)
+
+## QUALOR-03B3O: offline producer/consumer contract alignment
+
+Date: 2026-09-06. Baseline: `e037bb331c2b85856bce0079d10027510d298e21`.
+This checkpoint made zero Bedrock inference, Web Search or paid AWS calls and made
+no IAM or infrastructure changes.
+
+The source-grounded live path had already resolved a model-selected, current-run
+HMAC span capability to exact canonical source text. Admission then failed because
+the producer allowed 800 UTF-8 bytes while `ExtractedClaim.excerpt` allowed 700
+characters. A 750-character ASCII source reproduced the exact mismatch offline:
+it passed the producer and failed Pydantic with `string_too_long` downstream.
+
+`MAX_EVIDENCE_EXCERPT_CHARS=700` is now the single domain character policy used by
+`EvidenceRecord`, `ExtractedClaim`, and `EvidenceSpan`. Span generation guarantees
+both at most 700 characters and at most 800 UTF-8 bytes. It continues to prefer
+paragraph/list-row, sentence and whitespace boundaries before a deterministic hard
+boundary. Each emitted span remains an exact canonical-source slice with unchanged
+character offsets; its HMAC identity remains bound to run registry, source, offsets
+and content hash. Normal blocks below both bounds remain intact. No fuzzy matching,
+model-authored quote authority, evidence relaxation or domain-limit increase was
+introduced.
+
+The successful live-like replay now exposes `EVIDENCE_SPANS_CREATED`,
+`STRUCTURED_EXTRACTION`, `SOURCE_SPAN_SELECTED` and evidence-admission events before
+deterministic eligibility and decision. It admits one exact source-grounded
+EvidenceRecord, links the critical technology rule, and deterministically returns
+**SKIP**, with zero AWS calls. The prior recovered B2 tool-result warning has no
+reproducible current blocker and was not redesigned.
+
+The post-fix five-call live-like projection is **USD 0.154590** against the unchanged
+USD 0.20 cap. Planner/extraction token limits and the two-claim extraction maximum
+are unchanged. A further live run requires separate owner authorization.
+
+# Historical checkpoint: deterministic claim grounding (03B3M)
 
 ## QUALOR-03B3M: offline source-span authority
 

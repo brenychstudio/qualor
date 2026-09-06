@@ -418,6 +418,7 @@ def test_C20_live_like_replay_reaches_evidence_and_judge_readable_trace():
             adapter = BedrockClaimExtractor(RecordedClient())
             claims = adapter.extract(source, focus)
             self.receipts.extend(adapter.receipts)
+            self.last_created_span_ids = adapter.last_created_span_ids
             self.last_selected_span_ids = adapter.last_selected_span_ids
             return claims
 
@@ -515,6 +516,7 @@ def test_C20_live_like_replay_reaches_evidence_and_judge_readable_trace():
     assert metrics["model_turns"] + 1 <= 6  # one isolated extraction model call
     assert result.termination_reason == "HARD_FAIL_CONFIRMED"
     events = [event.event for event in result.trace]
+    assert events.index("EVIDENCE_SPANS_CREATED") < events.index("STRUCTURED_EXTRACTION")
     assert events.index("SOURCE_REFERENCE_CREATED") < events.index("STRUCTURED_EXTRACTION")
     assert events.index("SOURCE_SPAN_SELECTED") < events.index("EVIDENCE_RECORDED")
     assert events.index("STRUCTURED_EXTRACTION") < events.index("EVIDENCE_RECORDED")
@@ -522,3 +524,6 @@ def test_C20_live_like_replay_reaches_evidence_and_judge_readable_trace():
     grounding = next(event for event in result.trace if event.event == "SOURCE_SPAN_SELECTED")
     assert grounding.source_ids
     assert grounding.span_ids and all(item.startswith("span_") for item in grounding.span_ids)
+    created = next(event for event in result.trace if event.event == "EVIDENCE_SPANS_CREATED")
+    assert created.count >= 1
+    assert created.span_ids and all(item.startswith("span_") for item in created.span_ids)

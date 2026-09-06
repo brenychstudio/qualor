@@ -7,7 +7,7 @@ from pydantic import Field, StrictStr, model_validator
 
 from qualor.domain.base import Contract, NonEmpty
 from qualor.domain.enums import Category, ExtractionState, Provenance, SourceType
-from qualor.domain.evidence import EvidenceRecord
+from qualor.domain.evidence import MAX_EVIDENCE_EXCERPT_CHARS, EvidenceRecord
 
 from .sources import SourceDocument
 
@@ -52,7 +52,7 @@ class ExtractedClaim(Contract):
     source_url: NonEmpty
     field: ClaimField
     value: Annotated[StrictStr, Field(max_length=500)] | tuple[StrictStr, ...] | None
-    excerpt: str = Field(min_length=1, max_length=700)
+    excerpt: str = Field(min_length=1, max_length=MAX_EVIDENCE_EXCERPT_CHARS)
     state: Literal["CANDIDATE", "UNKNOWN", "NOT_APPLICABLE"]
     confidence: Literal["HIGH", "MEDIUM", "LOW", "UNKNOWN"]
     not_applicable_reason: str | None = Field(default=None, max_length=300)

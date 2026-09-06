@@ -31,6 +31,7 @@ class TraceEvent(Contract):
         "SOURCE_SELECTED",
         "SOURCE_FETCHED",
         "SOURCE_REFERENCE_CREATED",
+        "EVIDENCE_SPANS_CREATED",
         "STRUCTURED_EXTRACTION",
         "SOURCE_SPAN_SELECTED",
         "CLAIM_EXTRACTED",
