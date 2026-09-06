@@ -1,4 +1,40 @@
-# QUALOR-03 checkpoint: dual-bounded evidence spans (03B3O)
+# QUALOR-03 checkpoint: deterministic claim-value grounding (03B3Q)
+
+## QUALOR-03B3Q: offline field-aware source normalization
+
+Date: 2026-09-06. Baseline: `f09e01077848cf9967144e7625a933422115784b`.
+This checkpoint made zero Bedrock inference, Web Search or paid AWS calls and made
+no IAM or infrastructure changes.
+
+The B3P live diagnostics retained two string claim shapes and the common
+`CLAIM_VALUE_UNSUPPORTED` rejection, but intentionally did not retain their fields,
+values or exact source spans. Those historical values cannot be reconstructed and
+are not invented here. Code review proved the applicable contract defect: every
+canonical model value was previously required to occur literally in the grounded
+span, even when a canonical enum legitimately differs from the source wording.
+
+The admission boundary now treats the runtime-grounded exact span as source
+authority, a versioned deterministic field normalizer as normalization authority,
+and the model value as a proposal. Version 1 implements only the bounded V1
+families already exercised by the architecture: entrant-type explicit phrases,
+required-technology controlled clauses and new-project controlled clauses. Open
+text retains normalized exact-substring support. Unsupported proposals fail;
+model/source conflicts receive a distinct rejection; ambiguous or unknown wording
+keeps `normalized_value=None` and can never become a definitive hard fact.
+
+EvidenceRecords continue to store the exact runtime source excerpt and citation.
+No fuzzy matching, embeddings, model adjudication, search-snippet evidence or
+evidence-validation relaxation was added. The trace now emits a bounded
+`CLAIM_NORMALIZATION_RESULT` with field, status, reason code and normalizer version
+before evidence admission. Prompt-injection text cannot change the deterministic
+normalized value or final authority.
+
+The full live-like replay still reaches one source-grounded EvidenceRecord, links a
+critical rule and deterministically returns **SKIP**. The five-call projection is
+unchanged at **USD 0.154590** against the USD 0.20 cap. A further live run requires
+separate owner authorization.
+
+# Historical checkpoint: dual-bounded evidence spans (03B3O)
 
 ## QUALOR-03B3O: offline producer/consumer contract alignment
 

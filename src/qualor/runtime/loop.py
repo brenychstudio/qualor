@@ -67,7 +67,18 @@ class OpportunityRun:
         self.decision = None
         self.contradictions = ()
 
-    def event(self, event, reason, ids=(), count=0, *, span_ids=()):
+    def event(
+        self,
+        event,
+        reason,
+        ids=(),
+        count=0,
+        *,
+        span_ids=(),
+        normalized_field=None,
+        normalization_status=None,
+        normalizer_version=None,
+    ):
         if len(self.trace) < 99:
             self.trace.append(
                 TraceEvent(
@@ -76,6 +87,9 @@ class OpportunityRun:
                     source_ids=ids,
                     span_ids=span_ids,
                     count=count,
+                    normalized_field=normalized_field,
+                    normalization_status=normalization_status,
+                    normalizer_version=normalizer_version,
                 )
             )
 
@@ -472,6 +486,14 @@ class OpportunityRun:
                 input_value=parsed.model_dump(),
             )
             admitted = validate_claim(parsed, self.sources)
+            self.event(
+                "CLAIM_NORMALIZATION_RESULT",
+                admitted.normalization_reason_code,
+                (admitted.evidence.id,),
+                normalized_field=admitted.claim.field,
+                normalization_status=admitted.normalization_status,
+                normalizer_version=admitted.normalizer_version,
+            )
             self.diagnostic(
                 "CLAIM_VALIDATION_RESULT",
                 stage,

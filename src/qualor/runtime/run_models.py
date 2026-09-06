@@ -35,6 +35,7 @@ class TraceEvent(Contract):
         "STRUCTURED_EXTRACTION",
         "SOURCE_SPAN_SELECTED",
         "CLAIM_EXTRACTED",
+        "CLAIM_NORMALIZATION_RESULT",
         "EVIDENCE_RECORDED",
         "ELIGIBILITY_EVALUATED",
         "DECISION_EVALUATED",
@@ -45,6 +46,9 @@ class TraceEvent(Contract):
     source_ids: tuple[NonEmpty, ...] = ()
     span_ids: tuple[NonEmpty, ...] = ()
     count: int = Field(default=0, ge=0)
+    normalized_field: str | None = Field(default=None, max_length=80)
+    normalization_status: Literal["SUPPORTED", "UNSUPPORTED", "AMBIGUOUS", "UNKNOWN"] | None = None
+    normalizer_version: str | None = Field(default=None, max_length=20)
 
 
 class SourceCitation(Contract):

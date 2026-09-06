@@ -2116,6 +2116,7 @@
             "STRUCTURED_EXTRACTION",
             "SOURCE_SPAN_SELECTED",
             "CLAIM_EXTRACTED",
+            "CLAIM_NORMALIZATION_RESULT",
             "EVIDENCE_RECORDED",
             "ELIGIBILITY_EVALUATED",
             "DECISION_EVALUATED",
@@ -2124,6 +2125,50 @@
           ],
           "title": "Event",
           "type": "string"
+        },
+        "normalization_status": {
+          "anyOf": [
+            {
+              "enum": [
+                "SUPPORTED",
+                "UNSUPPORTED",
+                "AMBIGUOUS",
+                "UNKNOWN"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Normalization Status"
+        },
+        "normalized_field": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Normalized Field"
+        },
+        "normalizer_version": {
+          "anyOf": [
+            {
+              "maxLength": 20,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Normalizer Version"
         },
         "reason_code": {
           "minLength": 1,
@@ -2165,6 +2210,20 @@
         "evidence": {
           "$ref": "#/$defs/EvidenceRecord"
         },
+        "normalization_reason_code": {
+          "title": "Normalization Reason Code",
+          "type": "string"
+        },
+        "normalization_status": {
+          "enum": [
+            "SUPPORTED",
+            "UNSUPPORTED",
+            "AMBIGUOUS",
+            "UNKNOWN"
+          ],
+          "title": "Normalization Status",
+          "type": "string"
+        },
         "normalized_value": {
           "anyOf": [
             {
@@ -2182,6 +2241,12 @@
           ],
           "title": "Normalized Value"
         },
+        "normalizer_version": {
+          "const": "1",
+          "default": "1",
+          "title": "Normalizer Version",
+          "type": "string"
+        },
         "support_state": {
           "enum": [
             "CONTROLLED_CLAUSE_VERIFIED",
@@ -2196,7 +2261,9 @@
         "claim",
         "evidence",
         "normalized_value",
-        "support_state"
+        "support_state",
+        "normalization_status",
+        "normalization_reason_code"
       ],
       "title": "ValidatedClaim",
       "type": "object"

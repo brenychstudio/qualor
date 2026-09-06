@@ -9,6 +9,13 @@ from qualor.domain.base import Contract, NonEmpty
 from qualor.domain.enums import Category, ExtractionState, Provenance, SourceType
 from qualor.domain.evidence import MAX_EVIDENCE_EXCERPT_CHARS, EvidenceRecord
 
+from .normalization import (
+    NORMALIZER_VERSION,
+    NormalizationStatus,
+    canonical_values_equal,
+    normalize_supported_claim,
+    normalize_text,
+)
 from .sources import SourceDocument
 
 ClaimField = Literal[
@@ -75,10 +82,13 @@ class ValidatedClaim(Contract):
     evidence: EvidenceRecord
     normalized_value: StrictStr | tuple[StrictStr, ...] | None
     support_state: Literal["CONTROLLED_CLAUSE_VERIFIED", "QUOTE_ONLY", "UNKNOWN"]
+    normalization_status: NormalizationStatus
+    normalization_reason_code: StrictStr
+    normalizer_version: Literal["1"] = NORMALIZER_VERSION
 
 
 def normalize(text: str) -> str:
-    return " ".join(text.casefold().split())
+    return normalize_text(text)
 
 
 def validate_claim(claim: ExtractedClaim, sources: dict[str, SourceDocument]) -> ValidatedClaim:
@@ -91,14 +101,22 @@ def validate_claim(claim: ExtractedClaim, sources: dict[str, SourceDocument]) ->
         raise ValueError("EXCERPT_NOT_IN_FETCHED_SOURCE")
     if source.authority == SourceType.SEARCH_SNIPPET:
         raise ValueError("SEARCH_SNIPPET_IS_NOT_FETCHED_EVIDENCE")
-    value = claim.value
-    new_only = claim.field == "project_policy" and value == "NEW_ONLY"
-    if value is not None and not new_only:
-        values = value if isinstance(value, tuple) else (value,)
-        if any(not v or normalize(v) not in excerpt for v in values):
-            raise ValueError("NORMALIZED_VALUE_NOT_SUPPORTED_BY_QUOTE")
     if claim.state == "NOT_APPLICABLE" and normalize(claim.not_applicable_reason) not in excerpt:
         raise ValueError("NA_REASON_NOT_SUPPORTED")
+    normalization = normalize_supported_claim(
+        claim.field,
+        claim.excerpt,
+        claim.value,
+        state=claim.state,
+    )
+    if normalization.status == "UNSUPPORTED":
+        raise ValueError("NORMALIZED_VALUE_NOT_SUPPORTED_BY_QUOTE")
+    if normalization.status == "SUPPORTED" and not canonical_values_equal(
+        normalization.canonical_value, claim.value
+    ):
+        raise ValueError("MODEL_VALUE_CONFLICTS_WITH_SOURCE_NORMALIZATION")
+    value = normalization.canonical_value if normalization.status == "SUPPORTED" else None
+    new_only = claim.field == "project_policy" and value == "NEW_ONLY"
     start = text.find(excerpt)
     # Check the entire containing sentence, not a model-selected fragment that could
     # conceal a negation or alternative. Unsupported compound clauses remain unknown.
@@ -177,4 +195,6 @@ def validate_claim(claim: ExtractedClaim, sources: dict[str, SourceDocument]) ->
         else "UNKNOWN"
         if value is None
         else "QUOTE_ONLY",
+        normalization_status=normalization.status,
+        normalization_reason_code=normalization.reason_code,
     )

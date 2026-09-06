@@ -217,8 +217,27 @@ def test_A24_A25_trace_is_bounded_action_only_and_final_engine_owns_result():
     assert "reasoning" not in result.model_dump_json().lower()
     assert len(result.trace) <= 100
     assert all(
-        set(e.model_dump()) == {"event", "reason_code", "source_ids", "span_ids", "count"}
+        set(e.model_dump())
+        == {
+            "event",
+            "reason_code",
+            "source_ids",
+            "span_ids",
+            "count",
+            "normalized_field",
+            "normalization_status",
+            "normalizer_version",
+        }
         for e in result.trace
+    )
+    normalization = next(
+        event for event in result.trace if event.event == "CLAIM_NORMALIZATION_RESULT"
+    )
+    assert normalization.normalized_field == "required_technology"
+    assert normalization.normalization_status == "SUPPORTED"
+    assert normalization.normalizer_version == "1"
+    assert result.trace.index(normalization) < next(
+        index for index, event in enumerate(result.trace) if event.event == "EVIDENCE_RECORDED"
     )
 
 

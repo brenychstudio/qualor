@@ -212,6 +212,10 @@ CODEBOOK = {
         "Use only values supported by the excerpt, or retain UNKNOWN.",
         "YES",
     ),
+    "MODEL_VALUE_CONFLICTS_WITH_SOURCE_NORMALIZATION": (
+        "The proposed value conflicts with deterministic source normalization.",
+        "YES",
+    ),
     "TOOL_ARGUMENT_VALIDATION_FAILED": (
         "Correct the listed fields using the strict tool schema.",
         "YES",

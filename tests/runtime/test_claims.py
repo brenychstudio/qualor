@@ -101,17 +101,29 @@ def test_A03_A04_final_verdict_fields_rejected():
 @pytest.mark.parametrize(
     "text",
     [
-        "Projects must use Widget SDK2.",
-        "Judges must use Widget SDK.",
         "If entering the optional track, projects must use Widget SDK.",
         "Projects must use Widget SDK. This requirement does not apply to existing projects.",
     ],
 )
-def test_partial_names_unrelated_subjects_and_qualifications_remain_unverified(text):
+def test_qualified_technology_claims_remain_unverified(text):
     from qualor.runtime.claims import validate_claim
 
     c = validate_claim(claim(excerpt=text), {"source_owned": source(text)})
     assert c.evidence.extraction_state == "UNVERIFIED"
+
+
+@pytest.mark.parametrize(
+    ("text", "reason"),
+    [
+        ("Projects must use Widget SDK2.", "MODEL_VALUE_CONFLICTS_WITH_SOURCE_NORMALIZATION"),
+        ("Judges must use Widget SDK.", "NORMALIZED_VALUE_NOT_SUPPORTED_BY_QUOTE"),
+    ],
+)
+def test_conflicting_or_unsupported_technology_proposal_is_rejected(text, reason):
+    from qualor.runtime.claims import validate_claim
+
+    with pytest.raises(ValueError, match=reason):
+        validate_claim(claim(excerpt=text), {"source_owned": source(text)})
 
 
 @pytest.mark.parametrize(

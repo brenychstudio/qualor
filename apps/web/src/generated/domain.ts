@@ -302,7 +302,10 @@ export type SourceType =
 export type SupportingExcerpt = string;
 export type UpdatedAt1 = string;
 export type Version1 = number;
+export type NormalizationReasonCode = string;
+export type NormalizationStatus = "SUPPORTED" | "UNSUPPORTED" | "AMBIGUOUS" | "UNKNOWN";
 export type NormalizedValue = string | string[] | null;
+export type NormalizerVersion = "1";
 export type SupportState = "CONTROLLED_CLAUSE_VERIFIED" | "QUOTE_ONLY" | "UNKNOWN";
 /**
  * @maxItems 40
@@ -549,11 +552,15 @@ export type Event1 =
   | "STRUCTURED_EXTRACTION"
   | "SOURCE_SPAN_SELECTED"
   | "CLAIM_EXTRACTED"
+  | "CLAIM_NORMALIZATION_RESULT"
   | "EVIDENCE_RECORDED"
   | "ELIGIBILITY_EVALUATED"
   | "DECISION_EVALUATED"
   | "HUMAN_REVIEW_NEEDED"
   | "RUN_TERMINATED";
+export type NormalizationStatus1 = ("SUPPORTED" | "UNSUPPORTED" | "AMBIGUOUS" | "UNKNOWN") | null;
+export type NormalizedField = string | null;
+export type NormalizerVersion1 = string | null;
 export type ReasonCode2 = string;
 export type SourceIds1 = string[];
 export type SpanIds = string[];
@@ -733,7 +740,7 @@ export type CandidateValue =
   | null;
 export type Confidence2 = "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
 export type ExtractionState1 = "CANDIDATE" | "UNKNOWN" | "NOT_APPLICABLE";
-export type NormalizedField =
+export type NormalizedField1 =
   | "organizer"
   | "program"
   | "edition"
@@ -903,7 +910,10 @@ export interface BoundaryEvent {
 export interface ValidatedClaim {
   claim: ExtractedClaim;
   evidence: EvidenceRecord;
+  normalization_reason_code: NormalizationReasonCode;
+  normalization_status: NormalizationStatus;
   normalized_value: NormalizedValue;
+  normalizer_version?: NormalizerVersion;
   support_state: SupportState;
 }
 export interface ExtractedClaim {
@@ -1130,6 +1140,9 @@ export interface SourceCitation {
 export interface TraceEvent {
   count?: Count;
   event: Event1;
+  normalization_status?: NormalizationStatus1;
+  normalized_field?: NormalizedField;
+  normalizer_version?: NormalizerVersion1;
   reason_code: ReasonCode2;
   source_ids?: SourceIds1;
   span_ids?: SpanIds;
@@ -1544,7 +1557,7 @@ export interface ExtractedClaimTransport {
   candidate_value: CandidateValue;
   confidence: Confidence2;
   extraction_state: ExtractionState1;
-  normalized_field: NormalizedField;
+  normalized_field: NormalizedField1;
   not_applicable_reason?: NotApplicableReason2;
   source_id: SourceId2;
   supporting_span_id: SupportingSpanId;
