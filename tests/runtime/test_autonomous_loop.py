@@ -250,6 +250,31 @@ def test_rejected_request_records_safe_specific_code_without_private_error_text(
     assert result["reason_code"] == "TOOL_OR_CLAIM_REJECTED"
 
 
+def test_rejected_claim_exposes_bounded_normalization_result_without_value_or_excerpt():
+    r = make_run()
+    discover_and_fetch(r)
+    source = next(iter(r.sources.values()))
+    result = r.record_evidence(
+        {
+            "source_id": source.id,
+            "source_url": source.final_url,
+            "field": "required_technology",
+            "value": ["Different SDK"],
+            "excerpt": "Projects must use Widget SDK.",
+            "state": "CANDIDATE",
+            "confidence": "HIGH",
+        }
+    )
+
+    assert result["reason_code"] == "MODEL_VALUE_CONFLICTS_WITH_SOURCE_NORMALIZATION"
+    event = next(e for e in r.trace if e.event == "CLAIM_NORMALIZATION_RESULT")
+    assert event.normalized_field == "required_technology"
+    assert event.normalization_status == "SUPPORTED"
+    assert event.normalizer_version == "1"
+    assert "Different SDK" not in event.model_dump_json()
+    assert "Projects must use" not in event.model_dump_json()
+
+
 def test_fetched_source_citation_survives_even_without_admitted_claims():
     r = make_run()
     discover_and_fetch(r)

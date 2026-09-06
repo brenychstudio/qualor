@@ -11,6 +11,7 @@ from qualor.domain.evidence import MAX_EVIDENCE_EXCERPT_CHARS, EvidenceRecord
 
 from .normalization import (
     NORMALIZER_VERSION,
+    ClaimNormalizationError,
     NormalizationStatus,
     canonical_values_equal,
     normalize_supported_claim,
@@ -110,11 +111,15 @@ def validate_claim(claim: ExtractedClaim, sources: dict[str, SourceDocument]) ->
         state=claim.state,
     )
     if normalization.status == "UNSUPPORTED":
-        raise ValueError("NORMALIZED_VALUE_NOT_SUPPORTED_BY_QUOTE")
+        raise ClaimNormalizationError(
+            "NORMALIZED_VALUE_NOT_SUPPORTED_BY_QUOTE", normalization
+        )
     if normalization.status == "SUPPORTED" and not canonical_values_equal(
         normalization.canonical_value, claim.value
     ):
-        raise ValueError("MODEL_VALUE_CONFLICTS_WITH_SOURCE_NORMALIZATION")
+        raise ClaimNormalizationError(
+            "MODEL_VALUE_CONFLICTS_WITH_SOURCE_NORMALIZATION", normalization
+        )
     value = normalization.canonical_value if normalization.status == "SUPPORTED" else None
     new_only = claim.field == "project_policy" and value == "NEW_ONLY"
     start = text.find(excerpt)

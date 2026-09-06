@@ -19,6 +19,14 @@ class NormalizedSupportResult(Contract):
     normalizer_version: Literal["1"] = NORMALIZER_VERSION
 
 
+class ClaimNormalizationError(ValueError):
+    """Safe typed rejection carrying no source text or proposed value."""
+
+    def __init__(self, reason_code: str, result: NormalizedSupportResult):
+        super().__init__(reason_code)
+        self.result = result
+
+
 def normalize_text(text: str) -> str:
     return " ".join(text.casefold().split())
 

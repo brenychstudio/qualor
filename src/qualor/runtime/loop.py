@@ -15,6 +15,7 @@ from .diagnostics import BoundaryEvent, reject, shape
 from .extraction import MAX_EXTRACTED_CLAIMS_PER_CALL
 from .handoff import compute_decision
 from .mode import ProviderBoundaryError, RuntimeMode
+from .normalization import ClaimNormalizationError
 from .providers import FetchRequest, SearchRequest
 from .run_models import AgentRunResult, SourceCitation, StudioInput, TraceEvent
 from .urls import RegisteredCandidate, canonical_url_identity, sanitized_public_url
@@ -521,6 +522,14 @@ class OpportunityRun:
                 "source_url": admitted.evidence.final_url,
             }
         except (ValueError, RuntimeError, OSError) as exc:
+            if stage == "claim_validation" and isinstance(exc, ClaimNormalizationError):
+                self.event(
+                    "CLAIM_NORMALIZATION_RESULT",
+                    str(exc),
+                    normalized_field=parsed.field,
+                    normalization_status=exc.result.status,
+                    normalizer_version=exc.result.normalizer_version,
+                )
             event = "EXTRACTION_RESULT" if stage == "extraction" else "CLAIM_VALIDATION_RESULT"
             result = self.failure(exc, component=stage, event=event, input_value=claim)
             if stage != "extraction":
