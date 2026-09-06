@@ -70,6 +70,149 @@ export type PolicyVersion = 1;
 export type Reasons = string[];
 export type AffordabilityState = "SUFFICIENT" | "INSUFFICIENT" | "UNKNOWN";
 export type AgentSteps = number;
+export type Component =
+  | "orchestration"
+  | "search_web"
+  | "fetch_official_source"
+  | "record_evidence"
+  | "evaluate_current_state"
+  | "strands_model"
+  | "extraction"
+  | "claim_validation"
+  | "evidence_admission"
+  | "unknown_tool";
+export type Event =
+  | "TOOL_REQUESTED"
+  | "TOOL_RESULT"
+  | "SOURCE_FETCH_RESULT"
+  | "EXTRACTION_REQUESTED"
+  | "EXTRACTION_RESULT"
+  | "CLAIM_VALIDATION_RESULT"
+  | "EVIDENCE_ADMISSION_ATTEMPT"
+  | "EVIDENCE_ADMISSION_RESULT";
+export type InputShape = string;
+/**
+ * @maxItems 16
+ */
+export type MissingFields =
+  | []
+  | [string]
+  | [string, string]
+  | [string, string, string]
+  | [string, string, string, string]
+  | [string, string, string, string, string]
+  | [string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string, string, string, string, string]
+  | [
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string
+    ]
+  | [
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string
+    ];
+export type OutputShape = string;
+export type ReasonCode = string;
+export type Recoverable = "YES" | "NO";
+export type SafeSummary = string;
+export type Sequence = number;
+/**
+ * @maxItems 40
+ */
+export type SourceIds = string[];
+export type Status = "REQUESTED" | "ACCEPTED" | "REJECTED" | "OBSERVED";
+/**
+ * @maxItems 16
+ */
+export type ValidationIssues =
+  | []
+  | [string]
+  | [string, string]
+  | [string, string, string]
+  | [string, string, string, string]
+  | [string, string, string, string, string]
+  | [string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string, string, string, string, string]
+  | [
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string
+    ]
+  | [
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string
+    ];
+/**
+ * @maxItems 160
+ */
+export type BoundaryEvents = BoundaryEvent[];
 export type CitationUrls = string[];
 export type Confidence = "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
 export type Excerpt = string;
@@ -173,7 +316,7 @@ export type EvaluatedAt5 = string;
 export type EvidenceIds2 = string[];
 export type Id3 = string;
 export type PolicyVersion4 = number;
-export type ReasonCode =
+export type ReasonCode1 =
   | "MATCH"
   | "MISMATCH"
   | "MISSING_FACT"
@@ -188,7 +331,7 @@ export type ReasonCode =
   | "INCOMPLETE_COVERAGE"
   | "EMPTY_RULE_SET"
   | "CRITICAL_UNKNOWN";
-export type ReasonCodes = ReasonCode[];
+export type ReasonCodes = ReasonCode1[];
 export type RuleId = string;
 export type SchemaVersion2 = "1";
 export type RuleStatus = "PASS" | "FAIL" | "UNKNOWN" | "NOT_APPLICABLE";
@@ -211,7 +354,7 @@ export type Evaluations = RuleEvaluation[];
 export type Id4 = string;
 export type MissingInformation3 = string[];
 export type PolicyVersion5 = number;
-export type ReasonCodes1 = ReasonCode[];
+export type ReasonCodes1 = ReasonCode1[];
 export type SchemaVersion3 = "1";
 export type GateState = "PASS" | "FAIL" | "REVIEW_REQUIRED";
 export type UpdatedAt3 = string;
@@ -359,7 +502,7 @@ export type TerminationReason =
   | "TOOL_FAILURE_BOUND_REACHED"
   | "MAX_STEPS";
 export type Count = number;
-export type Event =
+export type Event1 =
   | "SEARCH_REQUESTED"
   | "SEARCH_RESULTS_RECEIVED"
   | "SOURCE_SELECTED"
@@ -370,8 +513,8 @@ export type Event =
   | "DECISION_EVALUATED"
   | "HUMAN_REVIEW_NEEDED"
   | "RUN_TERMINATED";
-export type ReasonCode1 = string;
-export type SourceIds = string[];
+export type ReasonCode2 = string;
+export type SourceIds1 = string[];
 /**
  * @maxItems 100
  */
@@ -629,6 +772,7 @@ export interface Money {
 }
 export interface AgentRunResult {
   agent_steps: AgentSteps;
+  boundary_events?: BoundaryEvents;
   citation_urls: CitationUrls;
   claims: Claims;
   contradictions: Contradictions;
@@ -640,6 +784,20 @@ export interface AgentRunResult {
   sources?: Sources;
   termination_reason: TerminationReason;
   trace: Trace;
+}
+export interface BoundaryEvent {
+  component: Component;
+  event: Event;
+  input_shape?: InputShape;
+  missing_fields?: MissingFields;
+  output_shape?: OutputShape;
+  reason_code: ReasonCode;
+  recoverable?: Recoverable;
+  safe_summary: SafeSummary;
+  sequence: Sequence;
+  source_ids?: SourceIds;
+  status: Status;
+  validation_issues?: ValidationIssues;
 }
 export interface ValidatedClaim {
   claim: ExtractedClaim;
@@ -794,7 +952,7 @@ export interface RuleEvaluation {
   id: Id3;
   policy_version: PolicyVersion4;
   provenance: Provenance3;
-  reason_code: ReasonCode;
+  reason_code: ReasonCode1;
   reason_codes: ReasonCodes;
   rule_id: RuleId;
   schema_version: SchemaVersion2;
@@ -869,9 +1027,9 @@ export interface SourceCitation {
 }
 export interface TraceEvent {
   count?: Count;
-  event: Event;
-  reason_code: ReasonCode1;
-  source_ids?: SourceIds;
+  event: Event1;
+  reason_code: ReasonCode2;
+  source_ids?: SourceIds1;
 }
 export interface DecisionFixture {
   active_submissions: ActiveSubmissions;

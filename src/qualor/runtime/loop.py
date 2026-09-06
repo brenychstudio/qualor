@@ -1,34 +1,12 @@
 """Run memory and deterministic tool actions. No shell, file, IAM or final-verdict tool."""
 
 from .budget import BudgetLimitExceeded
-from .claims import ExtractedClaim, validate_claim
+from .claims import FIELD_CATEGORY, ExtractedClaim, validate_claim
+from .diagnostics import BoundaryEvent, reject, shape
 from .handoff import compute_decision
 from .mode import ProviderBoundaryError, RuntimeMode
 from .providers import FetchRequest, SearchRequest
 from .run_models import AgentRunResult, SourceCitation, StudioInput, TraceEvent
-
-SAFE_FAILURE_CODES = frozenset(
-    {
-        "URL_NOT_DISCOVERED",
-        "CLAIM_LIMIT",
-        "CLAIM_BATCH_LIMIT",
-        "STRUCTURED_TOOL_REJECTED",
-        "CLAIM_REQUIRES_FETCHED_SOURCE",
-        "EXCERPT_NOT_IN_FETCHED_SOURCE",
-        "NORMALIZED_VALUE_NOT_SUPPORTED_BY_QUOTE",
-        "NA_REASON_NOT_SUPPORTED",
-        "SOURCE_URL_NOT_AUTHORIZED",
-        "SOURCE_ADDRESS_NOT_PUBLIC",
-        "SOURCE_REDIRECT_LIMIT",
-        "UNSUPPORTED_SOURCE_TYPE",
-        "UNSUPPORTED_SOURCE_ENCODING",
-        "SOURCE_SIZE_LIMIT",
-        "SOURCE_SIZE_OR_TIME_LIMIT",
-        "SOURCE_HTTP_403",
-        "SOURCE_HTTP_404",
-        "SOURCE_HTTP_429",
-    }
-)
 
 
 class OpportunityRun:
@@ -60,6 +38,7 @@ class OpportunityRun:
         self.steps = self.no_progress = self.failures = self.search_calls = 0
         self.candidates, self.sources, self.claims = {}, {}, {}
         self.trace = []
+        self.boundary_events = []
         self.actions = set()
         self.termination_reason = None
         self.decision = None
@@ -74,6 +53,38 @@ class OpportunityRun:
     def stop(self, reason):
         if self.termination_reason is None:
             self.termination_reason = reason
+
+    def diagnostic(
+        self,
+        event,
+        component,
+        status,
+        code,
+        summary,
+        *,
+        input_value=None,
+        output_value=None,
+        ids=(),
+        rejection=None,
+    ):
+        if len(self.boundary_events) >= 160:
+            return
+        self.boundary_events.append(
+            BoundaryEvent(
+                sequence=len(self.boundary_events) + 1,
+                event=event,
+                component=component,
+                status=status,
+                reason_code=code,
+                safe_summary=summary,
+                input_shape=shape(input_value),
+                output_shape=shape(output_value),
+                source_ids=ids,
+                recoverable=rejection.recoverable if rejection else "NO",
+                missing_fields=rejection.missing_fields if rejection else (),
+                validation_issues=rejection.validation_issues if rejection else (),
+            )
+        )
 
     def enter(self, key):
         if self.termination_reason:
@@ -90,20 +101,36 @@ class OpportunityRun:
         self.actions.add(key)
         return True
 
-    def failure(self, exc):
+    def failure(
+        self, exc, *, component="orchestration", event="TOOL_RESULT", input_value=None, code=None
+    ):
         if isinstance(exc, BudgetLimitExceeded):
             self.stop("BUDGET_EXHAUSTED")
         else:
             self.failures += 1
             if self.failures >= 3:
                 self.stop("TOOL_FAILURE_BOUND_REACHED")
-        reason = str(exc) if str(exc) in SAFE_FAILURE_CODES else "TOOL_OR_CLAIM_REJECTED"
-        self.event("HUMAN_REVIEW_NEEDED", reason)
-        return {
-            "status": "UNKNOWN",
-            "reason_code": reason,
-            "termination_reason": self.termination_reason,
-        }
+        info = reject(
+            exc,
+            component=component,
+            code="BUDGET_EXHAUSTED" if isinstance(exc, BudgetLimitExceeded) else code,
+        )
+        output = info.model_dump(mode="json")
+        if self.termination_reason:
+            output["recoverable"] = "NO"
+        output["termination_reason"] = self.termination_reason
+        self.event("HUMAN_REVIEW_NEEDED", info.reason_code)
+        self.diagnostic(
+            event,
+            component,
+            "REJECTED",
+            info.reason_code,
+            info.safe_summary,
+            input_value=input_value,
+            output_value=output,
+            rejection=info,
+        )
+        return output
 
     def search_web(self, query: str, include_domains: list[str] | None = None):
         if not self.enter("search:" + query + str(include_domains)):
@@ -137,7 +164,7 @@ class OpportunityRun:
                 ],
             }
         except (ValueError, RuntimeError, OSError) as exc:
-            return self.failure(exc)
+            return self.failure(exc, component="search_web", input_value={"query": query})
 
     def fetch_official_source(self, url: str, focus: str = ""):
         if not self.enter("fetch:" + url + ":" + focus):
@@ -153,7 +180,7 @@ class OpportunityRun:
                 self.event("SOURCE_FETCHED", "SOURCE_TEXT_UNTRUSTED_DATA", (existing.id,))
             position = existing.text.casefold().find(focus.casefold()) if focus else 0
             start = max(0, position - 300)
-            return {
+            output = {
                 "source_id": existing.id,
                 "source_url": existing.final_url,
                 "authority": existing.authority,
@@ -161,19 +188,73 @@ class OpportunityRun:
                 "text_truncated": len(existing.text) > start + 9000,
                 "retrieved_at": str(existing.retrieved_at),
             }
+            self.diagnostic(
+                "SOURCE_FETCH_RESULT",
+                "fetch_official_source",
+                "ACCEPTED",
+                "FETCHED_SOURCE_AVAILABLE",
+                "Bounded source text is available for claims.",
+                input_value={"url": url, "focus": focus},
+                output_value=output,
+                ids=(existing.id,),
+            )
+            return output
         except (ValueError, RuntimeError, OSError) as exc:
-            return self.failure(exc)
+            return self.failure(
+                exc,
+                component="fetch_official_source",
+                event="SOURCE_FETCH_RESULT",
+                input_value={"url": url, "focus": focus},
+            )
 
     def record_evidence(self, claim: dict):
         if not self.enter("claim:" + str(claim)):
             return {"status": "STOPPED", "reason": self.termination_reason or "NO_PROGRESS"}
+        stage = "extraction"
         try:
             if len(self.claims) >= 40:
                 raise ValueError("CLAIM_LIMIT")
             parsed = ExtractedClaim.model_validate(claim)
+            self.diagnostic(
+                "EXTRACTION_RESULT",
+                stage,
+                "ACCEPTED",
+                "TYPED_CANDIDATE",
+                "Candidate schema validated; this does not establish truth.",
+                input_value=claim,
+                output_value=parsed.model_dump(),
+            )
             self.event("CLAIM_EXTRACTED", "STRUCTURED_CANDIDATE_ONLY")
+            stage = "claim_validation"
+            self.diagnostic(
+                "EVIDENCE_ADMISSION_ATTEMPT",
+                "evidence_admission",
+                "REQUESTED",
+                "VALIDATE_FETCHED_REFERENCE",
+                "Validate source, quote and normalized value.",
+                input_value=parsed.model_dump(),
+            )
             admitted = validate_claim(parsed, self.sources)
+            self.diagnostic(
+                "CLAIM_VALIDATION_RESULT",
+                stage,
+                "ACCEPTED",
+                admitted.support_state,
+                "Source-linked claim checked; unverified interpretation stays unresolved.",
+                input_value=claim,
+                output_value=admitted.model_dump(),
+                ids=(admitted.evidence.id,),
+            )
             self.claims[admitted.evidence.id] = admitted
+            self.diagnostic(
+                "EVIDENCE_ADMISSION_RESULT",
+                "evidence_admission",
+                "ACCEPTED",
+                admitted.support_state,
+                "EvidenceRecord admitted with fetched-source provenance.",
+                ids=(admitted.evidence.id,),
+                output_value={"evidence_id": admitted.evidence.id},
+            )
             self.event("EVIDENCE_RECORDED", admitted.support_state, (admitted.evidence.id,))
             return {
                 "status": admitted.support_state,
@@ -181,7 +262,18 @@ class OpportunityRun:
                 "source_url": admitted.evidence.final_url,
             }
         except (ValueError, RuntimeError, OSError) as exc:
-            return self.failure(exc)
+            event = "EXTRACTION_RESULT" if stage == "extraction" else "CLAIM_VALIDATION_RESULT"
+            result = self.failure(exc, component=stage, event=event, input_value=claim)
+            if stage != "extraction":
+                self.diagnostic(
+                    "EVIDENCE_ADMISSION_RESULT",
+                    "evidence_admission",
+                    "REJECTED",
+                    result["reason_code"],
+                    result["safe_summary"],
+                    output_value=result,
+                )
+            return result
 
     def evaluate_current_state(self):
         self.decision = compute_decision(self)
@@ -212,6 +304,14 @@ class OpportunityRun:
     def finish(self):
         self.evaluate_current_state()
         self.stop("NO_PROGRESS")
+        if not any(c.claim.field in FIELD_CATEGORY for c in self.claims.values()):
+            self.diagnostic(
+                "EXTRACTION_RESULT",
+                "extraction",
+                "REJECTED",
+                "EXTRACTION_NO_CRITICAL_CLAIMS",
+                "Run ended without an admitted critical claim; no evidence is fabricated.",
+            )
         self.event("RUN_TERMINATED", self.termination_reason)
         return AgentRunResult(
             mode=self.mode,
@@ -232,6 +332,7 @@ class OpportunityRun:
                 )
             ),
             contradictions=self.contradictions,
+            boundary_events=tuple(self.boundary_events),
             sources=tuple(
                 SourceCitation.model_validate(
                     s.model_dump(

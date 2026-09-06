@@ -9,7 +9,17 @@ from .budget import LiveBudgetGuard, LiveBudgetPolicy
 from .run_models import StudioInput
 
 
-def execute_live(inputs: StudioInput, gateway_id: str):
+def diagnostic_policy() -> LiveBudgetPolicy:
+    return LiveBudgetPolicy(
+        inference_max_calls=6,
+        search_max_calls=3,
+        fetch_max_documents=5,
+        cost_cap_usd=Decimal("0.15"),
+        authorization="QUALOR_03B3",
+    )
+
+
+def execute_live(inputs: StudioInput, gateway_id: str, *, diagnostic=False):
     from .agent import live_model, run_agent
     from .loop import OpportunityRun
     from .search import AgentCoreSearchProvider
@@ -17,7 +27,9 @@ def execute_live(inputs: StudioInput, gateway_id: str):
     from .sources import OfficialSourceFetcher
 
     budget = LiveBudgetGuard(
-        LiveBudgetPolicy(
+        diagnostic_policy()
+        if diagnostic
+        else LiveBudgetPolicy(
             inference_max_calls=6, cost_cap_usd=Decimal(".20"), authorization="QUALOR_03B3"
         )
     )
@@ -33,17 +45,23 @@ def execute_live(inputs: StudioInput, gateway_id: str):
     return result, metrics
 
 
-def run_command(profile: Path, gateway_id: str):
+def run_command(profile: Path, gateway_id: str, *, diagnostic=False):
     data = profile.read_bytes()
     if len(data) > 100_000:
         raise ValueError("Profile input too large")
     inputs = StudioInput.model_validate_json(data)
-    report = Path(".qualor/local/qualor-03b3-live-run.json")
+    report = Path(
+        ".qualor/local/qualor-03b3d-live-run-2.json"
+        if diagnostic
+        else ".qualor/local/qualor-03b3-live-run.json"
+    )
     report.parent.mkdir(parents=True, exist_ok=True)
     # Exclusive marker survives interruption. No silent repeated paid dogfood runs.
     with report.open("x", encoding="utf-8") as file:
-        json.dump({"status": "STARTED", "task_cost_reserved_usd": "0.20"}, file)
-    result, metrics = execute_live(inputs, gateway_id)
+        json.dump(
+            {"status": "STARTED", "task_cost_reserved_usd": "0.15" if diagnostic else "0.20"}, file
+        )
+    result, metrics = execute_live(inputs, gateway_id, diagnostic=diagnostic)
     report.write_text(
         json.dumps(
             {"result": result.model_dump(mode="json"), "metrics": metrics}, default=str, indent=2

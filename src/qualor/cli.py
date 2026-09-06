@@ -23,6 +23,9 @@ def run_live_opportunity(
     profile: Annotated[Path, typer.Option()],
     mode: str = typer.Option("FIXTURE"),
     gateway_id: str = typer.Option("", envvar="QUALOR_GATEWAY_ID"),
+    diagnostic_run_2: bool = typer.Option(
+        False, help="Explicit QUALOR-03B3D one-run authorization."
+    ),
 ) -> None:
     """One explicitly authorized live run; no submission or model-authored verdict."""
     if mode != "LIVE":
@@ -31,7 +34,7 @@ def run_live_opportunity(
     from qualor.runtime.live_cli import run_command, summary
 
     try:
-        result, metrics = run_command(profile, gateway_id)
+        result, metrics = run_command(profile, gateway_id, diagnostic=diagnostic_run_2)
     except (ValueError, RuntimeError, OSError):
         typer.echo("LIVE_RUN_FAILED_CLOSED", err=True)
         raise typer.Exit(1) from None

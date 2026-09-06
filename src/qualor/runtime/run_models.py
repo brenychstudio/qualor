@@ -11,6 +11,7 @@ from qualor.domain.enums import SourceType
 from qualor.domain.profiles import FounderProfile
 
 from .claims import ValidatedClaim
+from .diagnostics import BoundaryEvent
 
 
 class StudioInput(Contract):
@@ -69,3 +70,4 @@ class AgentRunResult(Contract):
     citation_urls: tuple[NonEmpty, ...]
     contradictions: tuple[NonEmpty, ...]
     sources: Annotated[tuple[SourceCitation, ...], Field(max_length=10)] = ()
+    boundary_events: Annotated[tuple[BoundaryEvent, ...], Field(max_length=160)] = ()

@@ -12,6 +12,7 @@ from strands.tools.executors import SequentialToolExecutor
 
 from .budget import BudgetLimitExceeded, LiveCallKind
 from .claims import ExtractedClaim
+from .diagnostics import reject
 from .search_transport import REGION, _temporary_credentials
 
 MODEL_ID = "global.anthropic.claude-sonnet-4-6"
@@ -36,8 +37,8 @@ Use evaluate_current_state to find remaining gaps and conditional project blocke
 eligibility and recommendations. You cannot set or override either; do not output your own verdict.
 Search/fetch again only to resolve important unknowns. A source's absence is not permission.
 Stop at sufficient evidence, a confirmed hard blocker, no progress, failure or budget limit.
-Be concise: do not narrate reasoning or write an application. There are at most six model turns,
-five searches and ten document fetches. Preserve citations and unresolved facts."""
+Be concise: do not narrate reasoning or write an application. Respect the operator-supplied
+run limits. Preserve citations and unresolved facts."""
 
 
 class BudgetedBedrockClient:
@@ -153,6 +154,15 @@ def run_agent(run, *, model):
             event.cancel = "RUN_TERMINATED"
             return
         metrics["model_turns"] += 1
+        if run.sources:
+            run.diagnostic(
+                "EXTRACTION_REQUESTED",
+                "strands_model",
+                "REQUESTED",
+                "MODEL_WITH_FETCHED_SOURCES",
+                "Model receives fetched source observations and the strict claim tool.",
+                ids=tuple(run.sources),
+            )
 
     def before_tool(event: BeforeToolCallEvent):
         if metrics["strands_tool_calls"] >= 24:
@@ -161,18 +171,68 @@ def run_agent(run, *, model):
             event.cancel_tool = "RUN_TERMINATED"
         else:
             metrics["strands_tool_calls"] += 1
-            metrics["tool_names"].append(event.tool_use["name"])
+            name = event.tool_use["name"]
+            component = (
+                name
+                if name
+                in {
+                    "search_web",
+                    "fetch_official_source",
+                    "record_evidence",
+                    "evaluate_current_state",
+                }
+                else "unknown_tool"
+            )
+            metrics["tool_names"].append(component)
+            run.diagnostic(
+                "TOOL_REQUESTED",
+                component,
+                "REQUESTED",
+                "STRICT_TOOL_ARGUMENTS",
+                "Agent requested this tool; only types and known field names are retained.",
+                input_value=event.tool_use.get("input"),
+            )
 
     def after_tool(event: AfterToolCallEvent):
         if event.result.get("status") == "error":
+            name = event.tool_use["name"]
+            component = (
+                name
+                if name
+                in {
+                    "search_web",
+                    "fetch_official_source",
+                    "record_evidence",
+                    "evaluate_current_state",
+                }
+                else "unknown_tool"
+            )
             if len(metrics["sdk_tool_errors"]) < 24:
                 metrics["sdk_tool_errors"].append(
                     {
-                        "tool": event.tool_use["name"],
+                        "tool": component,
                         "error_class": type(event.exception).__name__,
                     }
                 )
-            run.failure(ValueError("STRUCTURED_TOOL_REJECTED"))
+            exc = event.exception or RuntimeError("TOOL_RESULT_PROTOCOL_ERROR")
+            code = reject(exc, component=component).reason_code
+            if component == "unknown_tool":
+                code = "TOOL_NOT_AVAILABLE"
+            elif code == "TOOL_OR_CLAIM_REJECTED":
+                code = "TOOL_RESULT_PROTOCOL_ERROR"
+            result = run.failure(
+                exc,
+                component=component,
+                event="EXTRACTION_RESULT" if name == "record_evidence" else "TOOL_RESULT",
+                input_value=event.tool_use.get("input"),
+                code=code,
+            )
+            # Replace SDK exception prose with an actionable, safe protocol error.
+            event.result = {
+                "toolUseId": event.tool_use["toolUseId"],
+                "status": "error",
+                "content": [{"text": json.dumps(result)}],
+            }
 
     agent = Agent(
         model=model,
@@ -186,6 +246,12 @@ def run_agent(run, *, model):
     )
     metrics["agent_instantiated"] = True
     profile_summary = {
+        "run_limits": {
+            "model_calls": run.budget.policy.inference_max_calls,
+            "search_calls": run.budget.policy.search_max_calls,
+            "documents": run.budget.policy.fetch_max_documents,
+            "cost_cap_usd": str(run.budget.policy.cost_cap_usd),
+        },
         "goal": run.inputs.goal,
         "authorized_source_hosts": run.inputs.allowed_hosts,
         "founder": run.inputs.founder.model_dump(mode="json"),
@@ -203,13 +269,19 @@ def run_agent(run, *, model):
         response = agent(json.dumps(profile_summary), limits={"turns": 6})
         if response.stop_reason.startswith("limit_"):
             run.stop("MAX_STEPS")
-    except BudgetLimitExceeded:
-        run.stop("BUDGET_EXHAUSTED")
+    except BudgetLimitExceeded as exc:
+        run.failure(exc, component="strands_model", event="EXTRACTION_RESULT")
     except Exception as exc:
         # Never expose SDK errors that may include request bodies or private identifiers.
         cause = exc
         while cause.__cause__ is not None:
             cause = cause.__cause__
+        run.failure(
+            cause,
+            component="strands_model",
+            event="EXTRACTION_RESULT",
+            code=None if isinstance(cause, BudgetLimitExceeded) else "MODEL_CALL_FAILED",
+        )
         run.stop(
             "BUDGET_EXHAUSTED"
             if isinstance(cause, BudgetLimitExceeded)

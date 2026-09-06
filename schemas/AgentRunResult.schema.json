@@ -74,6 +74,124 @@
       "title": "AffordabilityState",
       "type": "string"
     },
+    "BoundaryEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "component": {
+          "enum": [
+            "orchestration",
+            "search_web",
+            "fetch_official_source",
+            "record_evidence",
+            "evaluate_current_state",
+            "strands_model",
+            "extraction",
+            "claim_validation",
+            "evidence_admission",
+            "unknown_tool"
+          ],
+          "title": "Component",
+          "type": "string"
+        },
+        "event": {
+          "enum": [
+            "TOOL_REQUESTED",
+            "TOOL_RESULT",
+            "SOURCE_FETCH_RESULT",
+            "EXTRACTION_REQUESTED",
+            "EXTRACTION_RESULT",
+            "CLAIM_VALIDATION_RESULT",
+            "EVIDENCE_ADMISSION_ATTEMPT",
+            "EVIDENCE_ADMISSION_RESULT"
+          ],
+          "title": "Event",
+          "type": "string"
+        },
+        "input_shape": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Input Shape",
+          "type": "string"
+        },
+        "missing_fields": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Missing Fields",
+          "type": "array"
+        },
+        "output_shape": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Output Shape",
+          "type": "string"
+        },
+        "reason_code": {
+          "maxLength": 80,
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "recoverable": {
+          "default": "NO",
+          "enum": [
+            "YES",
+            "NO"
+          ],
+          "title": "Recoverable",
+          "type": "string"
+        },
+        "safe_summary": {
+          "maxLength": 250,
+          "title": "Safe Summary",
+          "type": "string"
+        },
+        "sequence": {
+          "minimum": 1,
+          "title": "Sequence",
+          "type": "integer"
+        },
+        "source_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 40,
+          "title": "Source Ids",
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "REQUESTED",
+            "ACCEPTED",
+            "REJECTED",
+            "OBSERVED"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "validation_issues": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Validation Issues",
+          "type": "array"
+        }
+      },
+      "required": [
+        "sequence",
+        "event",
+        "component",
+        "status",
+        "reason_code",
+        "safe_summary"
+      ],
+      "title": "BoundaryEvent",
+      "type": "object"
+    },
     "CapacityAssessment": {
       "additionalProperties": false,
       "properties": {
@@ -1970,6 +2088,15 @@
     "agent_steps": {
       "title": "Agent Steps",
       "type": "integer"
+    },
+    "boundary_events": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/BoundaryEvent"
+      },
+      "maxItems": 160,
+      "title": "Boundary Events",
+      "type": "array"
     },
     "citation_urls": {
       "items": {

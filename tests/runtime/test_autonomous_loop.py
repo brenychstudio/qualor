@@ -101,7 +101,7 @@ def test_A05_search_snippet_cannot_be_recorded_as_source():
     r = make_run()
     r.search_web("query")
     result = record(r)
-    assert result["status"] == "UNKNOWN"
+    assert result["status"] == "REJECTED"
     assert not r.claims
 
 
