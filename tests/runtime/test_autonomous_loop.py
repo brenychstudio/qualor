@@ -59,21 +59,38 @@ def make_run(mode="FIXTURE", **options):
                 text="Projects must use Widget SDK.",
             )
 
+    class Extract:
+        def extract(self, source, focus):
+            del focus
+            return (
+                {
+                    "source_id": source.id,
+                    "source_url": source.final_url,
+                    "field": "required_technology",
+                    "value": ["Widget SDK"],
+                    "excerpt": "Projects must use Widget SDK.",
+                    "state": "CANDIDATE",
+                    "confidence": "HIGH",
+                },
+            )
+
     return OpportunityRun(
         inputs(),
         mode=mode,
         search=Search(),
         fetcher=Fetch(),
+        extractor=options.pop("extractor", Extract()),
         budget=LiveBudgetGuard(LiveBudgetPolicy(cost_cap_usd=Decimal(".20"))),
         **options,
     )
 
 
 def record(run, value="Widget SDK"):
+    source = next(iter(run.sources.values()), None)
     return run.record_evidence(
         {
-            "source_id": "s",
-            "source_url": "https://example.org/rules",
+            "source_id": source.id if source else "s",
+            "source_url": source.final_url if source else "https://example.org/rules",
             "field": "required_technology",
             "value": [value],
             "excerpt": f"Projects must use {value}.",

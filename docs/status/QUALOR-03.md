@@ -1,4 +1,97 @@
-# QUALOR-03 checkpoint: offline handoff closure (03B3E)
+# QUALOR-03 checkpoint: source-context isolation (03B3G)
+
+## QUALOR-03B3G: agent context and extraction budget boundary
+
+Date: 2026-09-06. Starting HEAD: `7a991240091af9cfda874bd0e7c44cebe6e9c78c`.
+This checkpoint is offline: zero Bedrock inference, Web Search, paid AWS calls, IAM
+changes, or resource mutations. A fourth live run is not authorized here.
+
+### Run-3 forensic reconstruction
+
+The ignored run-3 artifact records four successful model calls with provider usage of
+2,272/125, 3,449/102, 5,893/100, and 6,219/103 input/output tokens. Their actual model
+cost totals USD 0.059949; two fixed search commitments bring the guard ledger to
+USD 0.077949. The rejected fifth request reserved USD 0.109659 against USD 0.072051
+remaining, projecting USD 0.187608.
+
+The unchanged reservation formula proves the rejected request was exactly 31,945 UTF-8
+serialized bytes:
+
+```text
+input  = (31,945 + 2,048) * USD 0.000003 = USD 0.101979
+output = 512 * USD 0.000015               = USD 0.007680
+total                                          USD 0.109659
+```
+
+The fifth turn contained nine messages: the initial input plus four assistant tool-use /
+user tool-result pairs. Historical per-message and fetched-body byte counts were not
+persisted, so they are reported as unavailable rather than reconstructed from guesses.
+Code inspection establishes the actual defect: each successful fetch returned up to 9,000
+source characters in its ordinary Strands tool result. After two fetches, those untrusted
+bodies were retained and retransmitted with the complete conversation. Evidence admission
+was never called, so its implementation remains unchanged.
+
+The primary root-cause class is `AGENT_CONTEXT_BLOAT`. The byte-based estimator remains a
+deliberately conservative fail-closed upper bound; no separate accounting or estimator bug
+was proven. Exact historical reservation-to-actual ratios are unavailable because request
+reservations/bytes for successful calls 1-4 were not retained. Provider token usage itself
+is retained as listed above.
+
+### Repaired capability boundary
+
+Full `SourceDocument.text` now remains only in run-scoped trusted state. The fetch tool
+returns a `FetchedSourceRef` with an opaque random current-run `source_id`, candidate ID,
+citation URL/title, authority, content type/length, retrieval time, and a UTF-8-safe excerpt
+capped at 512 bytes. All ordinary tool results are capped at 4,096 serialized bytes. A
+forged or prior-run source ID cannot resolve. The existing HTTPS, host allowlist, DNS/IP,
+redirect, TLS, time, content-type, and document-size rules are unchanged.
+
+Strands now chooses a source and extraction focus through
+`extract_official_claims(source_id, focus)`. The runtime resolves the capability and makes
+one direct, budgeted structured extraction call over only its system contract, that focus,
+one exact registered source, and the constrained claim schema. The full source stays in
+trusted run state; sources above the explicit fetch-to-extraction budget boundary supply a
+deterministic focus window capped at 9,000 bytes. The extraction call receives no Strands
+conversation and exposes no search, fetch, verdict, shell, filesystem, IAM, or arbitrary
+tool capability. Source text is explicitly delimited as untrusted data. At most two typed
+claims are accepted per call and passed immediately through the existing deterministic
+`record_evidence` validation inside the same tool invocation. This avoids requiring a
+seventh Strands model turn after the six-call live ceiling; the evidence admission rules
+themselves remain unchanged.
+
+There is still exactly one autonomous Strands agent. It owns search, source selection,
+fetch, and extraction-focus planning. It cannot set eligibility or recommendation.
+
+### Offline projection and replay proof
+
+A live-like nine-message projection with two 60,000-byte fetched documents produces a
+9,912-byte planning request after isolation: 2,502 tool-result bytes, zero raw fetched-body
+bytes in those results, and 7,410 other request bytes. Individual message sizes are
+1,443, 115, 324, 161, 1,015, 115, 328, 161, and 1,023 bytes. Its fail-closed reservation
+is USD 0.043560, producing USD 0.121509 when tested against run 3's pre-call ledger.
+
+The separate extraction request keeps the full 60,000-byte source in trusted state but
+sends only its 9,000-byte focus window. The 11,718-byte request reserves USD 0.048978.
+Using the largest provider-reported actual cost among prior planning turns (USD 0.020202)
+as the conservative empirical next-planning projection yields a sequential total of
+USD 0.147129. This is below the unchanged USD 0.15 cap; the guard still stops any actual
+request whose pre-call reservation does not fit. Reserving both future calls at once would
+produce USD 0.170487, but the guard never does that: it reserves and reconciles each call
+sequentially from provider usage before the next call.
+
+The owned REPLAY performs search -> candidate capability -> fetch -> bounded source
+reference -> extraction focus -> typed claim -> unchanged evidence admission ->
+deterministic eligibility and decision. It admits one critical EvidenceRecord, links that
+record into the decision, and returns `FAIL / SKIP` for the synthetic technology mismatch.
+It performs zero Bedrock and Web Search calls. Prompt-injection strings in source data
+cannot add tools or verdict fields and cannot override deterministic output. The trace is
+bounded and reads source reference -> structured extraction -> evidence recorded ->
+deterministic eligibility -> deterministic decision, without raw bodies or model reasoning.
+
+The completed local suite contains **570 tests**. Exact final commit and push evidence is
+reported in the Result Packet. A separately authorized final live proof remains required.
+
+# Previous checkpoint: offline handoff closure (03B3E)
 
 ## QUALOR-03B3E: URL admission and budget root cause
 

@@ -21,7 +21,7 @@ def diagnostic_policy() -> LiveBudgetPolicy:
 
 
 def execute_live(inputs: StudioInput, gateway_id: str, *, diagnostic=False):
-    from .agent import live_model, run_agent
+    from .agent import live_extractor, live_model, run_agent
     from .loop import OpportunityRun
     from .search import AgentCoreSearchProvider
     from .search_transport import open_gateway_transport
@@ -39,8 +39,16 @@ def execute_live(inputs: StudioInput, gateway_id: str, *, diagnostic=False):
         fetcher = OfficialSourceFetcher(
             mode="LIVE", allowed_hosts=inputs.allowed_hosts, budget=budget
         )
-        run = OpportunityRun(inputs, mode="LIVE", search=search, fetcher=fetcher, budget=budget)
-        result, metrics = run_agent(run, model=live_model(budget))
+        model = live_model(budget)
+        run = OpportunityRun(
+            inputs,
+            mode="LIVE",
+            search=search,
+            fetcher=fetcher,
+            extractor=live_extractor(model),
+            budget=budget,
+        )
+        result, metrics = run_agent(run, model=model)
         metrics["gateway_mcp_calls"] = transport.http_calls
         metrics["budget"] = asdict(budget.snapshot())
     return result, metrics

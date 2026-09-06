@@ -17,7 +17,7 @@ def test_U01_exact_registered_candidate_reference_is_accepted():
 
     result = run.fetch_official_source(candidate_id)
 
-    assert result["source_url"] == "https://example.org/rules"
+    assert result["url"] == "https://example.org/rules"
 
 
 def test_U02_U03_unknown_or_fabricated_candidate_reference_is_rejected():
@@ -41,7 +41,7 @@ def test_U04_U05_reference_is_scoped_to_the_current_run():
 
     assert current_reference != prior_reference
     assert second.fetch_official_source(prior_reference)["reason_code"] == "CANDIDATE_NOT_FOUND"
-    assert second.fetch_official_source(current_reference)["source_id"] == "s"
+    assert second.fetch_official_source(current_reference)["source_id"].startswith("source_")
 
 
 def test_U06_search_candidate_url_and_fetched_citation_are_preserved():
@@ -78,7 +78,7 @@ def test_U09_U10_rejection_exposes_bounded_recovery_without_another_search():
 
     recovered = run.fetch_official_source(rejected["available_candidates"][0]["candidate_id"])
 
-    assert recovered["source_id"] == "s"
+    assert recovered["source_id"].startswith("source_")
     assert run.search_calls == 1
     assert candidate_id == rejected["available_candidates"][0]["candidate_id"]
 
@@ -141,7 +141,7 @@ def test_canonical_equivalent_search_results_share_one_reference_but_keep_first_
     registered = run.candidates[results[0]["candidate_id"]]
     assert registered.provenance == "SEARCH_CANDIDATE_CANONICAL_EQUIVALENT"
     fetched = run.fetch_official_source(results[0]["candidate_id"])
-    assert fetched["source_url"] == "HTTPS://EXAMPLE.ORG:443#one"
+    assert fetched["url"] == "HTTPS://EXAMPLE.ORG:443#one"
 
 
 def test_U07_registered_malicious_url_still_fails_the_ssrf_destination_policy():

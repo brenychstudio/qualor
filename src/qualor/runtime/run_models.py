@@ -30,6 +30,8 @@ class TraceEvent(Contract):
         "CANDIDATE_SELECTED",
         "SOURCE_SELECTED",
         "SOURCE_FETCHED",
+        "SOURCE_REFERENCE_CREATED",
+        "STRUCTURED_EXTRACTION",
         "CLAIM_EXTRACTED",
         "EVIDENCE_RECORDED",
         "ELIGIBILITY_EVALUATED",

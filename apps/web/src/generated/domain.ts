@@ -17,6 +17,8 @@ export type QualorDomain =
   | EffortEstimate
   | EligibilityGate
   | EvidenceRecord
+  | ExtractedClaimBatch
+  | FetchedSourceRef
   | FounderProfile
   | OpportunityRecord
   | ProjectMatch
@@ -104,6 +106,7 @@ export type Component =
   | "orchestration"
   | "search_web"
   | "fetch_official_source"
+  | "extract_official_claims"
   | "record_evidence"
   | "evaluate_current_state"
   | "strands_model"
@@ -539,6 +542,8 @@ export type Event1 =
   | "CANDIDATE_SELECTED"
   | "SOURCE_SELECTED"
   | "SOURCE_FETCHED"
+  | "SOURCE_REFERENCE_CREATED"
+  | "STRUCTURED_EXTRACTION"
   | "CLAIM_EXTRACTED"
   | "EVIDENCE_RECORDED"
   | "ELIGIBILITY_EVALUATED"
@@ -698,6 +703,19 @@ export type Explanation2 = string;
 export type MissingInformation7 = string[];
 export type Mode4 = "FIXTURE";
 export type Reasons8 = string[];
+/**
+ * @maxItems 2
+ */
+export type Claims1 = [] | [ExtractedClaim] | [ExtractedClaim, ExtractedClaim];
+export type BoundedExcerpt = string;
+export type CandidateId = string;
+export type ContentLength = number;
+export type ContentType = string;
+export type RetrievedAt2 = string;
+export type SourceId1 = string;
+export type SourceUrl1 = string;
+export type Title = string | null;
+export type Url = string;
 /**
  * @minItems 1
  * @maxItems 10
@@ -1464,6 +1482,21 @@ export interface DecisionResult {
   selected_decision: DecisionRecord | null;
   selection: ProjectSelection;
   strategy: StrategyAssessment | null;
+}
+export interface ExtractedClaimBatch {
+  claims: Claims1;
+}
+export interface FetchedSourceRef {
+  bounded_excerpt: BoundedExcerpt;
+  candidate_id: CandidateId;
+  content_length: ContentLength;
+  content_type: ContentType;
+  retrieved_at: RetrievedAt2;
+  source_id: SourceId1;
+  source_type: SourceType;
+  source_url: SourceUrl1;
+  title?: Title;
+  url: Url;
 }
 export interface StudioInput {
   allowed_hosts: AllowedHosts;

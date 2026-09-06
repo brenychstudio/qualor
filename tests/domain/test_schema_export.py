@@ -25,6 +25,8 @@ EXPECTED = {
     "DecisionInput",
     "DecisionOutput",
     "StudioInput",
+    "FetchedSourceRef",
+    "ExtractedClaimBatch",
     "AgentRunResult",
 }
 

@@ -5,7 +5,14 @@ from uuid import uuid4
 
 from .budget import BudgetLimitExceeded
 from .claims import FIELD_CATEGORY, ExtractedClaim, validate_claim
+from .context import (
+    MAX_AGENT_SOURCE_REF_EXCERPT_BYTES,
+    FetchedSourceRef,
+    bounded_agent_result,
+    utf8_prefix,
+)
 from .diagnostics import BoundaryEvent, reject, shape
+from .extraction import MAX_EXTRACTED_CLAIMS_PER_CALL
 from .handoff import compute_decision
 from .mode import ProviderBoundaryError, RuntimeMode
 from .providers import FetchRequest, SearchRequest
@@ -14,10 +21,13 @@ from .urls import RegisteredCandidate, canonical_url_identity, sanitized_public_
 
 
 class OpportunityRun:
-    def __init__(self, inputs: StudioInput, *, mode, search, fetcher, budget, max_steps=24):
+    def __init__(
+        self, inputs: StudioInput, *, mode, search, fetcher, budget, extractor=None, max_steps=24
+    ):
         self.inputs = StudioInput.model_validate(inputs)
         self.mode = RuntimeMode(mode).value
         if self.mode == "LIVE":
+            from .extraction import BedrockClaimExtractor
             from .search import AgentCoreSearchProvider
             from .sources import OfficialSourceFetcher
 
@@ -25,23 +35,31 @@ class OpportunityRun:
                 fetcher, OfficialSourceFetcher
             ):
                 raise ProviderBoundaryError("Explicit live providers required")
-            if search.budget is not budget or fetcher.budget is not budget:
+            if not isinstance(extractor, BedrockClaimExtractor):
+                raise ProviderBoundaryError("LIVE requires explicit structured extraction")
+            if (
+                search.budget is not budget
+                or fetcher.budget is not budget
+                or extractor.client.budget is not budget
+            ):
                 raise ProviderBoundaryError("Live operations require one shared budget")
         else:
+            from .extraction import BedrockClaimExtractor
             from .search import AgentCoreSearchProvider
             from .sources import OfficialSourceFetcher
 
             if isinstance(search, AgentCoreSearchProvider) or isinstance(
                 fetcher, OfficialSourceFetcher
-            ):
+            ) or isinstance(extractor, BedrockClaimExtractor):
                 raise ProviderBoundaryError("Offline runs reject AWS/network providers")
         if not 1 <= max_steps <= 24:
             raise ValueError("Tool step ceiling is 24")
-        self.search, self.fetcher, self.budget = search, fetcher, budget
+        self.search, self.fetcher, self.extractor, self.budget = search, fetcher, extractor, budget
         self.max_steps = max_steps
         self.steps = self.no_progress = self.failures = self.search_calls = 0
         self.candidates, self.sources, self.claims = {}, {}, {}
         self._candidate_identities = {}
+        self._source_candidates = {}
         self.trace = []
         self.boundary_events = []
         self.actions = set()
@@ -238,29 +256,39 @@ class OpportunityRun:
             existing = next((s for s in self.sources.values() if s.original_url == fetch_url), None)
             if existing is None:
                 self.event("SOURCE_SELECTED", "OFFICIAL_CANDIDATE_SELECTED")
-                existing = self.fetcher.fetch(FetchRequest(fetch_url))
+                fetched = self.fetcher.fetch(FetchRequest(fetch_url))
+                existing = fetched.model_copy(update={"id": "source_" + uuid4().hex})
                 self.sources[existing.id] = existing
+                self._source_candidates[existing.id] = candidate_id
                 self.event("SOURCE_FETCHED", "SOURCE_TEXT_UNTRUSTED_DATA", (existing.id,))
             position = existing.text.casefold().find(focus.casefold()) if focus else 0
             start = max(0, position - 300)
-            output = {
-                "source_id": existing.id,
-                "source_url": existing.final_url,
-                "authority": existing.authority,
-                "text": existing.text[start : start + 9000],
-                "text_truncated": len(existing.text) > start + 9000,
-                "retrieved_at": str(existing.retrieved_at),
-            }
+            reference = FetchedSourceRef(
+                source_id=existing.id,
+                candidate_id=self._source_candidates.get(existing.id, candidate_id),
+                url=existing.final_url,
+                source_url=existing.final_url,
+                title=registered.observation.title,
+                source_type=existing.authority,
+                content_type=existing.content_type,
+                content_length=len(existing.text.encode("utf-8")),
+                retrieved_at=existing.retrieved_at,
+                bounded_excerpt=utf8_prefix(
+                    existing.text[start:], MAX_AGENT_SOURCE_REF_EXCERPT_BYTES
+                ),
+            )
+            output = reference.model_dump(mode="json")
             self.diagnostic(
                 "SOURCE_FETCH_RESULT",
                 "fetch_official_source",
                 "ACCEPTED",
                 "FETCHED_SOURCE_AVAILABLE",
-                "Bounded source text is available for claims.",
+                "Run-scoped source reference is available; raw body remains in trusted state.",
                 input_value={"candidate_id": candidate_id, "focus": focus},
                 output_value=output,
                 ids=(existing.id,),
             )
+            self.event("SOURCE_REFERENCE_CREATED", "BOUNDED_RUN_SCOPED_REFERENCE", (existing.id,))
             return output
         except (ValueError, RuntimeError, OSError) as exc:
             result = self.failure(
@@ -295,6 +323,77 @@ class OpportunityRun:
                     }
                 )
             return result
+
+    def extract_official_claims(self, source_id: str, focus: str):
+        if not isinstance(source_id, str) or not source_id:
+            return self.failure(
+                ValueError("SOURCE_REFERENCE_NOT_FOUND"),
+                component="extract_official_claims",
+                event="EXTRACTION_RESULT",
+                input_value={"source_id": source_id, "focus": focus},
+            )
+        if not isinstance(focus, str) or not focus.strip() or len(focus) > 300:
+            return self.failure(
+                ValueError("EXTRACTION_FOCUS_INVALID"),
+                component="extract_official_claims",
+                event="EXTRACTION_RESULT",
+                input_value={"source_id": source_id, "focus": focus},
+            )
+        if not self.enter("extract:" + source_id + ":" + focus):
+            return {"status": "STOPPED", "reason": self.termination_reason or "NO_PROGRESS"}
+        try:
+            source = self.sources.get(source_id)
+            if source is None:
+                raise ValueError("SOURCE_REFERENCE_NOT_FOUND")
+            if self.extractor is None:
+                raise ValueError("EXTRACTOR_NOT_CONFIGURED")
+            self.diagnostic(
+                "EXTRACTION_REQUESTED",
+                "extract_official_claims",
+                "REQUESTED",
+                "RUN_SCOPED_SOURCE_RESOLVED",
+                "One fetched source is sent to the isolated extraction boundary.",
+                input_value={"source_id": source_id, "focus": focus},
+                ids=(source_id,),
+            )
+            claims = tuple(
+                ExtractedClaim.model_validate(claim)
+                for claim in self.extractor.extract(source, focus)
+            )
+            if len(claims) > MAX_EXTRACTED_CLAIMS_PER_CALL:
+                raise ValueError("CLAIM_BATCH_LIMIT")
+            if any(
+                claim.source_id != source.id
+                or claim.source_url not in {source.original_url, source.final_url}
+                for claim in claims
+            ):
+                raise ValueError("EXTRACTION_SOURCE_REFERENCE_MISMATCH")
+            claim_payloads = [claim.model_dump(mode="json") for claim in claims]
+            bounded_agent_result({"claims": claim_payloads})
+            self.event("STRUCTURED_EXTRACTION", "MODEL_POWERED_TOOL", (source_id,), len(claims))
+            observations = [self.record_evidence(claim) for claim in claim_payloads]
+            output = {
+                "status": "EXTRACTED",
+                "claims": claim_payloads,
+                "observations": observations,
+            }
+            self.diagnostic(
+                "EXTRACTION_RESULT",
+                "extract_official_claims",
+                "ACCEPTED",
+                "STRUCTURED_CLAIMS_ONLY",
+                "Typed claims returned without source body or agent conversation.",
+                output_value=output,
+                ids=(source_id,),
+            )
+            return output
+        except (ValueError, RuntimeError, OSError) as exc:
+            return self.failure(
+                exc,
+                component="extract_official_claims",
+                event="EXTRACTION_RESULT",
+                input_value={"source_id": source_id, "focus": focus},
+            )
 
     def record_evidence(self, claim: dict):
         if not self.enter("claim:" + str(claim)):

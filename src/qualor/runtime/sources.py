@@ -40,6 +40,7 @@ class SourceDocument(Contract):
     retrieved_at: UtcInstant
     content_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
     authority: SourceType
+    content_type: NonEmpty = "text/plain"
     text: str = Field(min_length=1, max_length=MAX_SOURCE_CHARACTERS)
     truncated: bool = False
 
@@ -221,6 +222,7 @@ class OfficialSourceFetcher:
                 retrieved_at=datetime.now(UTC),
                 content_hash=digest,
                 authority=source_authority(current, self.allowed_hosts),
+                content_type=mime,
                 text=text[:MAX_SOURCE_CHARACTERS],
                 truncated=len(text) > MAX_SOURCE_CHARACTERS,
             )

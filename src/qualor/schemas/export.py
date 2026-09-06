@@ -19,6 +19,8 @@ from qualor.domain import (
 )
 from qualor.effort import AffordabilityAssessment, CapacityAssessment, EffortEstimate
 from qualor.matching import ProjectMatch, ProjectSelection, ReadinessAssessment
+from qualor.runtime.context import FetchedSourceRef
+from qualor.runtime.extraction import ExtractedClaimBatch
 from qualor.runtime.run_models import AgentRunResult, StudioInput
 from qualor.strategy import StrategyAssessment
 
@@ -46,6 +48,8 @@ CONTRACTS = (
     DecisionInput,
     DecisionOutput,
     StudioInput,
+    FetchedSourceRef,
+    ExtractedClaimBatch,
     AgentRunResult,
 )
 DEFAULT_OUTPUT = Path(__file__).resolve().parents[3] / "schemas"

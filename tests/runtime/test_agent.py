@@ -72,6 +72,8 @@ def test_actual_strands_loop_chooses_tools_from_observations_and_cannot_set_verd
     from qualor.runtime.agent import run_agent
 
     class PlanningModel(Model):
+        turns = 0
+
         def update_config(self, **kwargs):
             pass
 
@@ -83,11 +85,20 @@ def test_actual_strands_loop_chooses_tools_from_observations_and_cannot_set_verd
             yield
 
         async def stream(self, messages, tool_specs=None, system_prompt=None, **kwargs):
-            rendered = json.dumps(messages, default=str)
+            self.turns += 1
+            observations = [
+                json.loads(content["text"])
+                for message in messages
+                for block in message.get("content", [])
+                if "toolResult" in block
+                for content in block["toolResult"].get("content", [])
+                if isinstance(content.get("text"), str)
+            ]
             tools = tool_specs
             assert {t["name"] for t in tools} == {
                 "search_web",
                 "fetch_official_source",
+                "extract_official_claims",
                 "record_evidence",
                 "evaluate_current_state",
             }
@@ -97,27 +108,20 @@ def test_actual_strands_loop_chooses_tools_from_observations_and_cannot_set_verd
             assert "candidate_id" in fetch_schema["properties"]
             assert "url" not in fetch_schema["properties"]
             assert "candidate_id" in fetch_schema["required"]
-            if "discovery only" not in rendered:
+            if self.turns == 1:
                 name, args = "search_web", {"query": "owned query"}
-            elif "Projects must use Widget SDK." not in rendered:
-                candidate_id = rendered.split('candidate_id\\\": \\\"', 1)[1].split('\\\"', 1)[0]
+            elif self.turns == 2:
+                candidate_id = observations[-1]["results"][0]["candidate_id"]
                 name, args = "fetch_official_source", {"candidate_id": candidate_id}
-            elif "CONTROLLED_CLAUSE_VERIFIED" not in rendered:
+            elif self.turns == 3:
+                name, args = "extract_official_claims", {
+                    "source_id": observations[-1]["source_id"],
+                    "focus": "required technology",
+                }
+            elif self.turns == 4:
                 name, args = (
                     "record_evidence",
-                    {
-                        "claims": [
-                            {
-                                "source_id": "s",
-                                "source_url": "https://example.org/rules",
-                                "field": "required_technology",
-                                "value": ["Widget SDK"],
-                                "excerpt": "Projects must use Widget SDK.",
-                                "state": "CANDIDATE",
-                                "confidence": "HIGH",
-                            }
-                        ]
-                    },
+                    {"claims": observations[-1]["claims"]},
                 )
             else:
                 name, args = "evaluate_current_state", {}
@@ -183,22 +187,31 @@ def test_U16_U19_replay_recovers_reference_and_reaches_deterministic_evidence_ha
                 candidate_id = rendered.rsplit('candidate_id\\\": \\\"', 1)[1].split('\\\"', 1)[0]
                 name, args = "fetch_official_source", {"candidate_id": candidate_id}
             elif self.turns == 4:
-                assert "Projects must use Widget SDK." in rendered
+                observations = [
+                    json.loads(content["text"])
+                    for message in messages
+                    for block in message.get("content", [])
+                    if "toolResult" in block
+                    for content in block["toolResult"].get("content", [])
+                    if isinstance(content.get("text"), str)
+                ]
+                source = observations[-1]
+                name, args = "extract_official_claims", {
+                    "source_id": source["source_id"],
+                    "focus": "required technology",
+                }
+            elif self.turns == 5:
+                observations = [
+                    json.loads(content["text"])
+                    for message in messages
+                    for block in message.get("content", [])
+                    if "toolResult" in block
+                    for content in block["toolResult"].get("content", [])
+                    if isinstance(content.get("text"), str)
+                ]
                 name, args = (
                     "record_evidence",
-                    {
-                        "claims": [
-                            {
-                                "source_id": "s",
-                                "source_url": "https://example.org/rules",
-                                "field": "required_technology",
-                                "value": ["Widget SDK"],
-                                "excerpt": "Projects must use Widget SDK.",
-                                "state": "CANDIDATE",
-                                "confidence": "HIGH",
-                            }
-                        ]
-                    },
+                    {"claims": observations[-1]["claims"]},
                 )
             else:
                 name, args = "evaluate_current_state", {}

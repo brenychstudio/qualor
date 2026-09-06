@@ -10,6 +10,7 @@ Component = Literal[
     "orchestration",
     "search_web",
     "fetch_official_source",
+    "extract_official_claims",
     "record_evidence",
     "evaluate_current_state",
     "strands_model",
@@ -61,6 +62,10 @@ FIELDS = frozenset(
         "authority",
         "retrieved_at",
         "text_truncated",
+        "bounded_excerpt",
+        "content_type",
+        "content_length",
+        "source_type",
         "mode",
         "results",
         "termination_reason",
@@ -130,7 +135,7 @@ CODEBOOK = {
         "The bounded model invocation failed; raw SDK error text is withheld.",
         "NO",
     ),
-    "CLAIM_BATCH_LIMIT": ("At most 12 claims may be sent in one tool call.", "YES"),
+    "CLAIM_BATCH_LIMIT": ("At most two claims may be sent in one tool call.", "YES"),
     "CLAIM_LIMIT": ("The bounded run claim inventory is full; stop recording claims.", "NO"),
     "UNSUPPORTED_SOURCE_ENCODING": (
         "The HTTP response encoding is unsupported; no decoding fallback.",
@@ -152,6 +157,26 @@ CODEBOOK = {
     "CANDIDATE_NOT_FOUND": (
         "Use one current-run candidate_id returned by search_web; no new search is required.",
         "YES",
+    ),
+    "SOURCE_REFERENCE_NOT_FOUND": (
+        "Use one current-run source_id returned by fetch_official_source.",
+        "YES",
+    ),
+    "EXTRACTOR_NOT_CONFIGURED": (
+        "No explicit structured extraction provider is available for this run.",
+        "NO",
+    ),
+    "EXTRACTION_SOURCE_REFERENCE_MISMATCH": (
+        "Extraction output must reference the exact current-run fetched source.",
+        "YES",
+    ),
+    "EXTRACTION_FOCUS_INVALID": (
+        "Provide a bounded nonempty extraction focus.",
+        "YES",
+    ),
+    "AGENT_TOOL_RESULT_TOO_LARGE": (
+        "Tool output exceeded the ordinary agent-context byte ceiling.",
+        "NO",
     ),
     "CLAIM_SOURCE_REFERENCE_MISSING": (
         "Fetch the source first and use its returned ID and URL.",
@@ -178,7 +203,7 @@ CODEBOOK = {
         "NO",
     ),
     "TOOL_NOT_AVAILABLE": (
-        "Use only search_web, fetch_official_source, record_evidence or evaluate_current_state.",
+        "Use only search, fetch, structured extraction, evidence, or deterministic evaluation.",
         "YES",
     ),
     "FETCH_CONTENT_TYPE_REJECTED": ("Select an authorized HTML, JSON or plain text source.", "YES"),
