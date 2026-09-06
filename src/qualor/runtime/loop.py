@@ -369,7 +369,28 @@ class OpportunityRun:
             ):
                 raise ValueError("EXTRACTION_SOURCE_REFERENCE_MISMATCH")
             claim_payloads = [claim.model_dump(mode="json") for claim in claims]
-            bounded_agent_result({"claims": claim_payloads})
+            anticipated_observations = []
+            for claim in claims:
+                try:
+                    admitted = validate_claim(claim, self.sources)
+                    anticipated_observations.append(
+                        {
+                            "status": admitted.support_state,
+                            "evidence_id": admitted.evidence.id,
+                            "source_url": admitted.evidence.final_url,
+                        }
+                    )
+                except (ValueError, RuntimeError, OSError) as exc:
+                    anticipated_observations.append(
+                        reject(exc, component="claim_validation").model_dump(mode="json")
+                    )
+            bounded_agent_result(
+                {
+                    "status": "EXTRACTED",
+                    "claims": claim_payloads,
+                    "observations": anticipated_observations,
+                }
+            )
             self.event("STRUCTURED_EXTRACTION", "MODEL_POWERED_TOOL", (source_id,), len(claims))
             observations = [self.record_evidence(claim) for claim in claim_payloads]
             output = {

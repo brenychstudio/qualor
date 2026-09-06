@@ -150,11 +150,10 @@ def test_C11_C12_C13_extraction_request_delimits_injection_and_grants_no_authori
 
     assert "UNTRUSTED_SOURCE_DATA" in rendered
     assert hostile in rendered
-    assert request["toolConfig"]["toolChoice"]["tool"]["name"] == "return_extracted_claims"
-    assert [t["toolSpec"]["name"] for t in request["toolConfig"]["tools"]] == [
-        "return_extracted_claims"
-    ]
-    schema = request["toolConfig"]["tools"][0]["toolSpec"]["inputSchema"]["json"]
+    assert "toolConfig" not in request
+    definition = request["outputConfig"]["textFormat"]["structure"]["jsonSchema"]
+    assert definition["name"] == "return_extracted_claims"
+    schema = json.loads(definition["schema"])
     assert "eligibility" not in json.dumps(schema).lower()
     assert "recommendation" not in json.dumps(schema).lower()
     assert len(request["messages"]) == 1
@@ -206,6 +205,28 @@ def test_oversized_extraction_batch_is_rejected_before_any_evidence_mutation():
     assert not run.claims
 
 
+def test_complete_extraction_result_is_bounded_before_evidence_mutation():
+    from qualor.runtime.context import MAX_AGENT_TOOL_RESULT_BYTES
+
+    extractor = CapturingExtractor()
+    run = fetched_run(extractor=extractor)
+    _, reference = fetch_one(run)
+    source = run.sources[reference["source_id"]]
+    long_url = "https://example.org/rules?source=" + ("a" * 1500)
+    run.sources[reference["source_id"]] = source.model_copy(
+        update={"original_url": long_url, "final_url": long_url}
+    )
+    extractor.claims = tuple(
+        claim_for({**reference, "url": long_url}) for _ in range(2)
+    )
+
+    result = run.extract_official_claims(reference["source_id"], "technology")
+
+    assert result["reason_code"] == "AGENT_TOOL_RESULT_TOO_LARGE"
+    assert not run.claims
+    assert len(json.dumps(result, default=str).encode("utf-8")) <= MAX_AGENT_TOOL_RESULT_BYTES
+
+
 def test_extraction_source_window_has_explicit_budget_bound_and_full_body_stays_trusted():
     from qualor.runtime.agent import estimate_model_reservation
     from qualor.runtime.extraction import MAX_EXTRACTION_SOURCE_BYTES, build_extraction_request
@@ -252,29 +273,23 @@ def test_bedrock_extractor_uses_bounded_structured_request_and_existing_budget_g
     class Client:
         def converse(self, **request):
             captured.append(request)
+            payload = {
+                "claims": [
+                    {
+                        "source_id": source.id,
+                        "source_url": source.final_url,
+                        "field": "required_technology",
+                        "value": ["Widget SDK"],
+                        "excerpt": "Projects must use Widget SDK.",
+                        "state": "CANDIDATE",
+                        "confidence": "HIGH",
+                    }
+                ]
+            }
             return {
                 "output": {
                     "message": {
-                        "content": [
-                            {
-                                "toolUse": {
-                                    "name": "return_extracted_claims",
-                                    "input": {
-                                        "claims": [
-                                            {
-                                                "source_id": source.id,
-                                                "source_url": source.final_url,
-                                                "field": "required_technology",
-                                                "value": ["Widget SDK"],
-                                                "excerpt": "Projects must use Widget SDK.",
-                                                "state": "CANDIDATE",
-                                                "confidence": "HIGH",
-                                            }
-                                        ]
-                                    },
-                                }
-                            }
-                        ]
+                        "content": [{"text": json.dumps(payload)}]
                     }
                 },
                 "usage": {"inputTokens": 50, "outputTokens": 30},
@@ -298,6 +313,8 @@ def test_bedrock_extractor_uses_bounded_structured_request_and_existing_budget_g
     assert claims[0].source_id == source.id
     payload = json.loads(captured[0]["messages"][0]["content"][0]["text"])
     assert payload["UNTRUSTED_SOURCE_DATA"] == source.text
+    assert "outputConfig" in captured[0]
+    assert "toolConfig" not in captured[0]
     assert guard.snapshot().inference_calls == 1
 
 
@@ -450,6 +467,9 @@ def test_C20_live_like_replay_reaches_evidence_and_judge_readable_trace():
     assert run.budget.snapshot().inference_calls == 0
     assert run.budget.snapshot().search_calls == 0
     assert metrics["strands_tool_calls"] >= 4
+    assert metrics["model_turns"] == 4
+    assert metrics["model_turns"] + 1 <= 6  # one isolated extraction model call
+    assert result.termination_reason == "HARD_FAIL_CONFIRMED"
     events = [event.event for event in result.trace]
     assert events.index("SOURCE_REFERENCE_CREATED") < events.index("STRUCTURED_EXTRACTION")
     assert events.index("STRUCTURED_EXTRACTION") < events.index("EVIDENCE_RECORDED")

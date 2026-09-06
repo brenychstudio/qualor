@@ -3,7 +3,7 @@
 import json
 from typing import Annotated, Protocol
 
-from pydantic import Field
+from pydantic import BeforeValidator, Field
 
 from qualor.domain.base import Contract
 
@@ -28,6 +28,62 @@ class ExtractedClaimBatch(Contract):
     claims: Annotated[
         tuple[ExtractedClaim, ...], Field(max_length=MAX_EXTRACTED_CLAIMS_PER_CALL)
     ]
+
+
+def _require_json_array(value: object) -> object:
+    if type(value) is not list:
+        raise ValueError("claims must be a JSON array")
+    return value
+
+
+class ExtractedClaimBatchTransport(Contract):
+    """Canonical JSON wire shape; JSON arrays are validated before tuple conversion."""
+
+    claims: Annotated[
+        list[ExtractedClaim],
+        BeforeValidator(_require_json_array),
+        Field(max_length=MAX_EXTRACTED_CLAIMS_PER_CALL),
+    ]
+
+    def to_domain(self) -> ExtractedClaimBatch:
+        return ExtractedClaimBatch(claims=tuple(self.claims))
+
+
+def validate_extraction_payload(payload: object) -> ExtractedClaimBatch:
+    """Accept exactly the wrapped JSON-native transport contract."""
+
+    return ExtractedClaimBatchTransport.model_validate(payload).to_domain()
+
+
+_BEDROCK_UNSUPPORTED_SCHEMA_KEYWORDS = frozenset(
+    {
+        "default",
+        "exclusiveMaximum",
+        "exclusiveMinimum",
+        "maxItems",
+        "maxLength",
+        "maximum",
+        "minLength",
+        "minimum",
+        "multipleOf",
+        "pattern",
+        "title",
+    }
+)
+
+
+def _bedrock_json_schema(node: object) -> object:
+    """Project local validation schema onto Bedrock's documented JSON subset."""
+
+    if isinstance(node, dict):
+        return {
+            key: _bedrock_json_schema(value)
+            for key, value in node.items()
+            if key not in _BEDROCK_UNSUPPORTED_SCHEMA_KEYWORDS
+        }
+    if isinstance(node, list):
+        return [_bedrock_json_schema(value) for value in node]
+    return node
 
 
 class ClaimExtractor(Protocol):
@@ -82,17 +138,23 @@ def build_extraction_request(
                 "content": [{"text": json.dumps(payload, ensure_ascii=False, default=str)}],
             }
         ],
-        "toolConfig": {
-            "tools": [
-                {
-                    "toolSpec": {
+        "outputConfig": {
+            "textFormat": {
+                "type": "json_schema",
+                "structure": {
+                    "jsonSchema": {
                         "name": EXTRACTION_TOOL_NAME,
                         "description": "Return only typed claims supported by this source.",
-                        "inputSchema": {"json": ExtractedClaimBatch.model_json_schema()},
+                        "schema": json.dumps(
+                            _bedrock_json_schema(
+                                ExtractedClaimBatchTransport.model_json_schema()
+                            ),
+                            ensure_ascii=False,
+                            separators=(",", ":"),
+                        ),
                     }
-                }
-            ],
-            "toolChoice": {"tool": {"name": EXTRACTION_TOOL_NAME}},
+                },
+            }
         },
         "inferenceConfig": {"maxTokens": max_output_tokens, "temperature": 0},
     }
@@ -110,14 +172,18 @@ class BedrockClaimExtractor:
             **build_extraction_request(source, focus, max_output_tokens=self.max_output_tokens)
         )
         content = response.get("output", {}).get("message", {}).get("content", [])
-        calls = [
-            block["toolUse"]
+        texts = [
+            block["text"]
             for block in content
-            if isinstance(block, dict) and isinstance(block.get("toolUse"), dict)
+            if isinstance(block, dict) and isinstance(block.get("text"), str)
         ]
-        if len(calls) != 1 or calls[0].get("name") != EXTRACTION_TOOL_NAME:
+        if len(texts) != 1:
             raise ValueError("EXTRACTION_SCHEMA_REJECTED")
-        batch = ExtractedClaimBatch.model_validate(calls[0].get("input"))
+        try:
+            payload = json.loads(texts[0])
+        except json.JSONDecodeError as exc:
+            raise ValueError("EXTRACTION_SCHEMA_REJECTED") from exc
+        batch = validate_extraction_payload(payload)
         for claim in batch.claims:
             if claim.source_id != source.id or claim.source_url not in {
                 source.original_url,

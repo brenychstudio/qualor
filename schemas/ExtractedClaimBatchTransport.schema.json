@@ -1,0 +1,122 @@
+{
+  "$defs": {
+    "ExtractedClaim": {
+      "additionalProperties": false,
+      "properties": {
+        "confidence": {
+          "enum": [
+            "HIGH",
+            "MEDIUM",
+            "LOW",
+            "UNKNOWN"
+          ],
+          "title": "Confidence",
+          "type": "string"
+        },
+        "excerpt": {
+          "maxLength": 700,
+          "minLength": 1,
+          "title": "Excerpt",
+          "type": "string"
+        },
+        "field": {
+          "enum": [
+            "organizer",
+            "program",
+            "edition",
+            "deadline",
+            "entrant_type",
+            "geography",
+            "legal_entity",
+            "project_policy",
+            "license",
+            "required_technology",
+            "financial_support",
+            "reward_conditions",
+            "deliverables"
+          ],
+          "title": "Field",
+          "type": "string"
+        },
+        "not_applicable_reason": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Not Applicable Reason"
+        },
+        "source_id": {
+          "minLength": 1,
+          "title": "Source Id",
+          "type": "string"
+        },
+        "source_url": {
+          "minLength": 1,
+          "title": "Source Url",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "CANDIDATE",
+            "UNKNOWN",
+            "NOT_APPLICABLE"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": [
+        "source_id",
+        "source_url",
+        "field",
+        "value",
+        "excerpt",
+        "state",
+        "confidence"
+      ],
+      "title": "ExtractedClaim",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Canonical JSON wire shape; JSON arrays are validated before tuple conversion.",
+  "properties": {
+    "claims": {
+      "items": {
+        "$ref": "#/$defs/ExtractedClaim"
+      },
+      "maxItems": 2,
+      "title": "Claims",
+      "type": "array"
+    }
+  },
+  "required": [
+    "claims"
+  ],
+  "title": "ExtractedClaimBatchTransport",
+  "type": "object"
+}

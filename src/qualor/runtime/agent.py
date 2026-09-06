@@ -67,11 +67,12 @@ def model_request_metrics(request: dict) -> dict:
         len(json.dumps(message, ensure_ascii=False, default=str).encode("utf-8"))
         for message in messages
     ]
-    extraction_request = any(
+    extraction_tool_request = any(
         tool.get("toolSpec", {}).get("name") == "return_extracted_claims"
         for tool in request.get("toolConfig", {}).get("tools", [])
         if isinstance(tool, dict)
     )
+    extraction_request = extraction_tool_request or "outputConfig" in request
     for message in messages:
         for block in message.get("content", []) if isinstance(message, dict) else []:
             if not isinstance(block, dict) or "toolResult" not in block:

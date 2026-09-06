@@ -1,4 +1,75 @@
-# QUALOR-03 checkpoint: source-context isolation (03B3G)
+# QUALOR-03 checkpoint: JSON-native extraction contract (03B3I)
+
+## QUALOR-03B3I: structured extraction transport closure
+
+Date: 2026-09-06. Starting HEAD: `41c8bd3a8f5951296b2ff2153fe995825c63e8c2`.
+This checkpoint is offline: zero Bedrock inference, Web Search, paid AWS calls, IAM
+changes, or resource mutations. Another live acceptance run requires explicit owner
+authorization.
+
+### Exact failure and root cause
+
+The 03B3H live trace retained safe validation evidence rather than raw model payloads.
+The first extraction output omitted the required `claims` wrapper
+(`claims:missing`). The second supplied a non-array value at `claims`
+(`claims:tuple_type`). Exact raw outputs were intentionally not persisted.
+
+Baseline reproduction disproved a Python-tuple/JSON-array impedance defect: the prior
+Pydantic domain batch accepted canonical `{"claims": [valid claim]}` and converted both
+the outer claims array and an array claim value to tuples. A missing wrapper fails with
+`missing`, a bare top-level array fails with `model_type`, and a single object in
+`claims` reproduces the live `tuple_type` error class. The emitted schema already described
+an object with a required array. The actual defect was relying on forced Bedrock tool use:
+it forced the output tool name but did not guarantee that the generated tool arguments
+conformed to the schema, consuming additional extraction attempts on formatting errors.
+
+### Canonical JSON wire boundary
+
+Extraction now has one explicit `ExtractedClaimBatchTransport` wire contract:
+
+```json
+{"claims": [{"source_id": "...", "field": "...", "state": "..."}]}
+```
+
+The transport collection is a JSON-native `list[ExtractedClaim]`. It requires the wrapper,
+forbids extra fields through the existing extra-forbid contract policy, rejects bare arrays,
+Python tuples, and other non-array collections, permits an explicit empty findings list, and
+preserves UNKNOWN.
+Only after validation is it converted once to immutable domain
+`tuple[ExtractedClaim, ...]`.
+
+The direct isolated extraction request now uses the installed Bedrock Converse native
+`outputConfig.textFormat` JSON Schema facility. A Bedrock-specific projection removes local
+validation keywords that the documented Bedrock subset does not support; the complete
+Pydantic constraints are still enforced locally. It requests a single structured JSON text
+result and passes that result through the one transport validator. There is no format-repair
+LLM loop, permissive dictionary fallback, or heuristic JSON repair. The complete bounded
+claims-plus-observations tool result is checked before evidence state can mutate. The source capability,
+9,000-byte extraction window, 512-token output ceiling, prompt-injection delimiter, exact
+source ID/URL checks, evidence admission, and deterministic authority remain unchanged.
+
+### Replay and budget evidence
+
+An offline native-JSON replay traverses source capability resolution, bounded extraction,
+transport validation, immutable domain conversion, existing `record_evidence`, one linked
+critical EvidenceRecord, deterministic eligibility, and deterministic `SKIP`. It uses zero
+Bedrock and Web Search calls. Missing wrappers, bare arrays, malformed/extra claims,
+non-array claims, forged shapes, UNKNOWN, citation/excerpt preservation, and immutable
+conversion are covered directly.
+
+For a 60,000-byte trusted source with the unchanged 9,000-byte extraction window, the
+native-schema extraction request is 11,445 bytes and reserves USD 0.048159. Combining the
+run-3 ledger (USD 0.077949), the isolated planning reservation (USD 0.043560), and this
+extraction reservation yields a fully conservative USD 0.169668 projection beneath the
+unchanged USD 0.20 acceptance cap. The successful replay uses four planner turns, including
+the post-extraction deterministic evaluation turn, plus one isolated extraction call. Removing
+the two observed formatting retries therefore reduces the projected successful path from six
+Bedrock calls to five.
+
+The completed local suite contains **584 tests**. Exact commit, push, and clean-tree evidence
+is recorded in the Result Packet.
+
+# Previous checkpoint: source-context isolation (03B3G)
 
 ## QUALOR-03B3G: agent context and extraction budget boundary
 

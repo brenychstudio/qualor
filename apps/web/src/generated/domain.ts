@@ -18,6 +18,7 @@ export type QualorDomain =
   | EligibilityGate
   | EvidenceRecord
   | ExtractedClaimBatch
+  | ExtractedClaimBatchTransport
   | FetchedSourceRef
   | FounderProfile
   | OpportunityRecord
@@ -707,6 +708,10 @@ export type Reasons8 = string[];
  * @maxItems 2
  */
 export type Claims1 = [] | [ExtractedClaim] | [ExtractedClaim, ExtractedClaim];
+/**
+ * @maxItems 2
+ */
+export type Claims2 = [] | [ExtractedClaim] | [ExtractedClaim, ExtractedClaim];
 export type BoundedExcerpt = string;
 export type CandidateId = string;
 export type ContentLength = number;
@@ -1485,6 +1490,12 @@ export interface DecisionResult {
 }
 export interface ExtractedClaimBatch {
   claims: Claims1;
+}
+/**
+ * Canonical JSON wire shape; JSON arrays are validated before tuple conversion.
+ */
+export interface ExtractedClaimBatchTransport {
+  claims: Claims2;
 }
 export interface FetchedSourceRef {
   bounded_excerpt: BoundedExcerpt;

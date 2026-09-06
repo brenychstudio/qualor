@@ -27,6 +27,7 @@ EXPECTED = {
     "StudioInput",
     "FetchedSourceRef",
     "ExtractedClaimBatch",
+    "ExtractedClaimBatchTransport",
     "AgentRunResult",
 }
 
