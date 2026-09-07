@@ -1,5 +1,7 @@
 """Non-secret bootstrap configuration; live execution is unavailable."""
 
+from pathlib import Path
+
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -10,6 +12,7 @@ class Settings(BaseSettings):
     qualor_env: str = "development"
     qualor_live_enabled: bool = False
     aws_region: str = "us-east-1"
+    database_path: Path = Path(".qualor/local/qualor.db")
 
     @field_validator("qualor_live_enabled")
     @classmethod
