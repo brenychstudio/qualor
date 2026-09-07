@@ -13,7 +13,7 @@ from qualor.eligibility.freshness import evaluate_freshness
 from qualor.persistence import Database, InvalidReferenceError
 
 from .models import ApprovalRecord, DraftJobRecord, DraftPack, RunEvent
-from .store import OpportunityWorkspace, WorkspaceStore
+from .store import DecisionSnapshot, OpportunityWorkspace, WorkspaceStore
 from .versioning import (
     OPPORTUNITY_DIGEST_CRITICAL_FIELDS,
     opportunity_semantic_digest,
@@ -21,6 +21,28 @@ from .versioning import (
 )
 
 _INSTANT = TypeAdapter(UtcInstant)
+
+
+def proof_freshness(item, opportunity, now, *, refresh_failed=False):
+    if refresh_failed or item.last_refresh_failed_at is not None:
+        return FreshnessStatus.STALE
+    return evaluate_freshness(
+        item.retrieved_at,
+        now,
+        opportunity.deadlines[0] if opportunity.deadlines else None,
+        unknown_deadline=not opportunity.deadlines,
+    )
+
+
+def _workspace_freshness(statuses, failed):
+    statuses = set(statuses)
+    return (
+        FreshnessStatus.STALE
+        if failed or FreshnessStatus.STALE in statuses
+        else FreshnessStatus.UNKNOWN
+        if not statuses or FreshnessStatus.UNKNOWN in statuses
+        else FreshnessStatus.FRESH
+    )
 
 
 class ApprovalVersionStatus(StrEnum):
@@ -78,6 +100,14 @@ class WorkspaceAggregate:
     run_events: tuple[RunEvent, ...]
 
 
+@dataclass(frozen=True)
+class CurrentProductWorkspace:
+    current: OpportunityWorkspace
+    freshness: FreshnessStatus
+    last_refresh_failed_at: datetime | None
+    selected_snapshot: DecisionSnapshot | None
+
+
 class WorkspaceLifecycle:
     def __init__(self, database: Database) -> None:
         self.database = database
@@ -85,6 +115,51 @@ class WorkspaceLifecycle:
     @staticmethod
     def _store(connection) -> WorkspaceStore:
         return WorkspaceStore(connection)
+
+    def reconstruct_current_for_product(
+        self, opportunity_id: str, now: datetime
+    ) -> CurrentProductWorkspace:
+        """Target the current decision graph; public history is separately paged.
+
+        Freshness scans all current proof records with bounded memory. It never
+        uses a public page as an input to authority or to freshness aggregation.
+        """
+        instant = _INSTANT.validate_python(now)
+        with self.database.transaction() as connection:
+            store = self._store(connection)
+            latest = store.opportunities.latest_with_digest(opportunity_id)
+            if latest is None:
+                raise KeyError(opportunity_id)
+            opportunity = latest[0]
+            runs = store.runs.latest_for_opportunity(opportunity_id, opportunity.version)
+            display_runs = runs
+            if runs and all(run.decision_id is None for run in runs):
+                display_runs = store.runs.latest_for_opportunity(
+                    opportunity_id, opportunity.version, completed_decision=True
+                )
+            snapshots = []
+            for run in display_runs:
+                if run.decision_id is None:
+                    continue
+                decision = store.decisions.get_decision(run.decision_id, run.decision_version)
+                if decision is None:
+                    raise InvalidReferenceError("Decision snapshot reference is unavailable")
+                founder_id = store.decisions.get_founder_profile_id(decision.id, decision.version)
+                founder = store.profiles.get_founder(founder_id, decision.profile_version)
+                project = store.projects.get_project(decision.project_id, decision.project_version)
+                if founder is None or project is None:
+                    raise InvalidReferenceError("Decision snapshot reference is unavailable")
+                snapshots.append(DecisionSnapshot(decision, founder, project))
+            failed = store.opportunities.latest_refresh_failure(opportunity_id, opportunity.version)
+            statuses = set()
+            for item in store.evidence.iter_for_opportunity(opportunity_id, opportunity.version):
+                statuses.add(proof_freshness(item, opportunity, instant))
+            freshness = _workspace_freshness(statuses, failed)
+            current = OpportunityWorkspace(
+                opportunity, (), tuple(s.decision for s in snapshots), runs, tuple(snapshots), ()
+            )
+            selected = snapshots[0] if len(snapshots) == 1 and len(display_runs) == 1 else None
+            return CurrentProductWorkspace(current, freshness, failed, selected)
 
     def persist_observation(self, record: OpportunityRecord) -> OpportunityVersionResult:
         observed = OpportunityRecord.model_validate(record)
@@ -210,24 +285,11 @@ class WorkspaceLifecycle:
                 )
                 for approval in approvals
             )
-            evidence_freshness = tuple(
-                evaluate_freshness(
-                    item.retrieved_at,
-                    _INSTANT.validate_python(now),
-                    current.opportunity.deadlines[0] if current.opportunity.deadlines else None,
-                    unknown_deadline=not current.opportunity.deadlines,
-                )
+            evidence_freshness = (
+                proof_freshness(item, current.opportunity, _INSTANT.validate_python(now))
                 for item in current.evidence
             )
-            freshness = (
-                FreshnessStatus.STALE
-                if failures or FreshnessStatus.STALE in evidence_freshness
-                else FreshnessStatus.UNKNOWN
-                if FreshnessStatus.UNKNOWN in evidence_freshness
-                else FreshnessStatus.FRESH
-                if evidence_freshness
-                else FreshnessStatus.UNKNOWN
-            )
+            freshness = _workspace_freshness(evidence_freshness, failures)
             return WorkspaceAggregate(
                 current=current,
                 history=history,

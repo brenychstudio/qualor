@@ -1,0 +1,323 @@
+{
+  "$defs": {
+    "ApprovalAction": {
+      "enum": [
+        "GENERATE_DRAFT_PACK"
+      ],
+      "title": "ApprovalAction",
+      "type": "string"
+    },
+    "ApprovalRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/ApprovalAction",
+          "default": "GENERATE_DRAFT_PACK"
+        },
+        "decision_id": {
+          "minLength": 1,
+          "title": "Decision Id",
+          "type": "string"
+        },
+        "decision_version": {
+          "minimum": 1,
+          "title": "Decision Version",
+          "type": "integer"
+        },
+        "founder_profile_id": {
+          "minLength": 1,
+          "title": "Founder Profile Id",
+          "type": "string"
+        },
+        "founder_profile_version": {
+          "minimum": 1,
+          "title": "Founder Profile Version",
+          "type": "integer"
+        },
+        "opportunity_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Opportunity Hash",
+          "type": "string"
+        },
+        "opportunity_version": {
+          "minimum": 1,
+          "title": "Opportunity Version",
+          "type": "integer"
+        },
+        "policy_versions": {
+          "$ref": "#/$defs/PolicyVersions"
+        },
+        "project_id": {
+          "minLength": 1,
+          "title": "Project Id",
+          "type": "string"
+        },
+        "project_version": {
+          "minimum": 1,
+          "title": "Project Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "opportunity_version",
+        "opportunity_hash",
+        "founder_profile_id",
+        "founder_profile_version",
+        "project_id",
+        "project_version",
+        "decision_id",
+        "decision_version",
+        "policy_versions"
+      ],
+      "title": "ApprovalRequest",
+      "type": "object"
+    },
+    "DraftEvidenceVersion": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_id": {
+          "minLength": 1,
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "evidence_id",
+        "version"
+      ],
+      "title": "DraftEvidenceVersion",
+      "type": "object"
+    },
+    "DraftPackSection": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "maxLength": 20000,
+          "title": "Content",
+          "type": "string"
+        },
+        "evidence_refs": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "key": {
+          "minLength": 1,
+          "title": "Key",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "title",
+        "content"
+      ],
+      "title": "DraftPackSection",
+      "type": "object"
+    },
+    "PolicyVersions": {
+      "additionalProperties": false,
+      "properties": {
+        "conflicts": {
+          "minimum": 1,
+          "title": "Conflicts",
+          "type": "integer"
+        },
+        "decisions": {
+          "const": 1,
+          "title": "Decisions",
+          "type": "integer"
+        },
+        "effort": {
+          "minimum": 1,
+          "title": "Effort",
+          "type": "integer"
+        },
+        "eligibility": {
+          "minimum": 1,
+          "title": "Eligibility",
+          "type": "integer"
+        },
+        "matching": {
+          "minimum": 1,
+          "title": "Matching",
+          "type": "integer"
+        },
+        "strategy": {
+          "minimum": 1,
+          "title": "Strategy",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "eligibility",
+        "matching",
+        "effort",
+        "conflicts",
+        "strategy",
+        "decisions"
+      ],
+      "title": "PolicyVersions",
+      "type": "object"
+    },
+    "RuntimeMode": {
+      "enum": [
+        "LIVE",
+        "FIXTURE",
+        "REPLAY"
+      ],
+      "title": "RuntimeMode",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "actor_id": {
+      "minLength": 1,
+      "title": "Actor Id",
+      "type": "string"
+    },
+    "approval_id": {
+      "minLength": 1,
+      "title": "Approval Id",
+      "type": "string"
+    },
+    "approval_version": {
+      "minimum": 1,
+      "title": "Approval Version",
+      "type": "integer"
+    },
+    "approved_snapshot": {
+      "$ref": "#/$defs/ApprovalRequest"
+    },
+    "content_kind": {
+      "const": "DRAFT_FOR_HUMAN_REVIEW",
+      "default": "DRAFT_FOR_HUMAN_REVIEW",
+      "title": "Content Kind",
+      "type": "string"
+    },
+    "creator_kind": {
+      "anyOf": [
+        {
+          "const": "DETERMINISTIC",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Creator Kind"
+    },
+    "draft_job_id": {
+      "minLength": 1,
+      "title": "Draft Job Id",
+      "type": "string"
+    },
+    "draft_job_version": {
+      "minimum": 1,
+      "title": "Draft Job Version",
+      "type": "integer"
+    },
+    "evidence_refs": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 100,
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "evidence_versions": {
+      "items": {
+        "$ref": "#/$defs/DraftEvidenceVersion"
+      },
+      "maxItems": 100,
+      "title": "Evidence Versions",
+      "type": "array"
+    },
+    "generated_at": {
+      "format": "date-time",
+      "title": "Generated At",
+      "type": "string"
+    },
+    "id": {
+      "minLength": 1,
+      "title": "Id",
+      "type": "string"
+    },
+    "missing_fields": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 100,
+      "title": "Missing Fields",
+      "type": "array"
+    },
+    "mode": {
+      "$ref": "#/$defs/RuntimeMode"
+    },
+    "opportunity_id": {
+      "minLength": 1,
+      "title": "Opportunity Id",
+      "type": "string"
+    },
+    "sections": {
+      "items": {
+        "$ref": "#/$defs/DraftPackSection"
+      },
+      "maxItems": 7,
+      "title": "Sections",
+      "type": "array"
+    },
+    "source_refs": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 100,
+      "title": "Source Refs",
+      "type": "array"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "id",
+    "version",
+    "approval_id",
+    "approval_version",
+    "actor_id",
+    "mode",
+    "draft_job_id",
+    "draft_job_version",
+    "opportunity_id",
+    "approved_snapshot",
+    "evidence_refs",
+    "evidence_versions",
+    "source_refs",
+    "missing_fields",
+    "sections",
+    "generated_at",
+    "creator_kind"
+  ],
+  "title": "DraftPackView",
+  "type": "object"
+}

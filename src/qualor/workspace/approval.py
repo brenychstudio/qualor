@@ -94,6 +94,23 @@ def _key(operation: str, key: str) -> str:
     return hashlib.sha256(json.dumps([operation, raw]).encode()).hexdigest()
 
 
+def completed_source_run(store: WorkspaceStore, decision, now: datetime):
+    """Shared research-to-action boundary; an ambiguous receipt never grants authority."""
+    runs = store.runs.source_runs(decision)
+    if len(runs) > 1:
+        raise ApprovalDenied(ApprovalReason.AMBIGUOUS_SOURCE_RUN)
+    if not runs or runs[0].state != "COMPLETED" or runs[0].completed_at is None:
+        raise ApprovalDenied(ApprovalReason.SOURCE_RUN_NOT_COMPLETED)
+    run = runs[0]
+    if (
+        run.completed_at > now
+        or run.completed_at < max(run.created_at, decision.created_at)
+        or (run.started_at is not None and run.completed_at < run.started_at)
+    ):
+        raise ApprovalDenied(ApprovalReason.SOURCE_RUN_MISMATCH)
+    return run
+
+
 class ApprovalService:
     def __init__(
         self,
@@ -102,11 +119,33 @@ class ApprovalService:
         actor_id: str,
         policy_versions: PolicyVersions,
         mode: RuntimeMode,
+        require_completed_run: bool = False,
+        require_current_run: bool = False,
     ) -> None:
         self.database = database
         self.actor_id = _TEXT.validate_python(actor_id)
         self.policy_versions = PolicyVersions.model_validate(policy_versions)
         self.mode = RuntimeMode(mode)
+        self.require_completed_run = require_completed_run
+        self.require_current_run = require_current_run
+
+    def for_workspace_request(self, bindings: ApprovalBindings, now: datetime) -> "ApprovalService":
+        """Resolve execution mode from the exact persisted research receipt, never HTTP input."""
+        expected = self._expected(bindings)
+        with self.database.transaction() as connection:
+            store = WorkspaceStore(connection)
+            decision = store.decisions.get_decision(expected.decision_id, expected.decision_version)
+            if decision is None:
+                raise ApprovalDenied(ApprovalReason.GRAPH_MISMATCH)
+            run = completed_source_run(store, decision, _INSTANT.validate_python(now))
+        return ApprovalService(
+            self.database,
+            actor_id=self.actor_id,
+            policy_versions=self.policy_versions,
+            mode=run.mode,
+            require_completed_run=True,
+            require_current_run=True,
+        )
 
     def _expected(self, value: ApprovalBindings) -> ApprovalBindings:
         if getattr(value, "action", None) != ApprovalAction.GENERATE_DRAFT_PACK:
@@ -169,6 +208,26 @@ class ApprovalService:
                 return ApprovalReason.GRAPH_MISMATCH
         if decision.policy_versions != self.policy_versions:
             return ApprovalReason.POLICY_MISMATCH
+        if self.require_completed_run:
+            try:
+                run = completed_source_run(store, decision, now)
+            except ApprovalDenied as exc:
+                return exc.reason
+            if run.mode != self.mode:
+                return ApprovalReason.MODE_MISMATCH
+        if self.require_current_run:
+            latest_runs = store.runs.latest_for_opportunity(
+                binding.opportunity_id, binding.opportunity_version
+            )
+            if not latest_runs or any(run.state != "COMPLETED" for run in latest_runs):
+                return ApprovalReason.SOURCE_RUN_NOT_COMPLETED
+            if len(latest_runs) != 1:
+                return ApprovalReason.AMBIGUOUS_SOURCE_RUN
+            if (latest_runs[0].decision_id, latest_runs[0].decision_version) != (
+                binding.decision_id,
+                binding.decision_version,
+            ):
+                return ApprovalReason.GRAPH_MISMATCH
         if not opportunity.deadlines or any(type(d) is date for d in opportunity.deadlines):
             return ApprovalReason.DEADLINE_UNKNOWN
         deadline = min(opportunity.deadlines)
@@ -294,7 +353,20 @@ class ApprovalService:
         now: datetime,
         *,
         pending_allowed: bool = False,
+        persist_revocation: bool = True,
     ) -> ApprovalValidation:
+        def revoke(record, reason):
+            changes = dict(
+                state=ApprovalState.REVOKED_APPROVAL,
+                revocation_reason=reason.value,
+                idempotency_key=None,
+            )
+            return (
+                self._append(store, record, now, **changes)
+                if persist_revocation
+                else record.model_copy(update=changes)
+            )
+
         record = store.approvals.latest(approval_id)
         if record is None:
             return ApprovalValidation(False, ApprovalReason.NOT_FOUND, None)
@@ -313,14 +385,7 @@ class ApprovalService:
             )
             return ApprovalValidation(False, reason, record)
         if now >= record.expires_at:
-            record = self._append(
-                store,
-                record,
-                now,
-                state=ApprovalState.REVOKED_APPROVAL,
-                revocation_reason=ApprovalReason.EXPIRED.value,
-                idempotency_key=None,
-            )
+            record = revoke(record, ApprovalReason.EXPIRED)
             return ApprovalValidation(False, ApprovalReason.EXPIRED, record)
         if record.consumed_at is not None:
             return ApprovalValidation(False, ApprovalReason.CONSUMED, record)
@@ -332,20 +397,32 @@ class ApprovalService:
                 ApprovalReason.GRAPH_MISMATCH,
                 ApprovalReason.EVIDENCE_CHANGED,
             }:
-                record = self._append(
-                    store,
-                    record,
-                    now,
-                    state=ApprovalState.REVOKED_APPROVAL,
-                    revocation_reason=reason.value,
-                    idempotency_key=None,
-                )
+                record = revoke(record, reason)
             return ApprovalValidation(False, reason, record)
         if record.state == ApprovalState.PENDING_APPROVAL and pending_allowed:
             return ApprovalValidation(True, ApprovalReason.VALID, record)
         if record.state != ApprovalState.APPROVED_FOR_PREPARATION:
             return ApprovalValidation(False, ApprovalReason.PENDING, record)
         return ApprovalValidation(True, ApprovalReason.VALID, record)
+
+    def inspect_request(self, bindings: ApprovalBindings, now: datetime) -> ApprovalValidation:
+        """Read-only capability hint; request/confirm/consume always revalidate authority."""
+        expected = self._expected(bindings)
+        instant = _INSTANT.validate_python(now)
+        with self.database.transaction() as connection:
+            reason = self._graph_reason(WorkspaceStore(connection), expected, instant)
+        return ApprovalValidation(reason is None, reason or ApprovalReason.VALID, None)
+
+    def inspect_approval(
+        self, approval_id: str, expected_versions: ApprovalBindings, now: datetime
+    ) -> ApprovalValidation:
+        """Project current validity without writing through a product GET request."""
+        expected = self._expected(expected_versions)
+        instant = _INSTANT.validate_python(now)
+        with self.database.transaction() as connection:
+            return self._inspect(
+                WorkspaceStore(connection), approval_id, expected, instant, persist_revocation=False
+            )
 
     def request_approval(
         self,

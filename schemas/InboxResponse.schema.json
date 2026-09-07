@@ -1,0 +1,593 @@
+{
+  "$defs": {
+    "Confidence": {
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH",
+        "UNKNOWN"
+      ],
+      "title": "Confidence",
+      "type": "string"
+    },
+    "DeadlineView": {
+      "additionalProperties": false,
+      "properties": {
+        "timezone_status": {
+          "enum": [
+            "UTC",
+            "CALENDAR_DATE_ONLY",
+            "UNKNOWN"
+          ],
+          "title": "Timezone Status",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "format": "date-time",
+                "type": "string"
+              }
+            ]
+          },
+          "maxItems": 100,
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": [
+        "values",
+        "timezone_status"
+      ],
+      "title": "DeadlineView",
+      "type": "object"
+    },
+    "EffortCategory": {
+      "enum": [
+        "INTEGRATION",
+        "EVIDENCE",
+        "REPO_LICENSE_CLEANUP",
+        "DEMO",
+        "NARRATIVE",
+        "SUBMISSION"
+      ],
+      "title": "EffortCategory",
+      "type": "string"
+    },
+    "EffortEstimate": {
+      "additionalProperties": false,
+      "properties": {
+        "adaptation_range": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HourRange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "breakdown": {
+          "items": {
+            "$ref": "#/$defs/EffortItem"
+          },
+          "title": "Breakdown",
+          "type": "array"
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        },
+        "max_total": {
+          "anyOf": [
+            {
+              "ge": 0,
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Max Total"
+        },
+        "min_total": {
+          "anyOf": [
+            {
+              "ge": 0,
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Min Total"
+        },
+        "missing_information": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Missing Information",
+          "type": "array"
+        },
+        "policy_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Policy Version",
+          "type": "integer"
+        },
+        "reasons": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        }
+      },
+      "required": [
+        "breakdown",
+        "adaptation_range",
+        "min_total",
+        "max_total",
+        "reasons",
+        "missing_information",
+        "evaluated_at"
+      ],
+      "title": "EffortEstimate",
+      "type": "object"
+    },
+    "EffortItem": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "$ref": "#/$defs/EffortCategory"
+        },
+        "confidence": {
+          "$ref": "#/$defs/Confidence"
+        },
+        "hours": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HourRange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "category",
+        "hours",
+        "confidence",
+        "reason"
+      ],
+      "title": "EffortItem",
+      "type": "object"
+    },
+    "FactorResult": {
+      "additionalProperties": false,
+      "properties": {
+        "fact_refs": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Fact Refs",
+          "type": "array"
+        },
+        "factor": {
+          "minLength": 1,
+          "title": "Factor",
+          "type": "string"
+        },
+        "rating": {
+          "anyOf": [
+            {
+              "maximum": 4,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Rating"
+        },
+        "reasons": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "requirement_refs": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Requirement Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "factor",
+        "rating",
+        "reasons",
+        "requirement_refs",
+        "fact_refs"
+      ],
+      "title": "FactorResult",
+      "type": "object"
+    },
+    "FreshnessStatus": {
+      "enum": [
+        "FRESH",
+        "STALE",
+        "UNKNOWN"
+      ],
+      "title": "FreshnessStatus",
+      "type": "string"
+    },
+    "HourRange": {
+      "additionalProperties": false,
+      "properties": {
+        "max_hours": {
+          "ge": 0,
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "title": "Max Hours",
+          "type": "string"
+        },
+        "min_hours": {
+          "ge": 0,
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "title": "Min Hours",
+          "type": "string"
+        }
+      },
+      "required": [
+        "min_hours",
+        "max_hours"
+      ],
+      "title": "HourRange",
+      "type": "object"
+    },
+    "InboxItem": {
+      "additionalProperties": false,
+      "properties": {
+        "best_project": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProjectSummary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "deadline": {
+          "$ref": "#/$defs/DeadlineView"
+        },
+        "edition": {
+          "minLength": 1,
+          "title": "Edition",
+          "type": "string"
+        },
+        "effort": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/EffortEstimate"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "freshness": {
+          "$ref": "#/$defs/FreshnessStatus"
+        },
+        "human_action_available": {
+          "title": "Human Action Available",
+          "type": "boolean"
+        },
+        "mode": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RuntimeMode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "opportunity_id": {
+          "minLength": 1,
+          "title": "Opportunity Id",
+          "type": "string"
+        },
+        "organizer": {
+          "minLength": 1,
+          "title": "Organizer",
+          "type": "string"
+        },
+        "primary_blocker": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Primary Blocker"
+        },
+        "program_name": {
+          "minLength": 1,
+          "title": "Program Name",
+          "type": "string"
+        },
+        "readiness": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReadinessAssessment"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recommendation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Recommendation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "run_state": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RunState"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "opportunity_id",
+        "version",
+        "program_name",
+        "organizer",
+        "edition",
+        "recommendation",
+        "run_state",
+        "mode",
+        "best_project",
+        "deadline",
+        "effort",
+        "readiness",
+        "primary_blocker",
+        "freshness",
+        "human_action_available"
+      ],
+      "title": "InboxItem",
+      "type": "object"
+    },
+    "MaterialKind": {
+      "enum": [
+        "REPOSITORY",
+        "LICENSE",
+        "DEMO",
+        "ARCHITECTURE_DIAGRAM",
+        "TECHNICAL_INTEGRATION",
+        "NARRATIVE",
+        "PUBLIC_AVAILABILITY",
+        "OTHER"
+      ],
+      "title": "MaterialKind",
+      "type": "string"
+    },
+    "PageInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "has_more": {
+          "title": "Has More",
+          "type": "boolean"
+        },
+        "limit": {
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "offset": {
+          "minimum": 0,
+          "title": "Offset",
+          "type": "integer"
+        },
+        "total": {
+          "minimum": 0,
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "offset",
+        "limit",
+        "total",
+        "has_more"
+      ],
+      "title": "PageInfo",
+      "type": "object"
+    },
+    "ProjectSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "name"
+      ],
+      "title": "ProjectSummary",
+      "type": "object"
+    },
+    "ReadinessAssessment": {
+      "additionalProperties": false,
+      "properties": {
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        },
+        "factor_results": {
+          "items": {
+            "$ref": "#/$defs/FactorResult"
+          },
+          "title": "Factor Results",
+          "type": "array"
+        },
+        "gaps": {
+          "items": {
+            "$ref": "#/$defs/MaterialKind"
+          },
+          "title": "Gaps",
+          "type": "array"
+        },
+        "missing_information": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Missing Information",
+          "type": "array"
+        },
+        "policy_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Policy Version",
+          "type": "integer"
+        },
+        "state": {
+          "$ref": "#/$defs/ReadinessState"
+        }
+      },
+      "required": [
+        "state",
+        "gaps",
+        "missing_information",
+        "factor_results",
+        "evaluated_at"
+      ],
+      "title": "ReadinessAssessment",
+      "type": "object"
+    },
+    "ReadinessState": {
+      "enum": [
+        "READY",
+        "GAPS_EXECUTABLE",
+        "NOT_READY",
+        "UNKNOWN"
+      ],
+      "title": "ReadinessState",
+      "type": "string"
+    },
+    "Recommendation": {
+      "enum": [
+        "APPLY",
+        "PREPARE",
+        "WATCH",
+        "SKIP"
+      ],
+      "title": "Recommendation",
+      "type": "string"
+    },
+    "RunState": {
+      "enum": [
+        "CREATED",
+        "RUNNING",
+        "COMPLETED",
+        "PARTIAL",
+        "FAILED",
+        "CANCELLED",
+        "BUDGET_STOPPED"
+      ],
+      "title": "RunState",
+      "type": "string"
+    },
+    "RuntimeMode": {
+      "enum": [
+        "LIVE",
+        "FIXTURE",
+        "REPLAY"
+      ],
+      "title": "RuntimeMode",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "items": {
+      "items": {
+        "$ref": "#/$defs/InboxItem"
+      },
+      "maxItems": 100,
+      "title": "Items",
+      "type": "array"
+    },
+    "page": {
+      "$ref": "#/$defs/PageInfo"
+    },
+    "profile_present": {
+      "title": "Profile Present",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "items",
+    "profile_present",
+    "page"
+  ],
+  "title": "InboxResponse",
+  "type": "object"
+}

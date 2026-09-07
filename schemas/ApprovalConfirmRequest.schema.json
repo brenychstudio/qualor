@@ -1,0 +1,139 @@
+{
+  "$defs": {
+    "ApprovalAction": {
+      "enum": [
+        "GENERATE_DRAFT_PACK"
+      ],
+      "title": "ApprovalAction",
+      "type": "string"
+    },
+    "ApprovalRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/ApprovalAction",
+          "default": "GENERATE_DRAFT_PACK"
+        },
+        "decision_id": {
+          "minLength": 1,
+          "title": "Decision Id",
+          "type": "string"
+        },
+        "decision_version": {
+          "minimum": 1,
+          "title": "Decision Version",
+          "type": "integer"
+        },
+        "founder_profile_id": {
+          "minLength": 1,
+          "title": "Founder Profile Id",
+          "type": "string"
+        },
+        "founder_profile_version": {
+          "minimum": 1,
+          "title": "Founder Profile Version",
+          "type": "integer"
+        },
+        "opportunity_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Opportunity Hash",
+          "type": "string"
+        },
+        "opportunity_version": {
+          "minimum": 1,
+          "title": "Opportunity Version",
+          "type": "integer"
+        },
+        "policy_versions": {
+          "$ref": "#/$defs/PolicyVersions"
+        },
+        "project_id": {
+          "minLength": 1,
+          "title": "Project Id",
+          "type": "string"
+        },
+        "project_version": {
+          "minimum": 1,
+          "title": "Project Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "opportunity_version",
+        "opportunity_hash",
+        "founder_profile_id",
+        "founder_profile_version",
+        "project_id",
+        "project_version",
+        "decision_id",
+        "decision_version",
+        "policy_versions"
+      ],
+      "title": "ApprovalRequest",
+      "type": "object"
+    },
+    "PolicyVersions": {
+      "additionalProperties": false,
+      "properties": {
+        "conflicts": {
+          "minimum": 1,
+          "title": "Conflicts",
+          "type": "integer"
+        },
+        "decisions": {
+          "const": 1,
+          "title": "Decisions",
+          "type": "integer"
+        },
+        "effort": {
+          "minimum": 1,
+          "title": "Effort",
+          "type": "integer"
+        },
+        "eligibility": {
+          "minimum": 1,
+          "title": "Eligibility",
+          "type": "integer"
+        },
+        "matching": {
+          "minimum": 1,
+          "title": "Matching",
+          "type": "integer"
+        },
+        "strategy": {
+          "minimum": 1,
+          "title": "Strategy",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "eligibility",
+        "matching",
+        "effort",
+        "conflicts",
+        "strategy",
+        "decisions"
+      ],
+      "title": "PolicyVersions",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "expected_versions": {
+      "$ref": "#/$defs/ApprovalRequest"
+    },
+    "idempotency_key": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Idempotency Key",
+      "type": "string"
+    }
+  },
+  "required": [
+    "expected_versions",
+    "idempotency_key"
+  ],
+  "title": "ApprovalConfirmRequest",
+  "type": "object"
+}

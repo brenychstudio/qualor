@@ -18,7 +18,7 @@ from qualor.domain.base import NonEmpty, UtcInstant
 from qualor.eligibility.evidence import HARD_SOURCES
 from qualor.eligibility.freshness import evaluate_freshness
 
-from .approval import ApprovalDenied, ApprovalService
+from .approval import ApprovalDenied, ApprovalService, completed_source_run
 from .draft_templates import (
     DeterministicDraftAuthor,
     DraftAuthor,
@@ -75,22 +75,11 @@ class DraftingService:
         decision = store.decisions.get_decision(approval.decision_id, approval.decision_version)
         if any(value is None for value in (opportunity, founder, project, decision)):
             raise DraftingDenied("SNAPSHOT_UNAVAILABLE")
-        runs = tuple(
-            run
-            for run in store.runs.list_for_opportunity(opportunity.id, opportunity.version)
-            if (run.decision_id, run.decision_version) == (decision.id, decision.version)
-        )
-        if len(runs) > 1:
-            raise DraftingDenied("AMBIGUOUS_SOURCE_RUN")
-        if not runs or runs[0].state != "COMPLETED" or runs[0].completed_at is None:
-            raise DraftingDenied("SOURCE_RUN_NOT_COMPLETED")
-        run = runs[0]
-        if (
-            run.mode != self.approvals.mode
-            or run.completed_at > now
-            or run.completed_at < max(run.created_at, decision.created_at)
-            or (run.started_at is not None and run.completed_at < run.started_at)
-        ):
+        try:
+            run = completed_source_run(store, decision, now)
+        except ApprovalDenied as exc:
+            raise DraftingDenied(exc.reason.value) from exc
+        if run.mode != self.approvals.mode:
             raise DraftingDenied("SOURCE_RUN_MISMATCH")
         refs = set(decision.conflict.evidence_ids)
 
@@ -134,7 +123,7 @@ class DraftingService:
                 raise DraftingDenied("EVIDENCE_NOT_ACTIONABLE")
             evidence.append(item)
         facts, missing = authoring_data(founder, project, opportunity, evidence, decision)
-        records = (founder, project, opportunity, decision, runs[0], *evidence)
+        records = (founder, project, opportunity, decision, run, *evidence)
         if sum(len(r.model_dump_json().encode("utf-8")) for r in records) > MAX_DRAFT_INPUT_BYTES:
             raise DraftingDenied("DRAFT_INPUT_LIMIT")
         return DraftInputSnapshot(
@@ -143,7 +132,7 @@ class DraftingService:
             opportunity,
             decision,
             tuple(evidence),
-            runs[0],
+            run,
             facts,
             missing,
             decision_refs,

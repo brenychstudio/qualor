@@ -23,6 +23,7 @@ from qualor.runtime.context import FetchedSourceRef
 from qualor.runtime.extraction import ExtractedClaimBatch, ExtractedClaimBatchTransport
 from qualor.runtime.run_models import AgentRunResult, StudioInput
 from qualor.strategy import StrategyAssessment
+from qualor.workspace.read_models import PUBLIC_CONTRACTS
 
 CONTRACTS = (
     FounderProfile,
@@ -52,7 +53,7 @@ CONTRACTS = (
     ExtractedClaimBatch,
     ExtractedClaimBatchTransport,
     AgentRunResult,
-)
+) + PUBLIC_CONTRACTS
 DEFAULT_OUTPUT = Path(__file__).resolve().parents[3] / "schemas"
 
 

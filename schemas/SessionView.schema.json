@@ -1,0 +1,27 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "action_token": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Action Token"
+    },
+    "read_only": {
+      "title": "Read Only",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "read_only",
+    "action_token"
+  ],
+  "title": "SessionView",
+  "type": "object"
+}

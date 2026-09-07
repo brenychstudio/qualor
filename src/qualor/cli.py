@@ -18,6 +18,17 @@ app = typer.Typer(help="QUALOR bootstrap utilities.", add_completion=False)
 CANONICAL_SHA256 = "440db7b600d6ec170778035e39d93ce8cd5b8f20d49fd99bccf3174978536829"
 
 
+@app.command()
+def serve(port: int = typer.Option(8000, min=1, max=65535)) -> None:
+    """Serve the local product controller on loopback only."""
+    import uvicorn
+
+    from qualor.api import create_app
+
+    typer.echo(f"http://127.0.0.1:{port}")
+    uvicorn.run(create_app(), host="127.0.0.1", port=port, access_log=False, log_level="error")
+
+
 @app.command("run-live-opportunity")
 def run_live_opportunity(
     profile: Annotated[Path, typer.Option()],

@@ -1,0 +1,74 @@
+{
+  "$defs": {
+    "ApprovalReason": {
+      "enum": [
+        "VALID",
+        "NOT_FOUND",
+        "PENDING",
+        "REVOKED",
+        "EXPIRED",
+        "CONSUMED",
+        "ACTOR_MISMATCH",
+        "ACTION_MISMATCH",
+        "IDENTITY_MISMATCH",
+        "VERSION_MISMATCH",
+        "POLICY_MISMATCH",
+        "GRAPH_MISMATCH",
+        "MODE_MISMATCH",
+        "DEADLINE_UNKNOWN",
+        "DEADLINE_PASSED",
+        "DEADLINE_MISMATCH",
+        "DECISION_NOT_ACTIONABLE",
+        "EVIDENCE_NOT_ACTIONABLE",
+        "EVIDENCE_CHANGED",
+        "IDEMPOTENCY_CONFLICT",
+        "CHANGE_REVOKED",
+        "TIME_INVALID",
+        "SOURCE_RUN_NOT_COMPLETED",
+        "SOURCE_RUN_MISMATCH",
+        "AMBIGUOUS_SOURCE_RUN"
+      ],
+      "title": "ApprovalReason",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "code": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ApprovalReason"
+        },
+        {
+          "enum": [
+            "ACTION_FORBIDDEN",
+            "INVALID_REQUEST",
+            "INTERNAL_ERROR",
+            "PROJECT_LIMIT",
+            "SNAPSHOT_UNAVAILABLE",
+            "AMBIGUOUS_SOURCE_RUN",
+            "SOURCE_RUN_NOT_COMPLETED",
+            "SOURCE_RUN_MISMATCH",
+            "AMBIGUOUS_EVIDENCE_REFERENCE",
+            "EVIDENCE_REFERENCE_UNAVAILABLE",
+            "EVIDENCE_NOT_ACTIONABLE",
+            "DRAFT_INPUT_LIMIT",
+            "CONSUMPTION_WITHOUT_JOB_INTENT",
+            "DRAFT_STATE_INCONSISTENT",
+            "BUDGET_STOPPED",
+            "REVIEW_REQUIRED",
+            "STALE",
+            "READ_LIMIT_EXCEEDED"
+          ],
+          "type": "string"
+        }
+      ],
+      "title": "Code"
+    }
+  },
+  "required": [
+    "code"
+  ],
+  "title": "ProductError",
+  "type": "object"
+}

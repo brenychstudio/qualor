@@ -1,0 +1,335 @@
+{
+  "$defs": {
+    "ApprovalAction": {
+      "enum": [
+        "GENERATE_DRAFT_PACK"
+      ],
+      "title": "ApprovalAction",
+      "type": "string"
+    },
+    "ApprovalReason": {
+      "enum": [
+        "VALID",
+        "NOT_FOUND",
+        "PENDING",
+        "REVOKED",
+        "EXPIRED",
+        "CONSUMED",
+        "ACTOR_MISMATCH",
+        "ACTION_MISMATCH",
+        "IDENTITY_MISMATCH",
+        "VERSION_MISMATCH",
+        "POLICY_MISMATCH",
+        "GRAPH_MISMATCH",
+        "MODE_MISMATCH",
+        "DEADLINE_UNKNOWN",
+        "DEADLINE_PASSED",
+        "DEADLINE_MISMATCH",
+        "DECISION_NOT_ACTIONABLE",
+        "EVIDENCE_NOT_ACTIONABLE",
+        "EVIDENCE_CHANGED",
+        "IDEMPOTENCY_CONFLICT",
+        "CHANGE_REVOKED",
+        "TIME_INVALID",
+        "SOURCE_RUN_NOT_COMPLETED",
+        "SOURCE_RUN_MISMATCH",
+        "AMBIGUOUS_SOURCE_RUN"
+      ],
+      "title": "ApprovalReason",
+      "type": "string"
+    },
+    "ApprovalRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/ApprovalAction",
+          "default": "GENERATE_DRAFT_PACK"
+        },
+        "decision_id": {
+          "minLength": 1,
+          "title": "Decision Id",
+          "type": "string"
+        },
+        "decision_version": {
+          "minimum": 1,
+          "title": "Decision Version",
+          "type": "integer"
+        },
+        "founder_profile_id": {
+          "minLength": 1,
+          "title": "Founder Profile Id",
+          "type": "string"
+        },
+        "founder_profile_version": {
+          "minimum": 1,
+          "title": "Founder Profile Version",
+          "type": "integer"
+        },
+        "opportunity_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Opportunity Hash",
+          "type": "string"
+        },
+        "opportunity_version": {
+          "minimum": 1,
+          "title": "Opportunity Version",
+          "type": "integer"
+        },
+        "policy_versions": {
+          "$ref": "#/$defs/PolicyVersions"
+        },
+        "project_id": {
+          "minLength": 1,
+          "title": "Project Id",
+          "type": "string"
+        },
+        "project_version": {
+          "minimum": 1,
+          "title": "Project Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "opportunity_version",
+        "opportunity_hash",
+        "founder_profile_id",
+        "founder_profile_version",
+        "project_id",
+        "project_version",
+        "decision_id",
+        "decision_version",
+        "policy_versions"
+      ],
+      "title": "ApprovalRequest",
+      "type": "object"
+    },
+    "ApprovalState": {
+      "enum": [
+        "NOT_REVIEWED",
+        "PENDING_APPROVAL",
+        "APPROVED_FOR_PREPARATION",
+        "REVOKED_APPROVAL",
+        "DRAFT_READY"
+      ],
+      "title": "ApprovalState",
+      "type": "string"
+    },
+    "DraftJobState": {
+      "enum": [
+        "CREATED",
+        "RUNNING",
+        "COMPLETED",
+        "FAILED",
+        "CANCELLED",
+        "BUDGET_STOPPED"
+      ],
+      "title": "DraftJobState",
+      "type": "string"
+    },
+    "DraftJobView": {
+      "additionalProperties": false,
+      "properties": {
+        "completed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Completed At"
+        },
+        "failure_reason": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Failure Reason"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "mode": {
+          "$ref": "#/$defs/RuntimeMode"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Started At"
+        },
+        "state": {
+          "$ref": "#/$defs/DraftJobState"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "mode",
+        "state",
+        "started_at",
+        "completed_at",
+        "failure_reason"
+      ],
+      "title": "DraftJobView",
+      "type": "object"
+    },
+    "PolicyVersions": {
+      "additionalProperties": false,
+      "properties": {
+        "conflicts": {
+          "minimum": 1,
+          "title": "Conflicts",
+          "type": "integer"
+        },
+        "decisions": {
+          "const": 1,
+          "title": "Decisions",
+          "type": "integer"
+        },
+        "effort": {
+          "minimum": 1,
+          "title": "Effort",
+          "type": "integer"
+        },
+        "eligibility": {
+          "minimum": 1,
+          "title": "Eligibility",
+          "type": "integer"
+        },
+        "matching": {
+          "minimum": 1,
+          "title": "Matching",
+          "type": "integer"
+        },
+        "strategy": {
+          "minimum": 1,
+          "title": "Strategy",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "eligibility",
+        "matching",
+        "effort",
+        "conflicts",
+        "strategy",
+        "decisions"
+      ],
+      "title": "PolicyVersions",
+      "type": "object"
+    },
+    "RuntimeMode": {
+      "enum": [
+        "LIVE",
+        "FIXTURE",
+        "REPLAY"
+      ],
+      "title": "RuntimeMode",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "action": {
+      "$ref": "#/$defs/ApprovalAction"
+    },
+    "actionable": {
+      "title": "Actionable",
+      "type": "boolean"
+    },
+    "actor_id": {
+      "minLength": 1,
+      "title": "Actor Id",
+      "type": "string"
+    },
+    "approved_snapshot": {
+      "$ref": "#/$defs/ApprovalRequest"
+    },
+    "draft_job": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DraftJobView"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "id": {
+      "minLength": 1,
+      "title": "Id",
+      "type": "string"
+    },
+    "opportunity_id": {
+      "minLength": 1,
+      "title": "Opportunity Id",
+      "type": "string"
+    },
+    "pack_id": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Pack Id"
+    },
+    "reason": {
+      "$ref": "#/$defs/ApprovalReason"
+    },
+    "state": {
+      "$ref": "#/$defs/ApprovalState"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "id",
+    "version",
+    "actor_id",
+    "opportunity_id",
+    "action",
+    "state",
+    "expires_at",
+    "actionable",
+    "reason",
+    "approved_snapshot"
+  ],
+  "title": "ApprovalView",
+  "type": "object"
+}

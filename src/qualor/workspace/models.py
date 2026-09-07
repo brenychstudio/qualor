@@ -37,6 +37,7 @@ class RunState(StrEnum):
 class RunRecord(Record):
     mode: RuntimeMode
     state: RunState
+    provider_state: Literal["DISCONNECTED_LIVE_PROVIDER"] | None = None
     opportunity_id: NonEmpty | None = None
     opportunity_version: PositiveInt | None = None
     decision_id: NonEmpty | None = None
@@ -52,6 +53,16 @@ class RunRecord(Record):
     termination_reason: ShortText | None = None
     started_at: UtcInstant | None = None
     completed_at: UtcInstant | None = None
+
+    @model_validator(mode="after")
+    def disconnected_requires_degraded_live_run(self):
+        if self.provider_state is not None and (
+            self.mode != RuntimeMode.LIVE
+            or self.state
+            not in {RunState.PARTIAL, RunState.FAILED, RunState.CANCELLED, RunState.BUDGET_STOPPED}
+        ):
+            raise ValueError("Disconnected live provider requires a degraded LIVE run")
+        return self
 
 
 class RunEventPayload(Contract):
@@ -126,6 +137,9 @@ class ApprovalReason(StrEnum):
     IDEMPOTENCY_CONFLICT = "IDEMPOTENCY_CONFLICT"
     CHANGE_REVOKED = "CHANGE_REVOKED"
     TIME_INVALID = "TIME_INVALID"
+    SOURCE_RUN_NOT_COMPLETED = "SOURCE_RUN_NOT_COMPLETED"
+    SOURCE_RUN_MISMATCH = "SOURCE_RUN_MISMATCH"
+    AMBIGUOUS_SOURCE_RUN = "AMBIGUOUS_SOURCE_RUN"
 
 
 class ApprovalBindings(Contract):

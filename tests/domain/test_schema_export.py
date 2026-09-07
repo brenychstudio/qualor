@@ -2,6 +2,21 @@ import json
 from pathlib import Path
 
 EXPECTED = {
+    "PortfolioView",
+    "ProfileUpdateRequest",
+    "ProjectUpdateRequest",
+    "InboxResponse",
+    "InboxItem",
+    "OpportunityWorkspaceResponse",
+    "DecisionCanvasView",
+    "EvidenceSheetView",
+    "ActivityResponse",
+    "ApprovalRequest",
+    "ApprovalView",
+    "DraftPackView",
+    "ApprovalConfirmRequest",
+    "SessionView",
+    "ProductError",
     "FounderProfile",
     "ProjectProfile",
     "OpportunityRecord",

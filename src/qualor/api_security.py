@@ -1,0 +1,28 @@
+"""Process-local controller protections; no external authentication or paid execution."""
+
+import hmac
+from ipaddress import ip_address
+
+from fastapi import Request
+
+from qualor.workspace.service import ProductFailure
+
+
+def require_local_origin(request: Request) -> None:
+    try:
+        local = request.client is not None and ip_address(request.client.host).is_loopback
+    except ValueError:
+        local = False
+    if (
+        not local
+        or request.headers.get("origin") not in request.app.state.settings.qualor_allowed_origins
+    ):
+        raise ProductFailure("ACTION_FORBIDDEN", 403)
+
+
+def require_action(request: Request) -> None:
+    require_local_origin(request)
+    supplied = request.headers.get("x-qualor-action-token", "")
+    expected = request.app.state.action_token
+    if not expected or not hmac.compare_digest(supplied.encode(), expected.encode()):
+        raise ProductFailure("ACTION_FORBIDDEN", 403)

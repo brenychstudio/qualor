@@ -6,10 +6,11 @@ import sqlite3
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from qualor.decisions import DecisionRecord
 from qualor.domain import EvidenceRecord, FounderProfile, OpportunityRecord, ProjectProfile
+from qualor.domain.base import UtcInstant
 from qualor.runtime import RuntimeMode
 from qualor.workspace.models import (
     ApprovalRecord,
@@ -84,6 +85,13 @@ class _Repository:
     def __init__(self, connection: sqlite3.Connection) -> None:
         self.connection = connection
 
+        def compare_instants(left, right):
+            first = TypeAdapter(UtcInstant).validate_python(left)
+            second = TypeAdapter(UtcInstant).validate_python(right)
+            return (first > second) - (first < second)
+
+        connection.create_collation("qualor_utc", compare_instants)
+
     def _require_transaction(self) -> None:
         if not self.connection.in_transaction:
             raise TransactionRequiredError("write requires an active caller-owned transaction")
@@ -99,6 +107,12 @@ class _Repository:
 
 
 class ProfileRepository(_Repository):
+    def list_current(self) -> tuple[FounderProfile, ...]:
+        rows = self.connection.execute(
+            "SELECT id, MAX(version) FROM founder_profiles GROUP BY id ORDER BY id"
+        )
+        return tuple(self.get_founder(row[0], row[1]) for row in rows)
+
     def put_founder(self, record: FounderProfile) -> None:
         self._require_transaction()
         record = FounderProfile.model_validate(record)
@@ -129,6 +143,12 @@ class ProfileRepository(_Repository):
 
 
 class ProjectRepository(_Repository):
+    def list_current(self) -> tuple[ProjectProfile, ...]:
+        rows = self.connection.execute(
+            "SELECT id, MAX(version) FROM project_profiles GROUP BY id ORDER BY id"
+        )
+        return tuple(self.get_project(row[0], row[1]) for row in rows)
+
     def put_project(self, record: ProjectProfile) -> None:
         self._require_transaction()
         record = ProjectProfile.model_validate(record)
@@ -159,6 +179,32 @@ class ProjectRepository(_Repository):
 
 
 class OpportunityRepository(_Repository):
+    def latest_refresh_failure(self, record_id: str, version: int) -> datetime | None:
+        row = self.connection.execute(
+            "SELECT failed_at FROM opportunity_refresh_failures "
+            "WHERE opportunity_id=? AND opportunity_version=? "
+            "ORDER BY failed_at COLLATE qualor_utc DESC LIMIT 1",
+            (record_id, version),
+        ).fetchone()
+        return TypeAdapter(UtcInstant).validate_python(row[0]) if row else None
+
+    def page_current(self, limit: int, offset: int):
+        total = self.connection.execute(
+            "SELECT count(DISTINCT id) FROM opportunity_versions"
+        ).fetchone()[0]
+        rows = self.connection.execute(
+            "SELECT id, MAX(version) FROM opportunity_versions "
+            "GROUP BY id ORDER BY id LIMIT ? OFFSET ?",
+            (limit, offset),
+        )
+        return tuple(self.get_opportunity_version(row[0], row[1]) for row in rows), total
+
+    def list_current(self) -> tuple[OpportunityRecord, ...]:
+        rows = self.connection.execute(
+            "SELECT id, MAX(version) FROM opportunity_versions GROUP BY id ORDER BY id"
+        )
+        return tuple(self.get_opportunity_version(row[0], row[1]) for row in rows)
+
     def put_opportunity_version(self, record: OpportunityRecord, *, content_hash: str) -> None:
         self._require_transaction()
         record = OpportunityRecord.model_validate(record)
@@ -228,6 +274,29 @@ class OpportunityRepository(_Repository):
 
 
 class EvidenceRepository(_Repository):
+    def page_for_opportunity(
+        self, opportunity_id: str, opportunity_version: int, limit: int, offset: int
+    ):
+        where = "WHERE opportunity_id=? AND opportunity_version=?"
+        params = (opportunity_id, opportunity_version)
+        total = self.connection.execute(
+            "SELECT count(*) FROM evidence " + where, params
+        ).fetchone()[0]
+        rows = self.connection.execute(
+            "SELECT id, version FROM evidence " + where + " ORDER BY id, version LIMIT ? OFFSET ?",
+            (*params, limit, offset),
+        )
+        return tuple(self.get_evidence(row[0], row[1]) for row in rows), total
+
+    def iter_for_opportunity(self, opportunity_id: str, opportunity_version: int):
+        rows = self.connection.execute(
+            "SELECT id, version FROM evidence WHERE opportunity_id=? "
+            "AND opportunity_version=? ORDER BY id, version",
+            (opportunity_id, opportunity_version),
+        )
+        for row in rows:
+            yield self.get_evidence(row[0], row[1])
+
     def put_evidence(
         self, record: EvidenceRecord, opportunity_id: str, opportunity_version: int
     ) -> None:
@@ -354,6 +423,99 @@ class DecisionRepository(_Repository):
 
 
 class RunRepository(_Repository):
+    def latest_for_opportunity(
+        self, opportunity_id: str, opportunity_version: int, *, completed_decision=False
+    ):
+        where = (
+            "WHERE json_extract(record_json, '$.opportunity_id')=? "
+            "AND json_extract(record_json, '$.opportunity_version')=?"
+        )
+        if completed_decision:
+            where += (
+                " AND state='COMPLETED' AND json_extract(record_json, '$.decision_id') IS NOT NULL"
+            )
+        params = (opportunity_id, opportunity_version)
+        latest = self.connection.execute(
+            "SELECT created_at FROM runs "
+            + where
+            + " ORDER BY created_at COLLATE qualor_utc DESC LIMIT 1",
+            params,
+        ).fetchone()
+        if not latest:
+            return ()
+        # Two distinct references suffice to prove ambiguity; no prefix selects a winner.
+        rows = self.connection.execute(
+            "SELECT MIN(id) FROM runs "
+            + where
+            + " AND created_at COLLATE qualor_utc = ? COLLATE qualor_utc "
+            "GROUP BY json_extract(record_json, '$.decision_id'), "
+            "json_extract(record_json, '$.decision_version'), mode, state "
+            "ORDER BY MIN(id) LIMIT 2",
+            (*params, latest[0]),
+        )
+        return tuple(self.current(row[0]) for row in rows)
+
+    def source_runs(self, decision):
+        rows = self.connection.execute(
+            "SELECT id, version FROM runs WHERE json_extract(record_json, '$.opportunity_id')=? "
+            "AND json_extract(record_json, '$.opportunity_version')=? "
+            "AND json_extract(record_json, '$.decision_id')=? "
+            "AND json_extract(record_json, '$.decision_version')=? "
+            "ORDER BY id LIMIT 2",
+            (decision.opportunity_id, decision.opportunity_version, decision.id, decision.version),
+        )
+        return tuple(self.get_run(row[0], row[1]) for row in rows)
+
+    def page_current(self, limit: int, offset: int, *, opportunity_id: str | None = None):
+        where = " WHERE json_extract(record_json, '$.opportunity_id')=?" if opportunity_id else ""
+        params = (opportunity_id,) if opportunity_id else ()
+        total = self.connection.execute("SELECT count(*) FROM runs" + where, params).fetchone()[0]
+        rows = self.connection.execute(
+            "SELECT id, version FROM runs"
+            + where
+            + " ORDER BY created_at COLLATE qualor_utc, id LIMIT ? OFFSET ?",
+            (*params, limit, offset),
+        )
+        return tuple(self.get_run(row[0], row[1]) for row in rows), total
+
+    def page_events(self, limit: int, offset: int, *, run_id: str | None = None):
+        where = " WHERE run_id=?" if run_id else ""
+        params = (run_id,) if run_id else ()
+        total = self.connection.execute(
+            "SELECT count(*) FROM run_events" + where, params
+        ).fetchone()[0]
+        order = "sequence" if run_id else "occurred_at COLLATE qualor_utc, run_id, sequence"
+        rows = self.connection.execute(
+            "SELECT * FROM run_events" + where + " ORDER BY " + order + " LIMIT ? OFFSET ?",
+            (*params, limit, offset),
+        )
+        return tuple(
+            RunEvent.model_validate(
+                {
+                    "run_id": row["run_id"],
+                    "sequence": row["sequence"],
+                    "event_type": row["event_type"],
+                    "payload": json.loads(row["payload_json"]),
+                    "mode": row["mode"],
+                    "occurred_at": row["occurred_at"],
+                }
+            )
+            for row in rows
+        ), total
+
+    def list_current(self) -> tuple[RunRecord, ...]:
+        rows = self.connection.execute("SELECT id, version FROM runs ORDER BY created_at, id")
+        return tuple(
+            sorted(
+                (self.get_run(row[0], row[1]) for row in rows),
+                key=lambda run: (run.created_at, run.id),
+            )
+        )
+
+    def current(self, run_id: str) -> RunRecord | None:
+        row = self.connection.execute("SELECT version FROM runs WHERE id=?", (run_id,)).fetchone()
+        return self.get_run(run_id, row[0]) if row else None
+
     def create_run(self, record: RunRecord) -> None:
         self._require_transaction()
         record = RunRecord.model_validate(record)
@@ -421,10 +583,15 @@ class RunRepository(_Repository):
         ).fetchall()
         records = tuple(self._from_row(row) for row in rows)
         return tuple(
-            record
-            for record in records
-            if (record.opportunity_id, record.opportunity_version)
-            == (opportunity_id, opportunity_version)
+            sorted(
+                (
+                    record
+                    for record in records
+                    if (record.opportunity_id, record.opportunity_version)
+                    == (opportunity_id, opportunity_version)
+                ),
+                key=lambda run: (run.created_at, run.id),
+            )
         )
 
     def append_run_event(
@@ -499,6 +666,20 @@ class RunRepository(_Repository):
 
 
 class ApprovalRepository(_Repository):
+    def page_for_opportunity(self, opportunity_id: str, actor_id: str, limit: int, offset: int):
+        where = " WHERE opportunity_id=? AND json_extract(record_json, '$.actor_id')=?"
+        params = (opportunity_id, actor_id)
+        total = self.connection.execute(
+            "SELECT count(DISTINCT id) FROM approvals" + where, params
+        ).fetchone()[0]
+        rows = self.connection.execute(
+            "SELECT id, MAX(version) FROM approvals"
+            + where
+            + " GROUP BY id ORDER BY id LIMIT ? OFFSET ?",
+            (*params, limit, offset),
+        )
+        return tuple(self.get_approval(row[0], row[1]) for row in rows), total
+
     def put_approval(self, record: ApprovalRecord) -> None:
         self._require_transaction()
         record = ApprovalRecord.model_validate(record)
@@ -599,6 +780,21 @@ class ApprovalRepository(_Repository):
 
 
 class DraftPackRepository(_Repository):
+    def summary_for_approval(self, approval_id: str):
+        job_row = self.connection.execute(
+            "SELECT id, version FROM draft_jobs WHERE approval_id=? ORDER BY version DESC LIMIT 1",
+            (approval_id,),
+        ).fetchone()
+        pack_rows = self.connection.execute(
+            "SELECT id, version FROM draft_packs WHERE approval_id=? ORDER BY id LIMIT 2",
+            (approval_id,),
+        ).fetchall()
+        if len(pack_rows) > 1:
+            raise CorruptRecordError("Multiple packs for one approval")
+        job = self.get_draft_job(*job_row) if job_row else None
+        pack = self.get_draft_pack(*pack_rows[0]) if pack_rows else None
+        return job, pack
+
     def put_draft_job(self, record: DraftJobRecord) -> None:
         self._require_transaction()
         record = DraftJobRecord.model_validate(record)
