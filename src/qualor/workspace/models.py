@@ -188,6 +188,11 @@ class DraftJobState(StrEnum):
     BUDGET_STOPPED = "BUDGET_STOPPED"
 
 
+class DraftEvidenceVersion(Contract):
+    evidence_id: NonEmpty
+    version: PositiveInt
+
+
 class DraftJobRecord(Record):
     approval_id: NonEmpty
     approval_version: PositiveInt = 1
@@ -197,6 +202,10 @@ class DraftJobRecord(Record):
     started_at: UtcInstant | None = None
     completed_at: UtcInstant | None = None
     failure_reason: ShortText | None = None
+    # Immutable transition receipts use internal keys; version 1 binds the start.
+    source_run_id: NonEmpty | None = None
+    source_run_version: PositiveInt | None = None
+    evidence_versions: tuple[DraftEvidenceVersion, ...] = ()
 
 
 class DraftPackSection(Contract):
@@ -269,6 +278,8 @@ class DraftPack(Record):
     authoring_facts: tuple[DraftAuthoringFact, ...]
     sections: tuple[DraftPackSection, ...]
     generated_at: UtcInstant
+    creator_kind: Literal["DETERMINISTIC"] | None = None
+    evidence_versions: tuple[DraftEvidenceVersion, ...] = ()
 
     @model_validator(mode="after")
     def unique_sections(self) -> "DraftPack":
