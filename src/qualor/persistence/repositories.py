@@ -121,6 +121,12 @@ class ProfileRepository(_Repository):
         _require_projection(row, record)
         return record
 
+    def latest_founder(self, record_id: str) -> FounderProfile | None:
+        row = self.connection.execute(
+            "SELECT MAX(version) AS version FROM founder_profiles WHERE id=?", (record_id,)
+        ).fetchone()
+        return None if row["version"] is None else self.get_founder(record_id, row["version"])
+
 
 class ProjectRepository(_Repository):
     def put_project(self, record: ProjectProfile) -> None:
@@ -144,6 +150,12 @@ class ProjectRepository(_Repository):
         record = _load(ProjectProfile, row["record_json"])
         _require_projection(row, record)
         return record
+
+    def latest_project(self, record_id: str) -> ProjectProfile | None:
+        row = self.connection.execute(
+            "SELECT MAX(version) AS version FROM project_profiles WHERE id=?", (record_id,)
+        ).fetchone()
+        return None if row["version"] is None else self.get_project(record_id, row["version"])
 
 
 class OpportunityRepository(_Repository):
@@ -255,6 +267,15 @@ class EvidenceRepository(_Repository):
             "SELECT id, version, opportunity_id, opportunity_version, record_json, created_at "
             "FROM evidence WHERE opportunity_id=? AND opportunity_version=? ORDER BY id, version",
             (opportunity_id, opportunity_version),
+        ).fetchall()
+        return tuple(self._from_row(row) for row in rows)
+
+    def list_versions(self, record_id: str) -> tuple[EvidenceRecord, ...]:
+        """Resolve an ID across all opportunity scopes without choosing authority."""
+        rows = self.connection.execute(
+            "SELECT id, version, opportunity_id, opportunity_version, record_json, created_at "
+            "FROM evidence WHERE id=? ORDER BY version",
+            (record_id,),
         ).fetchall()
         return tuple(self._from_row(row) for row in rows)
 
@@ -545,6 +566,30 @@ class ApprovalRepository(_Repository):
             (opportunity_id,),
         ).fetchall()
         records: list[ApprovalRecord] = []
+        for row in rows:
+            record = self.get_approval(row["id"], row["version"])
+            if record is None:
+                raise CorruptRecordError("corrupt approval record")
+            records.append(record)
+        return tuple(records)
+
+    def latest(self, record_id: str) -> ApprovalRecord | None:
+        row = self.connection.execute(
+            "SELECT MAX(version) AS version FROM approvals WHERE id=?", (record_id,)
+        ).fetchone()
+        return None if row["version"] is None else self.get_approval(record_id, row["version"])
+
+    def find_receipt(self, idempotency_key: str) -> ApprovalRecord | None:
+        row = self.connection.execute(
+            "SELECT id, version FROM approvals WHERE idempotency_key=?", (idempotency_key,)
+        ).fetchone()
+        return None if row is None else self.get_approval(row["id"], row["version"])
+
+    def list_current(self) -> tuple[ApprovalRecord, ...]:
+        rows = self.connection.execute(
+            "SELECT id, MAX(version) AS version FROM approvals GROUP BY id ORDER BY id"
+        ).fetchall()
+        records = []
         for row in rows:
             record = self.get_approval(row["id"], row["version"])
             if record is None:

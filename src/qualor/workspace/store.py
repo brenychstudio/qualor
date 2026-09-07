@@ -38,6 +38,7 @@ class OpportunityWorkspace:
 
 class WorkspaceStore:
     def __init__(self, connection: sqlite3.Connection) -> None:
+        self.connection = connection
         self.profiles = ProfileRepository(connection)
         self.projects = ProjectRepository(connection)
         self.opportunities = OpportunityRepository(connection)
@@ -46,6 +47,14 @@ class WorkspaceStore:
         self.runs = RunRepository(connection)
         self.approvals = ApprovalRepository(connection)
         self.drafts = DraftPackRepository(connection)
+
+    def require_transaction(self) -> None:
+        from qualor.persistence.repositories import TransactionRequiredError
+
+        if not self.connection.in_transaction:
+            raise TransactionRequiredError(
+                "Approval consumption requires a caller-owned transaction"
+            )
 
     def load_opportunity_workspace(
         self, opportunity_id: str, opportunity_version: int

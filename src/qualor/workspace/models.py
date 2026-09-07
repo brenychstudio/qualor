@@ -103,6 +103,60 @@ class ApprovalState(StrEnum):
     DRAFT_READY = "DRAFT_READY"
 
 
+class ApprovalReason(StrEnum):
+    VALID = "VALID"
+    NOT_FOUND = "NOT_FOUND"
+    PENDING = "PENDING"
+    REVOKED = "REVOKED"
+    EXPIRED = "EXPIRED"
+    CONSUMED = "CONSUMED"
+    ACTOR_MISMATCH = "ACTOR_MISMATCH"
+    ACTION_MISMATCH = "ACTION_MISMATCH"
+    IDENTITY_MISMATCH = "IDENTITY_MISMATCH"
+    VERSION_MISMATCH = "VERSION_MISMATCH"
+    POLICY_MISMATCH = "POLICY_MISMATCH"
+    GRAPH_MISMATCH = "GRAPH_MISMATCH"
+    MODE_MISMATCH = "MODE_MISMATCH"
+    DEADLINE_UNKNOWN = "DEADLINE_UNKNOWN"
+    DEADLINE_PASSED = "DEADLINE_PASSED"
+    DEADLINE_MISMATCH = "DEADLINE_MISMATCH"
+    DECISION_NOT_ACTIONABLE = "DECISION_NOT_ACTIONABLE"
+    EVIDENCE_NOT_ACTIONABLE = "EVIDENCE_NOT_ACTIONABLE"
+    EVIDENCE_CHANGED = "EVIDENCE_CHANGED"
+    IDEMPOTENCY_CONFLICT = "IDEMPOTENCY_CONFLICT"
+    CHANGE_REVOKED = "CHANGE_REVOKED"
+    TIME_INVALID = "TIME_INVALID"
+
+
+class ApprovalBindings(Contract):
+    actor_id: NonEmpty
+    opportunity_id: NonEmpty
+    opportunity_hash: Hash
+    opportunity_version: PositiveInt
+    founder_profile_id: NonEmpty
+    founder_profile_version: PositiveInt
+    project_id: NonEmpty
+    project_version: PositiveInt
+    decision_id: NonEmpty
+    decision_version: PositiveInt
+    policy_versions: PolicyVersions
+    action: ApprovalAction
+
+
+class ApprovalChange(Contract):
+    opportunity_id: NonEmpty | None = None
+    founder_profile_id: NonEmpty | None = None
+    project_id: NonEmpty | None = None
+    decision_id: NonEmpty | None = None
+    policy_versions: PolicyVersions | None = None
+
+    @model_validator(mode="after")
+    def explicit_scope(self) -> "ApprovalChange":
+        if not any(getattr(self, field) is not None for field in type(self).model_fields):
+            raise ValueError("Approval change requires an explicit scope")
+        return self
+
+
 class ApprovalRecord(Record):
     actor_id: NonEmpty
     opportunity_id: NonEmpty
@@ -118,7 +172,9 @@ class ApprovalRecord(Record):
     action: ApprovalAction
     state: ApprovalState
     expires_at: UtcInstant
+    # Key belongs to THIS transition receipt; prior version keys remain immutable.
     idempotency_key: NonEmpty | None = None
+    mode: RuntimeMode | None = None
     consumed_at: UtcInstant | None = None
     revocation_reason: ShortText | None = None
 
