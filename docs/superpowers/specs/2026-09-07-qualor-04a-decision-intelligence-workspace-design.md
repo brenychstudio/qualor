@@ -121,7 +121,7 @@ QUALOR · best fit              Evaluated
 
 The row supports selection without opening a separate route unless routing improves browser history or deep-linking. Selection updates the Decision Canvas and contextual rail as one coherent workspace.
 
-Pipeline states are:
+Opportunity-processing labels shown quietly in the Inbox are:
 
 - `DISCOVERED`
 - `VERIFYING`
@@ -137,6 +137,18 @@ Decision states are:
 
 An opportunity may be `EVALUATED` and still be `WATCH`; these states must never be conflated.
 
+Canonical persisted run states are separate from both sets of presentation labels:
+
+- `CREATED`
+- `RUNNING`
+- `COMPLETED`
+- `PARTIAL`
+- `FAILED`
+- `CANCELLED`
+- `BUDGET_STOPPED`
+
+The UI derives processing labels and live phase copy from `RunRecord` and `RunEvent`; it does not replace them. A `PARTIAL` run may contain individually verified evidence while still exposing incomplete coverage. Run state describes execution completeness. Decision state describes the deterministic recommendation. Neither may visually stand in for the other.
+
 ### Sorting, filtering, and search
 
 Default sorting is **Priority**, derived from the existing deterministic decision layer. It must not be presented as opaque AI ranking. Other V1 sort modes are **Deadline**, **Newest**, and **Decision**.
@@ -146,6 +158,25 @@ V1 filters are **All**, **Apply**, **Prepare**, **Watch**, and **Skip**. A simpl
 A restrained summary such as `2 apply · 3 prepare · 4 watch · 3 skip` may appear above the list. It uses text hierarchy rather than a row of colored chips.
 
 Empty, loading, and unavailable states must explain the next meaningful action. An empty inbox may invite the user to run discovery; it must not fabricate opportunities or claim that live discovery occurred.
+
+### Required product-state behavior
+
+These states are part of the product contract rather than exceptional developer screens. In every state, the Decision Canvas preserves the same spatial hierarchy so the healthy default view does not accumulate permanent warning controls.
+
+| Product state | Decision Canvas | Primary action | Intelligence Rail | Evidence Sheet | Approval and drafting |
+| --- | --- | --- | --- | --- | --- |
+| `EMPTY_PROFILE` | Replaces the recommendation with a concise profile-required state; no score or project match appears | **Complete profile** | Idle; explains that no run has started | Unavailable because no opportunity was evaluated | Prohibited |
+| `NO_RESULTS` | Shows that discovery or the current simple filter returned no opportunities; no recommendation appears | **Run discovery** when the inbox is empty, or **Clear search** when local filtering caused the state | Shows the completed discovery run or quiet filter context, never invented progress | Unavailable | Prohibited |
+| `PARTIAL_SOURCE_FAILURE` | Shows the latest deterministic result only if current admitted evidence supports it; otherwise shows `WATCH` and `Not enough evidence`, with incomplete coverage visible | **Review available evidence** | Shows `PARTIAL`, successful sources, failed source count, and bounded failure reason | Available for successfully admitted evidence and labels missing coverage | Prohibited while required critical coverage is incomplete |
+| `STALE_EVIDENCE` | Retains the last decision as a stale historical snapshot and removes any implication that it was freshly renewed | **Refresh evidence** | Shows failed refresh, prior freshness time, and `STALE` | Available with stale labels on affected claims and sources | New approval and drafting prohibited until freshness requirements pass |
+| `UNKNOWN_ELIGIBILITY` | Shows eligibility as `UNKNOWN` or `REVIEW_REQUIRED` and recommendation as deterministic `WATCH`; no invented score appears | **Resolve unknowns** | Names bounded unresolved fields and the last completed run | Available when any admitted evidence exists; unresolved claims are first-class | Prohibited |
+| `BUDGET_STOPPED` | Shows the latest valid deterministic state or `Not enough evidence`; it never converts incomplete work into a recommendation | **Review current evidence** | Shows actual `BUDGET_STOPPED`, consumed limits, estimated cost, and termination time | Available for evidence admitted before the stop | New approval and drafting prohibited when the stopped run left critical coverage incomplete |
+| `DISCONNECTED_LIVE_PROVIDER` | Shows the last persisted snapshot with a clear disconnected/freshness treatment; no live activity is implied | **Reconnect provider** | Shows disconnected provider and last successful event | Persisted evidence remains readable with its original freshness | New live approval and drafting prohibited until required provider-dependent checks are current |
+| `PENDING_APPROVAL` | Keeps the deterministic recommendation visible and presents the exact action, versions, expiry, and remaining blockers awaiting review | **Confirm approval** | Shows the completed run and pending human boundary, not a running cloud session | Available | Drafting has not started; user may confirm or cancel |
+| `REVOKED_APPROVAL` | Shows that a previously approved decision no longer matches current critical versions | **Review changes** | Shows a bounded revocation reason and the change that invalidated approval | Available for both retained historical proof and current evidence | Prohibited until a new valid approval is created |
+| `FINISHED_PACK` | Shows the decision/version that produced the pack and a concise completion state | **Open application pack** | Shows the separate drafting job as completed | Available and linked to the pack's evidence references | Pack remains accessible; the consumed approval cannot be reused |
+
+When two states apply, the safer actionability rule wins. For example, disconnected stale evidence remains readable, but cannot support a new approval. No state fabricates a recommendation, freshness claim, source count, or progress event.
 
 ## 8. Decision Canvas
 
@@ -173,7 +204,9 @@ Strategy appears as a restrained large number with a plain label:
 Strategy
 ```
 
-It is a prioritization score, never a win probability. Circular gauges, speedometers, radar charts, and dominant progress bars are prohibited. A user interaction may reveal the existing factors: Product fit, Readiness, Time feasibility, Strategic value, and Economic affordability.
+Canonical UI copy must make the boundary explicit: **Strategy is prioritization, not probability of winning.** Circular gauges, speedometers, radar charts, and dominant progress bars are prohibited. A user interaction may reveal the existing factors: Product fit, Readiness, Time feasibility, Strategic value, and Economic affordability.
+
+If deterministic inputs are insufficient to calculate strategy, the score area shows **Not enough evidence**. It must not show `0`, `50`, an estimated probability, or a placeholder number.
 
 ### Four core facts
 
@@ -187,6 +220,16 @@ The first level contains exactly four primary facts:
 | Deadline | Verified deadline/time remaining or `UNKNOWN` |
 
 The canvas must not expand into a KPI wall. Missing facts use explicit `UNKNOWN` language and a path into the evidence layer.
+
+### Canonical decision metadata
+
+The full decision architecture retains program and edition, best project, recommendation, eligibility scope, reward type, deadline with timezone, effort range, most important blocker, and freshness. Progressive disclosure determines placement:
+
+- Level 1 keeps the organizer/program/track/edition and freshness as quiet context, the recommendation as hero, the four core facts, and the most important blocker in the readiness line.
+- Level 2 `Why` exposes eligibility scope, reward type, the absolute deadline with timezone, detailed effort range, blocker context, strategy factors, and freshness status.
+- Level 3 `Proof` links those claims to evidence and technical provenance.
+
+Time remaining never replaces the absolute deadline. If a verified timezone is unavailable, the UI displays that uncertainty and does not invent one. Reward type remains distinct from monetary amount or total-pool interpretation.
 
 ### Readiness summary
 
@@ -287,6 +330,8 @@ Technical provenance is selectable/copyable for audit, but does not expose crede
 
 The right rail is structured operational telemetry, never a chat. It has no assistant avatar, chat bubbles, first-person model narration, or raw chain-of-thought.
 
+The user-facing navigation label **Activity** is the presentation of canonical `RunRecord` and `RunEvent` history. `ACTIVITY_DOMAIN_SOURCE=RUN_RECORD_AND_RUN_EVENT`. QUALOR-04A must not introduce a parallel Activity domain entity or copy run history into a second source of truth.
+
 At rest, its header may show:
 
 ```text
@@ -320,7 +365,9 @@ $0.021 estimated
 
 The canonical user-facing phases are **Discovering**, **Verifying**, **Evaluating**, and **Decision updated**. Events expose action codes and observations that improve trust. They do not expose prompts, internal reasoning, credentials, terminal-like logs, or developer-only protocol traffic.
 
-The rail must make LIVE, FIXTURE, and REPLAY modes visually explicit whenever applicable. Synthetic or replayed activity can never appear live.
+The rail renders actual persisted `RunEvent` observations. It must not create fake animated progress, inferred timestamps, fictional source counts, or decorative events between real states. Motion may transition between received states but cannot imply work that did not occur.
+
+LIVE, FIXTURE, and REPLAY modes are visually explicit whenever applicable. A disconnected provider displays `DISCONNECTED` with its last successful event. A budget stop displays canonical `BUDGET_STOPPED` with bounded usage. A partial, failed, or cancelled run retains its canonical run state. Synthetic or replayed activity can never appear live.
 
 ## 11. Human approval boundary
 
@@ -328,15 +375,48 @@ Human approval is a primary product principle, not a confirmation dialog added a
 
 QUALOR may autonomously discover, search, fetch, verify, evaluate, match projects, estimate effort, assess conflicts, and recommend. Preparation begins only after the user deliberately selects **Approve preparation** or **Approve application** for an eligible recommendation.
 
-V1 approval states are deliberately narrow:
+V1 approval presentation states are deliberately narrow:
 
 - `NOT_REVIEWED`
+- `PENDING_APPROVAL`
 - `APPROVED_FOR_PREPARATION`
+- `REVOKED_APPROVAL`
 - `DRAFT_READY`
 
 `WATCH` routes to **Resolve unknowns**. `SKIP` routes to **Review rejection** and cannot generate an application pack. Approval never submits externally and never implies that eligibility is guaranteed.
 
 The approval transition must identify what will be generated and which unresolved items remain. If required evidence is `UNKNOWN`, `CONFLICT`, or `STALE`, the action remains fail-closed according to existing deterministic policy.
+
+### Approval record semantics
+
+Every consequential approval is a persisted `ApprovalRecord` bound to:
+
+- actor identity;
+- opportunity content hash and version;
+- founder profile version;
+- selected project version;
+- deterministic policy version;
+- approved action;
+- creation time and expiry.
+
+The only approved consequential V1 action is `GENERATE_DRAFT_PACK`. Approval expires 24 hours after creation or at the verified opportunity deadline, whichever occurs first. If no verified deadline exists, the 24-hour limit applies and the missing deadline remains visible.
+
+Approval is one-time, version-bound, and idempotent. Repeating the same approved request with the same idempotency identity returns the existing drafting job or pack rather than creating a duplicate. Consuming an approval for a drafting job prevents reuse for another pack.
+
+A critical change to rules/opportunity hash, founder profile, selected project, license state, or policy version invalidates the approval before use and presents `REVOKED_APPROVAL`. Expiry also makes it non-actionable. Historical approval remains auditable, but only a newly reviewed `ApprovalRecord` bound to current versions may start drafting.
+
+### Run-to-drafting boundary
+
+The live research/evaluation run completes before human review:
+
+```text
+Run completes
+→ readiness brief and approval request persist
+→ user approves
+→ new bounded drafting job starts
+```
+
+QUALOR never keeps the original live cloud session open while waiting for the user. The new drafting job receives only the approved action and version-bound persisted inputs. It cannot search again, submit externally, or expand authority merely because approval exists.
 
 ## 12. Application Pack
 
@@ -354,11 +434,53 @@ The pack naturally shifts into the light document materiality. This creates the 
 
 **Dark decision/intelligence → human approval → light application/documentation**
 
-The pack must preserve evidence references and distinguish verified facts, deterministic interpretations, user-provided project facts, and draft narrative. Suggested answers remain editable drafts. Unknown or conflicting facts remain visible and cannot be silently completed.
+The pack must preserve evidence references and distinguish verified facts, deterministic interpretations, user-provided project facts, and draft narrative. Suggested answers are clearly labeled draft material. Unknown or conflicting facts remain visible and cannot be silently completed.
+
+Every `DraftPack` is versioned and attributable. It retains its approval reference, opportunity hash/version, founder profile version, project version, policy version, source/evidence references, missing fields, creation timestamp, and pack version. A later rerun or profile change does not rewrite a finished historical pack.
 
 QUALOR-04A provides in-product viewing and section navigation for the generated draft. Editing and export capabilities require separate owner approval and are not required by this specification. External submission, form automation, email, and Devpost write integration are prohibited.
 
-## 13. Core interaction flows
+## 13. Persistence, restart, and rerun semantics
+
+QUALOR-04A uses canonical local SQLite transactions for durable product state. One committed transaction must either preserve the complete state transition or preserve none of it; the UI cannot show a decision, approval, or pack whose required linked records were only partially written.
+
+The minimum persisted model set is:
+
+- `FounderProfile`;
+- `ProjectProfile`;
+- versioned `OpportunityRecord`;
+- `EvidenceRecord`;
+- `DecisionRecord`;
+- `RunRecord`;
+- append-only `RunEvent`;
+- `ApprovalRecord`;
+- versioned `DraftPack`.
+
+This is a product-state contract, not a database schema. Implementation planning must map existing domain models before introducing storage representations.
+
+### Restart behavior
+
+After a process or machine restart:
+
+- Inbox items and their selected/current opportunity versions remain available;
+- decisions remain linked to the exact opportunity, profile, project, evidence, and policy versions that produced them;
+- evidence excerpts, citations, provenance, and freshness survive;
+- run history and ordered run events survive;
+- an approval survives only if it remains unconsumed, unexpired, and bound to current critical versions;
+- revoked or expired approval cannot start a drafting job;
+- a generated Draft Pack remains accessible with its original attribution.
+
+Recovery must never infer completion from a partially committed write. Interrupted runs reopen as their last transactionally recorded state and are rendered truthfully as running-recovery, partial, failed, cancelled, or budget-stopped according to canonical state transition policy.
+
+### Deduplication and meaningful reruns
+
+Opportunity identity and content version are distinct. Rediscovering an unchanged opportunity updates bounded discovery/freshness metadata without creating a duplicate Inbox item. Equality must derive from the canonical opportunity identity and meaningful content hash, not title similarity.
+
+A meaningful critical change creates a new `OpportunityRecord` version and a new linked decision after reevaluation. Previous opportunity, evidence, decision, run, approval, and pack history remains append-only and inspectable. The Inbox points to the current version while history explains what changed and why the recommendation may differ.
+
+When evidence refresh fails, the last successful snapshot remains available. It is marked `STALE`; its freshness is not silently renewed, and actionability is not restored merely because old evidence exists. The rail records the failed refresh, while the Evidence Sheet distinguishes retained proof from missing current verification.
+
+## 14. Core interaction flows
 
 ### Triage and decision
 
@@ -388,12 +510,12 @@ QUALOR-04A provides in-product viewing and section navigation for the generated 
 
 1. User selects the recommendation-specific approval action.
 2. QUALOR presents the preparation scope and unresolved blockers.
-3. User confirms approval.
-4. Approval state becomes `APPROVED_FOR_PREPARATION`.
-5. QUALOR generates the draft pack without external submission.
+3. A version-bound request enters `PENDING_APPROVAL`; user confirms or cancels it.
+4. A valid `ApprovalRecord` becomes `APPROVED_FOR_PREPARATION` and the completed research run stays closed.
+5. A new bounded drafting job consumes the approval idempotently and generates the draft without external submission.
 6. State becomes `DRAFT_READY`, and the product enters light document mode.
 
-## 14. Judge demo choreography
+## 15. Judge demo choreography
 
 The product architecture must support this exact story without narration carrying the interface:
 
@@ -412,7 +534,7 @@ The resulting story is: **discover → verify → decide → prove → human app
 
 The demo must use real state labels. LIVE, FIXTURE, and REPLAY remain visibly distinct, and no synthetic opportunity is presented as current live discovery.
 
-## 15. First-five-seconds gate
+## 16. First-five-seconds gate
 
 Without narration, a judge looking at the main workspace for approximately three to five seconds must understand:
 
@@ -426,23 +548,28 @@ Without narration, a judge looking at the main workspace for approximately three
 
 If these facts compete for attention, the recommendation wins, then the four core facts, then the action. Agent telemetry, detailed factors, filters, and provenance remain secondary. Failure of this hierarchy is a design defect, even if every required datum is technically present.
 
-## 16. Accessibility and interaction quality
+## 17. Accessibility, responsive behavior, and language
 
 QUALOR-04A establishes a usable baseline rather than deferring basic quality to polish:
 
-- All core flows are keyboard reachable with visible, restrained focus states.
+- All core flows are keyboard reachable with visible, restrained focus states. Tab order follows the visual hierarchy; arrow-key behavior may support composite Inbox controls; Enter and Space activate controls according to platform semantics.
 - Recommendation and evidence state never rely on color alone.
 - Text and controls meet WCAG AA contrast in both dark and light materials.
 - Evidence excerpts preserve readable line length and selectable text.
 - Motion respects reduced-motion preferences.
 - Time remaining is paired with an accessible absolute deadline when known.
 - UNKNOWN, CONFLICT, and STALE use explicit text labels.
-- Sheet and contextual-panel behavior preserves focus order and a reliable return point.
+- The Evidence Sheet has a semantic heading, traps focus only while modal behavior is active, closes with Escape, and returns focus to `Why this decision`.
+- Pages and document sections use semantic headings and landmarks rather than visual-only hierarchy.
 - Loading and live activity use announced state changes without continuously interrupting screen-reader users.
 
-These are foundation requirements for QUALOR-04A. QUALOR-04B refines the experience but does not own baseline accessibility.
+The same content and actions remain readable from 320 through 1440 px and beyond. At 320 px, zones stack without horizontal page scrolling, evidence text remains readable, and no action disappears. Desktop remains the primary experience; this responsive baseline does not create a separate mobile workflow.
 
-## 17. QUALOR-04A delivery boundary
+Competition-facing product UI is English. Ukrainian may remain the canonical language for owner documentation. Full internationalization is not part of V1.
+
+These are foundation requirements for QUALOR-04A. QUALOR-04B refines the experience but does not own baseline accessibility, responsive correctness, or language truthfulness.
+
+## 18. QUALOR-04A delivery boundary
 
 QUALOR-04A builds the complete functional product foundation:
 
@@ -460,7 +587,7 @@ QUALOR-04A builds the complete functional product foundation:
 
 QUALOR-04A must not be intentionally ugly, disposable, or structured as a temporary dashboard. Its components and navigation must support the final experience without replacement.
 
-## 18. QUALOR-04B refinement boundary
+## 19. QUALOR-04B refinement boundary
 
 QUALOR-04B builds directly on the 04A structure with:
 
@@ -473,7 +600,7 @@ QUALOR-04B builds directly on the 04A structure with:
 
 QUALOR-04B may tune presentation and interaction quality. It may not require rewriting the three-zone architecture, `Decision → Why → Proof`, recommendation hierarchy, evidence model, approval boundary, application-pack structure, or responsive content order.
 
-## 19. Explicitly deferred scope
+## 20. Explicitly deferred scope
 
 The following are outside QUALOR-04A and QUALOR-04B unless a later owner-approved change record adds them:
 
@@ -490,7 +617,7 @@ The following are outside QUALOR-04A and QUALOR-04B unless a later owner-approve
 - multi-agent swarm;
 - QUALOR-05 claim-normalizer hardening.
 
-## 20. Design acceptance contract
+## 21. Design acceptance contract
 
 The implemented experience conforms to this spec only when all of the following remain true:
 
@@ -503,23 +630,49 @@ The implemented experience conforms to this spec only when all of the following 
 - Recommendation-specific primary actions preserve the human approval boundary.
 - Evidence Sheet clearly separates QUALOR interpretation from exact source proof.
 - UNKNOWN, CONFLICT, and STALE remain visible and honest.
-- Intelligence Rail presents bounded telemetry rather than chat or chain-of-thought.
-- Application Pack appears only after valid human approval and never submits externally.
+- Run state and decision state remain separate, and Activity renders canonical `RunRecord`/`RunEvent` history.
+- Intelligence Rail presents actual bounded telemetry rather than chat, fake progress, or chain-of-thought.
+- Approval is actor-, version-, action-, and expiry-bound; critical changes revoke it.
+- Drafting starts as a new bounded job after the research run closes.
+- Application Pack appears only after valid human approval, retains complete attribution, and never submits externally.
+- SQLite transactions preserve Inbox, evidence, versioned decisions, runs, approvals, and packs across restart.
+- Opportunity deduplication and failed-refresh `STALE` behavior preserve history without renewing actionability.
+- Strategy displays `Not enough evidence` instead of an invented score when inputs are insufficient.
+- English product UI remains readable and operable from 320 through 1440 px with keyboard, focus, contrast, Escape, and reduced-motion support.
 - A judge can understand the selected opportunity, recommendation, evidence availability, effort/deadline, and human action in the first five seconds.
 - QUALOR-04B can polish the experience without replacing its information architecture.
 
-## 21. Self-review record
+## 22. Self-review record
 
 ```text
 PLACEHOLDERS=0
 TBD=0
 TODO=0
 CONTRADICTIONS=0
+APPROVED_VISUAL_DIRECTION_CHANGED=NO
+APPROVED_IA_CHANGED=NO
 DARK_FIRST_HYBRID_DIRECTION=PRESERVED
 PROGRESSIVE_INTELLIGENCE=PRESERVED
 HUMAN_APPROVAL_BOUNDARY=PRESERVED
 EVIDENCE_FIRST_PRODUCT_STORY=PRESERVED
 04A_04B_BOUNDARY=CLEAR
+REQUIRED_PRODUCT_STATES=COMPLETE
+RUN_DECISION_SEPARATION=PASS
+ACTIVITY_RUN_MAPPING=PASS
+DECISION_METADATA_COMPLETENESS=PASS
+STRATEGY_SCORE_SEMANTICS=PASS
+APPROVAL_VERSIONING=PASS
+APPROVAL_EXPIRY=PASS
+APPROVAL_REVOCATION=PASS
+DRAFT_JOB_BOUNDARY=PASS
+PERSISTENCE_MODEL_SET=COMPLETE
+RESTART_SEMANTICS=PASS
+DEDUP_RERUN_SEMANTICS=PASS
+STALE_EVIDENCE_SEMANTICS=PASS
+ACCESSIBILITY_BASELINE=PASS
+RESPONSIVE_BASELINE=PASS
+UI_LANGUAGE_POLICY=PASS
+LIVE_TRUTHFULNESS=PASS
 SCOPE_CREEP=NO
 ```
 
