@@ -10,7 +10,7 @@ def test_new_database_migrates_once_and_reopen_is_idempotent(tmp_path):
     database = Database(tmp_path / "workspace.db")
     first = database.connect()
     try:
-        assert [row[0] for row in first.execute("SELECT version FROM schema_migrations")] == [1]
+        assert [row[0] for row in first.execute("SELECT version FROM schema_migrations")] == [1, 2]
         expected_tables = {
             "approvals",
             "decisions",
@@ -19,6 +19,7 @@ def test_new_database_migrates_once_and_reopen_is_idempotent(tmp_path):
             "evidence",
             "founder_profiles",
             "opportunity_versions",
+            "opportunity_refresh_failures",
             "project_profiles",
             "run_events",
             "runs",
@@ -36,7 +37,7 @@ def test_new_database_migrates_once_and_reopen_is_idempotent(tmp_path):
 
     reopened = database.connect()
     try:
-        assert reopened.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 1
+        assert reopened.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 2
         assert reopened.execute("PRAGMA journal_mode").fetchone()[0].lower() == "wal"
         assert reopened.execute("PRAGMA busy_timeout").fetchone()[0] == 5000
         assert reopened.row_factory is sqlite3.Row
@@ -52,7 +53,7 @@ def test_future_and_gapped_schema_histories_fail_closed(tmp_path):
     connection.execute(
         "CREATE TABLE schema_migrations(version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)"
     )
-    connection.execute("INSERT INTO schema_migrations VALUES (2, '2026-09-07T00:00:00Z')")
+    connection.execute("INSERT INTO schema_migrations VALUES (3, '2026-09-07T00:00:00Z')")
     connection.commit()
     connection.close()
 
@@ -312,6 +313,31 @@ def test_commit_exception_rolls_back_and_closes_connection(tmp_path, monkeypatch
         with database.transaction():
             pass
     assert calls == ["BEGIN", "commit", "rollback", "close"]
+
+
+def test_immediate_transaction_uses_write_reservation(tmp_path, monkeypatch):
+    from qualor.persistence import Database
+
+    calls: list[str] = []
+
+    class Connection:
+        def execute(self, statement):
+            calls.append(statement)
+
+        def commit(self):
+            calls.append("commit")
+
+        def rollback(self):
+            calls.append("rollback")
+
+        def close(self):
+            calls.append("close")
+
+    database = Database(tmp_path / "workspace.db")
+    monkeypatch.setattr(database, "connect", lambda: Connection())
+    with database.transaction(immediate=True):
+        pass
+    assert calls == ["BEGIN IMMEDIATE", "commit", "close"]
 
 
 def record_metadata_for_sql(record_id: str) -> dict[str, object]:

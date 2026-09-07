@@ -184,6 +184,36 @@ class OpportunityRepository(_Repository):
             records.append(record)
         return tuple(records)
 
+    def latest_with_digest(self, record_id: str) -> tuple[OpportunityRecord, str] | None:
+        row = self.connection.execute(
+            "SELECT id, version, record_json, content_hash, created_at FROM opportunity_versions "
+            "WHERE id=? ORDER BY version DESC LIMIT 1",
+            (record_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        record = _load(OpportunityRecord, row["record_json"])
+        _require_projection(row, record)
+        return record, row["content_hash"]
+
+    def record_refresh_failure(self, record_id: str, version: int, failed_at: datetime) -> None:
+        self._insert(
+            "INSERT INTO opportunity_refresh_failures"
+            "(opportunity_id, opportunity_version, failed_at) VALUES (?, ?, ?)",
+            (record_id, version, _instant(failed_at)),
+            entity="opportunity refresh failure",
+        )
+
+    def list_refresh_failures(self, record_id: str, version: int) -> tuple[datetime, ...]:
+        rows = self.connection.execute(
+            "SELECT failed_at FROM opportunity_refresh_failures "
+            "WHERE opportunity_id=? AND opportunity_version=? ORDER BY failed_at",
+            (record_id, version),
+        ).fetchall()
+        return tuple(
+            sorted(datetime.fromisoformat(row["failed_at"].replace("Z", "+00:00")) for row in rows)
+        )
+
 
 class EvidenceRepository(_Repository):
     def put_evidence(
@@ -293,6 +323,13 @@ class DecisionRepository(_Repository):
             (record_id,),
         ).fetchall()
         return tuple(self._from_row(row) for row in rows)
+
+    def get_founder_profile_id(self, record_id: str, version: int) -> str | None:
+        row = self.connection.execute(
+            "SELECT founder_profile_id FROM decisions WHERE id=? AND version=?",
+            (record_id, version),
+        ).fetchone()
+        return None if row is None else row["founder_profile_id"]
 
 
 class RunRepository(_Repository):
@@ -502,6 +539,19 @@ class ApprovalRepository(_Repository):
         )
         return record
 
+    def list_for_opportunity(self, opportunity_id: str) -> tuple[ApprovalRecord, ...]:
+        rows = self.connection.execute(
+            "SELECT id, version FROM approvals WHERE opportunity_id=? ORDER BY id, version",
+            (opportunity_id,),
+        ).fetchall()
+        records: list[ApprovalRecord] = []
+        for row in rows:
+            record = self.get_approval(row["id"], row["version"])
+            if record is None:
+                raise CorruptRecordError("corrupt approval record")
+            records.append(record)
+        return tuple(records)
+
 
 class DraftPackRepository(_Repository):
     def put_draft_job(self, record: DraftJobRecord) -> None:
@@ -543,6 +593,23 @@ class DraftPackRepository(_Repository):
             idempotency_key=record.idempotency_key,
         )
         return record
+
+    def list_jobs_for_approvals(
+        self, approval_refs: tuple[tuple[str, int], ...]
+    ) -> tuple[DraftJobRecord, ...]:
+        records: list[DraftJobRecord] = []
+        for approval_id, approval_version in approval_refs:
+            rows = self.connection.execute(
+                "SELECT id, version FROM draft_jobs "
+                "WHERE approval_id=? AND approval_version=? ORDER BY id, version",
+                (approval_id, approval_version),
+            ).fetchall()
+            for row in rows:
+                record = self.get_draft_job(row["id"], row["version"])
+                if record is None:
+                    raise CorruptRecordError("corrupt draft job record")
+                records.append(record)
+        return tuple(records)
 
     def put_draft_pack(self, record: DraftPack) -> None:
         self._require_transaction()
@@ -624,3 +691,20 @@ class DraftPackRepository(_Repository):
         )
         self._validate_pack_graph(record)
         return record
+
+    def list_packs_for_approvals(
+        self, approval_refs: tuple[tuple[str, int], ...]
+    ) -> tuple[DraftPack, ...]:
+        records: list[DraftPack] = []
+        for approval_id, approval_version in approval_refs:
+            rows = self.connection.execute(
+                "SELECT id, version FROM draft_packs "
+                "WHERE approval_id=? AND approval_version=? ORDER BY id, version",
+                (approval_id, approval_version),
+            ).fetchall()
+            for row in rows:
+                record = self.get_draft_pack(row["id"], row["version"])
+                if record is None:
+                    raise CorruptRecordError("corrupt draft pack record")
+                records.append(record)
+        return tuple(records)

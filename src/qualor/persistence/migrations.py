@@ -107,7 +107,17 @@ MIGRATION_1 = (
     )""",
 )
 
-MIGRATIONS: tuple[tuple[str, ...], ...] = (MIGRATION_1,)
+MIGRATION_2 = (
+    """CREATE TABLE opportunity_refresh_failures (
+        opportunity_id TEXT NOT NULL, opportunity_version INTEGER NOT NULL,
+        failed_at TEXT NOT NULL,
+        PRIMARY KEY(opportunity_id, opportunity_version, failed_at),
+        FOREIGN KEY(opportunity_id, opportunity_version)
+            REFERENCES opportunity_versions(id, version)
+    )""",
+)
+
+MIGRATIONS: tuple[tuple[str, ...], ...] = (MIGRATION_1, MIGRATION_2)
 
 
 def migrate(connection: sqlite3.Connection) -> None:
