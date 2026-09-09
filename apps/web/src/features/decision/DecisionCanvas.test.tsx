@@ -293,7 +293,16 @@ test('direct selected URL fetches and renders an opportunity outside the bounded
   expect(screen.getByText('Run state: COMPLETED')).toBeVisible();
 });
 
-test('production App integration renders the Task 9 action as disabled until an executor is supplied', async () => {
+test('the canvas action stays disabled and explained when no executor is supplied', async () => {
+  render(<DecisionCanvas workspace={workspace()} />);
+  const action = screen.getByRole('button', { name: 'Approve application' });
+  expect(action).toBeDisabled();
+  expect(action).toHaveAccessibleDescription('Action execution is not available in this workspace.');
+  expect(action).toHaveTextContent('↗');
+  expect(action).not.toHaveTextContent(String.raw`\u2197`);
+});
+
+test('production App integration enables the action once the approval executor is supplied', async () => {
   vi.stubGlobal('fetch', vi.fn(async (request: RequestInfo | URL) => {
     const url = String(request);
     if (url.endsWith('/inbox')) return Response.json(inbox([inboxItem('selected', 0)]));
@@ -302,10 +311,9 @@ test('production App integration renders the Task 9 action as disabled until an 
   }));
   render(<MemoryRouter initialEntries={['/inbox/selected']}><App /></MemoryRouter>);
   const action = await screen.findByRole('button', { name: 'Approve application' });
-  expect(action).toBeDisabled();
-  expect(action).toHaveAccessibleDescription('Action execution is not available in this workspace.');
+  expect(action).toBeEnabled();
   expect(action).toHaveTextContent('↗');
-  expect(action).not.toHaveTextContent('\\u2197');
+  expect(action).not.toHaveTextContent(String.raw`\u2197`);
   expect(screen.getByText('Recorded organizer · EVALUATED')).toBeVisible();
 });
 

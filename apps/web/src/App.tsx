@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { apiRequest } from './api/client';
-import type { PortfolioView as Portfolio } from './generated/domain';
+import type { OpportunityWorkspaceResponse, PortfolioView as Portfolio } from './generated/domain';
 import { WorkspaceShell, useWorkspace } from './layout/WorkspaceShell';
 import { PortfolioView } from './features/portfolio/PortfolioView';
 import { DecisionTrace } from './layout/DecisionTrace';
 import { DecisionCanvas } from './features/decision/DecisionCanvas';
 import { ActivityHistory } from './features/activity/ActivityHistory';
+import { ApprovalPanel } from './features/approval/ApprovalPanel';
+import type { Recommendation } from './generated/domain';
 
 function InboxFoundation() {
   const { inbox, error, selectedWorkspace, selectedWorkspaceError, selectedWorkspaceLoading } = useWorkspace();
@@ -22,7 +24,7 @@ function InboxFoundation() {
     return () => controller.abort();
   }, [opportunityId]);
   if (opportunityId) {
-    if (selectedWorkspace?.opportunity_id === opportunityId) return <DecisionCanvas workspace={selectedWorkspace} />;
+    if (selectedWorkspace?.opportunity_id === opportunityId) return <SelectedDecision workspace={selectedWorkspace} />;
     if (selectedWorkspaceError) return <UnavailableView title={selectedWorkspaceError.code === 'NOT_FOUND' ? 'Opportunity unavailable' : 'Decision workspace unavailable'} description={selectedWorkspaceError.message} />;
     if (selectedWorkspaceLoading || !selectedWorkspace) return <section className="structural-state" aria-live="polite"><span className="eyebrow">Selected opportunity</span><h1>Opening decision</h1><p>Reading the saved decision workspace…</p></section>;
   }
@@ -43,6 +45,29 @@ function InboxFoundation() {
     <DecisionTrace />
   </section>;
 }
+// Only APPLY and PREPARE carry approval authority. WATCH and SKIP keep their Task 9 intent.
+const APPROVABLE = new Set<Recommendation>(['APPLY', 'PREPARE']);
+
+function SelectedDecision({ workspace }: { workspace: OpportunityWorkspaceResponse }) {
+  const [intent, setIntent] = useState<'APPLY' | 'PREPARE' | null>(null);
+  const canvas = useRef<HTMLDivElement>(null);
+  useEffect(() => { setIntent(null); }, [workspace.opportunity_id]);
+  function close() {
+    setIntent(null);
+    canvas.current?.querySelector<HTMLButtonElement>('button[data-primary-action]')?.focus();
+  }
+  return <div ref={canvas}>
+    <DecisionCanvas
+      workspace={workspace}
+      approvalOpen={intent !== null}
+      onPrimaryAction={recommendation => {
+        if (APPROVABLE.has(recommendation)) setIntent(recommendation as 'APPLY' | 'PREPARE');
+      }}
+    />
+    {intent && <ApprovalPanel workspace={workspace} recommendation={intent} onClose={close} />}
+  </div>;
+}
+
 function UnavailableView({ title, description }: { title: string; description: string }) {
   return <section className="structural-state"><span className="eyebrow">Workspace foundation</span><h1>{title}</h1><p>{description}</p><Link className="inline-link" to="/inbox">Return to inbox ↗</Link></section>;
 }

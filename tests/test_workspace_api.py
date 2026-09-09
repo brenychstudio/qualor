@@ -555,3 +555,77 @@ def test_settings_reject_untrusted_allowed_origins(origin):
 
     with pytest.raises(ValidationError):
         Settings(qualor_allowed_origins=(origin,))
+
+
+def test_approval_routes_require_the_process_local_action_token(tmp_path):
+    """The consequential checkpoint is protected exactly like every other mutation."""
+    database, fixture, decision = seed(tmp_path)
+    with client_for(make_app(database, fixture, decision)) as client:
+        expected = client.get(f"/api/v1/opportunities/{fixture.opportunity.id}/workspace").json()[
+            "decision"
+        ]["primary_action"]["approval_request"]
+        for route, body in (
+            (f"/api/v1/opportunities/{fixture.opportunity.id}/approvals", expected),
+            (
+                "/api/v1/approvals/any/confirm",
+                {"expected_versions": expected, "idempotency_key": "intent"},
+            ),
+        ):
+            result = client.post(route, json=body, headers={"Origin": ORIGIN})
+            assert result.status_code == 403, result.text
+            assert result.json() == {"code": "ACTION_FORBIDDEN"}
+
+
+def test_approval_read_exposes_authoritative_state_action_and_expiry(tmp_path):
+    """The panel reads approval truth; it never derives validity or expiry itself."""
+    database, fixture, decision = seed(tmp_path)
+    with client_for(make_app(database, fixture, decision)) as client:
+        guard = headers(client)
+        expected = client.get(f"/api/v1/opportunities/{fixture.opportunity.id}/workspace").json()[
+            "decision"
+        ]["primary_action"]["approval_request"]
+        pending = client.post(
+            f"/api/v1/opportunities/{fixture.opportunity.id}/approvals",
+            json=expected,
+            headers=guard,
+        ).json()
+        read = client.get(f"/api/v1/approvals/{pending['id']}")
+        assert read.status_code == 200, read.text
+        view = read.json()
+        assert view["state"] == "PENDING_APPROVAL"
+        assert view["action"] == "GENERATE_DRAFT_PACK"
+        assert view["actor_id"] == fixture.founder.id
+        assert view["opportunity_id"] == fixture.opportunity.id
+        assert view["expires_at"]
+        assert view["approved_snapshot"] == expected
+        assert set(view) >= {"state", "reason", "actionable", "expires_at", "approved_snapshot"}
+
+
+def test_one_human_intent_key_returns_one_approval_and_one_pack(tmp_path):
+    """Repeated confirmation of a single intent never creates a second approval or pack."""
+    database, fixture, decision = seed(tmp_path)
+    with client_for(make_app(database, fixture, decision)) as client:
+        guard = headers(client)
+        expected = client.get(f"/api/v1/opportunities/{fixture.opportunity.id}/workspace").json()[
+            "decision"
+        ]["primary_action"]["approval_request"]
+        pending = client.post(
+            f"/api/v1/opportunities/{fixture.opportunity.id}/approvals",
+            json=expected,
+            headers=guard,
+        ).json()
+        body = {"expected_versions": expected, "idempotency_key": "one-human-intent"}
+        first = client.post(f"/api/v1/approvals/{pending['id']}/confirm", json=body, headers=guard)
+        repeat = client.post(f"/api/v1/approvals/{pending['id']}/confirm", json=body, headers=guard)
+        assert first.status_code == repeat.status_code == 200, repeat.text
+        assert first.json()["id"] == repeat.json()["id"] == pending["id"]
+        assert first.json()["pack_id"] == repeat.json()["pack_id"]
+        assert first.json()["state"] == repeat.json()["state"] == "DRAFT_READY"
+
+
+def test_product_api_exposes_no_external_submission_action(tmp_path):
+    """Approval prepares a draft locally. V1 exposes nothing that sends anything outward."""
+    app = make_app(Database(tmp_path / "empty.db"))
+    paths = {route.path for route in app.routes if hasattr(route, "path")}
+    forbidden = ("submit", "send", "publish", "dispatch", "email", "apply")
+    assert not [path for path in paths if any(word in path.lower() for word in forbidden)]

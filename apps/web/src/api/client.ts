@@ -1,4 +1,9 @@
-import type { ProductError } from '../generated/domain';
+import type {
+  ApprovalConfirmRequest,
+  ApprovalRequest,
+  ApprovalView,
+  ProductError,
+} from '../generated/domain';
 
 type ErrorCode = ProductError['code'] | 'LOCAL_DISCONNECTED';
 const messages: Record<ErrorCode, string | null> = {
@@ -88,4 +93,25 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
   try { return await response.json() as T; }
   catch { throw new ApiError('INTERNAL_ERROR', response.status); }
+}
+
+/**
+ * The two protected approval calls. Both reuse the single apiRequest transport, so the
+ * process-local action token travels only in its header and never in a URL or storage.
+ */
+export function requestApproval(opportunityId: string, body: ApprovalRequest, actionToken: string, signal?: AbortSignal) {
+  return apiRequest<ApprovalView>(`/opportunities/${encodeURIComponent(opportunityId)}/approvals`, {
+    method: 'POST', actionToken, body, signal,
+  });
+}
+
+/**
+ * `idempotencyKey` identifies one human approval intent. Callers create it once for that
+ * intent and pass the same value when retrying, so a retry can never approve twice.
+ */
+export function confirmApproval(approvalId: string, expectedVersions: ApprovalRequest, idempotencyKey: string, actionToken: string, signal?: AbortSignal) {
+  const body: ApprovalConfirmRequest = { expected_versions: expectedVersions, idempotency_key: idempotencyKey };
+  return apiRequest<ApprovalView>(`/approvals/${encodeURIComponent(approvalId)}/confirm`, {
+    method: 'POST', actionToken, body, signal,
+  });
 }

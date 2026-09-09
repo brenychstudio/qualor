@@ -141,6 +141,20 @@ ol.event-axis { list-style: none; padding: 0; margin-bottom: 0; }
 .primary-action { background: transparent; color: var(--text-primary); padding: 11px 0; min-height: 44px; display: inline-flex; align-items: center; gap: 28px; font-size: 12px; font-weight: 500; border: 0; border-bottom: 1px solid #6c737c; transition: border-color 150ms ease; }
 .primary-action:hover { border-bottom-color: var(--text-primary); }
 .primary-action > span { font-size: 19px; font-weight: 400; line-height: 1; }
+.approval-checkpoint { margin-top: 34px; padding-top: 24px; border-top: 1px solid var(--divider); max-width: 640px; }
+.approval-checkpoint:focus { outline: none; }
+.approval-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 24px; }
+.approval-state { font-size: 12px; font-weight: 500; letter-spacing: .04em; }
+.approval-statement { margin-top: 14px; font-size: 12px; line-height: 1.7; color: var(--text-secondary); }
+.approval-reason { color: var(--text-primary); }
+.approval-bindings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 32px; margin-top: 22px; padding: 20px 0; border-block: 1px solid var(--divider); }
+.approval-bindings dt { font-size: 9px; text-transform: uppercase; letter-spacing: .055em; color: var(--text-muted); }
+.approval-bindings dd { margin: 6px 0 0; font-size: 12px; overflow-wrap: anywhere; }
+.approval-bindings dd small { display: block; margin-top: 4px; font-size: 10px; color: var(--text-muted); }
+.approval-boundary { margin-top: 14px; font-size: 11px; line-height: 1.7; color: var(--text-muted); }
+.approval-failure { margin-top: 16px; font-size: 12px; line-height: 1.7; color: var(--text-primary); border-left: 2px solid var(--recommendation-prepare); padding-left: 12px; }
+.approval-controls { display: flex; align-items: center; gap: 28px; margin-top: 26px; }
+@media (max-width: 767px) { .approval-bindings { grid-template-columns: minmax(0, 1fr); } }
 .empty-decision { position: relative; display: flex; flex-direction: column; padding: 29px 0 46px; min-height: 640px; flex: 1; }
 .decision-context { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
 .empty-decision .decision-state { order: 2; align-self: center; padding: 76px 30px 58px; }

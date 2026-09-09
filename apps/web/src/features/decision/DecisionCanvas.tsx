@@ -76,9 +76,10 @@ function primaryActionFor(workspace: OpportunityWorkspaceResponse) {
   return PRIMARY_CTA_LABELS[recommendation];
 }
 
-export function DecisionCanvas({ workspace, onPrimaryAction }: {
+export function DecisionCanvas({ workspace, onPrimaryAction, approvalOpen = false }: {
   workspace: OpportunityWorkspaceResponse;
   onPrimaryAction?: (recommendation: Recommendation) => void;
+  approvalOpen?: boolean;
 }) {
   const { decision } = workspace;
   const recommendation = decision.recommendation;
@@ -124,6 +125,6 @@ export function DecisionCanvas({ workspace, onPrimaryAction }: {
     <div className="section-rule trace-heading"><h3>Decision trace</h3></div>
     <DecisionTrace presentationState={workspace.presentation_state} runState={workspace.run_state} hasDecision={recommendation != null} actionAvailable={decision.primary_action.available} />
     <p className="human-boundary">Human boundary / {decision.primary_action.available ? 'approval available' : 'approval not available'}</p>
-    {primaryAction && recommendation && <div className="decision-primary-action-row"><button type="button" className="primary-action" data-primary-action disabled={!onPrimaryAction} aria-describedby={!onPrimaryAction ? 'decision-action-unavailable' : undefined} onClick={onPrimaryAction ? () => onPrimaryAction(recommendation) : undefined}>{primaryAction}<span aria-hidden="true">↗</span></button>{!onPrimaryAction && <span id="decision-action-unavailable" className="visually-hidden">Action execution is not available in this workspace.</span>}</div>}
+    {primaryAction && recommendation && <div className="decision-primary-action-row"><button type="button" className="primary-action" data-primary-action disabled={!onPrimaryAction} aria-expanded={recommendation === 'APPLY' || recommendation === 'PREPARE' ? approvalOpen : undefined} aria-describedby={!onPrimaryAction ? 'decision-action-unavailable' : undefined} onClick={onPrimaryAction ? () => onPrimaryAction(recommendation) : undefined}>{primaryAction}<span aria-hidden="true">↗</span></button>{!onPrimaryAction && <span id="decision-action-unavailable" className="visually-hidden">Action execution is not available in this workspace.</span>}</div>}
   </section>;
 }
