@@ -197,6 +197,20 @@ test('keeps keyboard navigation inside full-screen proof until it closes', async
   expect(source).toHaveFocus();
 });
 
+test('locks background scrolling only while the narrow proof plane is open and restores it on close', async () => {
+  vi.stubGlobal('innerWidth', 390);
+  document.body.style.overflow = 'auto';
+  const view = render(<MemoryRouter><WorkspaceFrame queue={null} context={null} proof={null} evidenceContent={<p>Proof</p>}><h1>PREPARE</h1></WorkspaceFrame></MemoryRouter>);
+  await userEvent.click(screen.getByRole('button', { name: /why this decision/i }));
+  expect(document.body.style.overflow).toBe('hidden');
+  await userEvent.keyboard('{Escape}');
+  expect(document.body.style.overflow).toBe('auto');
+  await userEvent.click(screen.getByRole('button', { name: /why this decision/i }));
+  view.unmount();
+  expect(document.body.style.overflow).toBe('auto');
+  document.body.style.overflow = '';
+});
+
 test('restores proof focus only after the mobile background becomes interactive again', async () => {
   vi.stubGlobal('innerWidth', 390);
   render(<MemoryRouter><WorkspaceFrame queue={null} context={null} proof={null} evidenceContent={<p>Proof</p>}><h1>PREPARE</h1></WorkspaceFrame></MemoryRouter>);

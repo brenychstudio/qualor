@@ -30,6 +30,12 @@ export function WorkspaceFrame({ children, queue, context, proof, previewLabel, 
     else if (proofWasOpen.current) { proofWasOpen.current = false; proofButton.current?.focus(); }
   }, [proofOpen]);
   useEffect(() => {
+    if (!proofOpen || !narrow) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [proofOpen, narrow]);
+  useEffect(() => {
     if (contextOpen) {
       contextPanel.current?.focus();
       contextPanel.current?.scrollIntoView?.({ block: 'start', behavior: 'instant' });
