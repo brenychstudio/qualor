@@ -2,6 +2,7 @@ import type {
   ApprovalConfirmRequest,
   ApprovalRequest,
   ApprovalView,
+  DraftPackView,
   ProductError,
 } from '../generated/domain';
 
@@ -114,4 +115,9 @@ export function confirmApproval(approvalId: string, expectedVersions: ApprovalRe
   return apiRequest<ApprovalView>(`/approvals/${encodeURIComponent(approvalId)}/confirm`, {
     method: 'POST', actionToken, body, signal,
   });
+}
+
+/** The Draft Pack is immutable, so its only client operation is an ordinary read. */
+export function fetchDraftPack(packId: string, signal?: AbortSignal) {
+  return apiRequest<DraftPackView>(`/draft-packs/${encodeURIComponent(packId)}`, { signal });
 }

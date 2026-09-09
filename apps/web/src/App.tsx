@@ -8,6 +8,7 @@ import { DecisionTrace } from './layout/DecisionTrace';
 import { DecisionCanvas } from './features/decision/DecisionCanvas';
 import { ActivityHistory } from './features/activity/ActivityHistory';
 import { ApprovalPanel } from './features/approval/ApprovalPanel';
+import { ApplicationPack } from './features/draft-pack/ApplicationPack';
 import type { Recommendation } from './generated/domain';
 
 function InboxFoundation() {
@@ -71,9 +72,6 @@ function SelectedDecision({ workspace }: { workspace: OpportunityWorkspaceRespon
 function UnavailableView({ title, description }: { title: string; description: string }) {
   return <section className="structural-state"><span className="eyebrow">Workspace foundation</span><h1>{title}</h1><p>{description}</p><Link className="inline-link" to="/inbox">Return to inbox ↗</Link></section>;
 }
-function StructuralView({ kind }: { kind: 'pack' }) {
-  return <UnavailableView title={kind === 'pack' ? 'Draft pack view not yet available' : ''} description="This workspace foundation does not yet display prepared application documents." />;
-}
 export function App() {
   return <Routes><Route element={<WorkspaceShell />}>
     <Route index element={<Navigate to="/inbox" replace />} />
@@ -81,7 +79,7 @@ export function App() {
     <Route path="inbox/:opportunityId" element={<InboxFoundation />} />
     <Route path="portfolio" element={<PortfolioView />} />
     <Route path="activity" element={<ActivityHistory />} />
-    <Route path="draft-packs/:packId" element={<StructuralView kind="pack" />} />
+    <Route path="draft-packs/:packId" element={<ApplicationPack />} />
     <Route path="*" element={<Navigate to="/inbox" replace />} />
   </Route></Routes>;
 }

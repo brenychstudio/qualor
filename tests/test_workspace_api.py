@@ -629,3 +629,128 @@ def test_product_api_exposes_no_external_submission_action(tmp_path):
     paths = {route.path for route in app.routes if hasattr(route, "path")}
     forbidden = ("submit", "send", "publish", "dispatch", "email", "apply")
     assert not [path for path in paths if any(word in path.lower() for word in forbidden)]
+
+
+def test_draft_pack_read_exposes_bounded_attribution_and_references(tmp_path):
+    """The pack view carries its own attribution; the document invents none of it."""
+    database, fixture, decision = seed(tmp_path, official_evidence=True)
+    with client_for(make_app(database, fixture, decision)) as client:
+        guard = headers(client)
+        expected = client.get(f"/api/v1/opportunities/{fixture.opportunity.id}/workspace").json()[
+            "decision"
+        ]["primary_action"]["approval_request"]
+        pending = client.post(
+            f"/api/v1/opportunities/{fixture.opportunity.id}/approvals",
+            json=expected,
+            headers=guard,
+        ).json()
+        confirmed = client.post(
+            f"/api/v1/approvals/{pending['id']}/confirm",
+            json={"expected_versions": expected, "idempotency_key": "one-intent"},
+            headers=guard,
+        ).json()
+        pack = client.get(f"/api/v1/draft-packs/{confirmed['pack_id']}").json()
+
+        assert pack["approval_id"] == pending["id"]
+        assert pack["approval_version"] >= 1
+        assert pack["actor_id"] == fixture.founder.id
+        assert pack["creator_kind"] == "DETERMINISTIC"
+        assert pack["content_kind"] == "DRAFT_FOR_HUMAN_REVIEW"
+        assert pack["generated_at"]
+        assert pack["approved_snapshot"] == expected
+        assert pack["approved_snapshot"]["opportunity_version"] >= 1
+        assert pack["approved_snapshot"]["founder_profile_version"] >= 1
+        assert pack["approved_snapshot"]["project_version"] >= 1
+        assert pack["approved_snapshot"]["policy_versions"]
+        assert pack["source_refs"]
+        assert pack["evidence_refs"]
+        versions = [entry["evidence_id"] for entry in pack["evidence_versions"]]
+        assert versions == pack["evidence_refs"]
+
+
+def test_draft_pack_keeps_seven_canonical_sections_in_server_order(tmp_path):
+    """Section order is server authority; the document never reorders or omits."""
+    database, fixture, decision = seed(tmp_path, official_evidence=True)
+    with client_for(make_app(database, fixture, decision)) as client:
+        guard = headers(client)
+        expected = client.get(f"/api/v1/opportunities/{fixture.opportunity.id}/workspace").json()[
+            "decision"
+        ]["primary_action"]["approval_request"]
+        pending = client.post(
+            f"/api/v1/opportunities/{fixture.opportunity.id}/approvals",
+            json=expected,
+            headers=guard,
+        ).json()
+        confirmed = client.post(
+            f"/api/v1/approvals/{pending['id']}/confirm",
+            json={"expected_versions": expected, "idempotency_key": "one-intent"},
+            headers=guard,
+        ).json()
+        pack = client.get(f"/api/v1/draft-packs/{confirmed['pack_id']}").json()
+        assert [section["key"] for section in pack["sections"]] == [
+            "SUBMISSION_SUMMARY",
+            "PROJECT_FIT_NARRATIVE",
+            "ELIGIBILITY_CHECKLIST",
+            "REQUIRED_DELIVERABLES",
+            "EVIDENCE_REFERENCES",
+            "READINESS_GAPS",
+            "SUGGESTED_APPLICATION_ANSWERS",
+        ]
+        assert all(section["title"] for section in pack["sections"])
+
+
+def test_draft_pack_exposes_no_submission_field_or_mutation_route(tmp_path):
+    """The pack is reviewable, never sendable. Its read path is GET only."""
+    database, fixture, decision = seed(tmp_path, official_evidence=True)
+    app = make_app(database, fixture, decision)
+    with client_for(app) as client:
+        guard = headers(client)
+        expected = client.get(f"/api/v1/opportunities/{fixture.opportunity.id}/workspace").json()[
+            "decision"
+        ]["primary_action"]["approval_request"]
+        pending = client.post(
+            f"/api/v1/opportunities/{fixture.opportunity.id}/approvals",
+            json=expected,
+            headers=guard,
+        ).json()
+        confirmed = client.post(
+            f"/api/v1/approvals/{pending['id']}/confirm",
+            json={"expected_versions": expected, "idempotency_key": "one-intent"},
+            headers=guard,
+        ).json()
+        pack = client.get(f"/api/v1/draft-packs/{confirmed['pack_id']}").json()
+        forbidden = ("submit", "send", "recipient", "email", "publish", "dispatch", "webhook")
+        assert not [field for field in pack if any(word in field.lower() for word in forbidden)]
+
+        # The pack is immutable: only reading it is allowed over HTTP.
+        route = f"/api/v1/draft-packs/{confirmed['pack_id']}"
+        assert client.get(route).status_code == 200
+        for method in ("POST", "PUT", "PATCH", "DELETE"):
+            mutation = client.request(method, route, json={}, headers=guard)
+            assert mutation.status_code in {403, 404, 405}, (method, mutation.status_code)
+        assert client.get(route).json() == pack
+
+
+def test_missing_fields_survive_into_the_persisted_pack(tmp_path):
+    """What QUALOR does not know stays visible in the document it hands the human."""
+    database, fixture, decision = seed(tmp_path, official_evidence=True)
+    with client_for(make_app(database, fixture, decision)) as client:
+        guard = headers(client)
+        expected = client.get(f"/api/v1/opportunities/{fixture.opportunity.id}/workspace").json()[
+            "decision"
+        ]["primary_action"]["approval_request"]
+        pending = client.post(
+            f"/api/v1/opportunities/{fixture.opportunity.id}/approvals",
+            json=expected,
+            headers=guard,
+        ).json()
+        confirmed = client.post(
+            f"/api/v1/approvals/{pending['id']}/confirm",
+            json={"expected_versions": expected, "idempotency_key": "one-intent"},
+            headers=guard,
+        ).json()
+        pack = client.get(f"/api/v1/draft-packs/{confirmed['pack_id']}").json()
+        assert isinstance(pack["missing_fields"], list)
+        readiness = next(s for s in pack["sections"] if s["key"] == "READINESS_GAPS")
+        for field in pack["missing_fields"]:
+            assert f"MISSING: {field}" in readiness["content"]

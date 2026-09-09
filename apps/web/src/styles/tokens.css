@@ -45,6 +45,14 @@
   --proof-quote-size: 20px;
   --proof-citation-size: var(--type-caption);
   --proof-provenance-size: var(--type-meta);
+  --document-paper: var(--proof-paper);
+  --document-ink: var(--proof-ink);
+  --document-muted: var(--proof-muted);
+  --document-citation: var(--proof-citation);
+  --document-rule: #BDC1BB;
+  --document-measure: 660px;
+  --document-title-size: 40px;
+  --document-body-size: 14px;
   --state-unknown: var(--recommendation-watch);
   --state-stale: var(--recommendation-prepare);
   --state-degraded: var(--text-secondary);
