@@ -35,14 +35,14 @@ export function PortfolioView() {
   const allProjects = [...(portfolio?.projects ?? []), ...newProjects.filter(project => !persistedIds.has(project.id))];
   const canEdit = !!session && !session.read_only && !!session.action_token;
   return <section className="portfolio-view">
-    <div className="portfolio-heading"><h1>Your foundation.</h1><p>A clear picture of you and your work.<br />Provide what you know. Keep uncertainty explicit.</p></div>
+    <div className="portfolio-heading"><h1>Portfolio</h1><p>Profile, capacity and project facts used in qualification.</p></div>
     {error && <p className="form-feedback" role="alert">{error}</p>}
     {!portfolio && !error && <p role="status">Loading your saved portfolio…</p>}
     {portfolio && <>
       {!canEdit && <p className="form-note">Read-only workspace. Saved facts remain available for review.</p>}
       <ProfileForm key="founder" record={portfolio.founder ?? newFounder} kind="founder" isNew={!portfolio.founder} session={session} onSaved={saved} />
       <div className="project-section-heading"><h2>Projects <span className="quiet">{allProjects.length} / 5</span></h2>{canEdit && allProjects.length < 5 && <button className="text-button" onClick={() => setNewProjects(previous => [...previous, { ...newRecord(), name: '' }])}>Add project</button>}</div>
-      {allProjects.length === 0 && <p className="project-empty">Your portfolio is open. Add a project to describe its fit, stage, and constraints.</p>}
+      {allProjects.length === 0 && <p className="project-empty">No projects saved. Add a project to record its fit, stage and constraints.</p>}
       {allProjects.map(project => <ProfileForm key={project.id} record={project} kind="project" isNew={newProjects.some(draft => draft.id === project.id)} session={session} onSaved={saved} />)}
     </>}
   </section>;

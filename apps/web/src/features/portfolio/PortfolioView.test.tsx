@@ -24,7 +24,14 @@ beforeEach(() => {
     return Response.json(portfolio);
   }));
 });
-async function open() { render(<PortfolioView />); await screen.findByDisplayValue('Spain'); }
+async function open() {
+  render(<PortfolioView />);
+  await screen.findByText('Spain');
+  if (!readOnly) {
+    await userEvent.click(screen.getByRole('button', { name: 'Edit founder profile' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Test project' }));
+  }
+}
 test('loads persisted founder and project versions and shows absent facts as UNKNOWN', async () => {
   await open();
   expect(screen.getByText('Version 3')).toBeVisible();
@@ -84,20 +91,60 @@ test('a project save does not reset unsaved founder changes', async () => {
 test('read-only sessions expose facts without mutation controls', async () => {
   readOnly = true; await open();
   expect(screen.getByText(/read-only workspace/i)).toBeVisible();
-  expect(screen.getByLabelText('Country of residence')).toHaveAttribute('readonly');
+  expect(screen.getByText('Spain')).toBeVisible();
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Add project' })).not.toBeInTheDocument();
 });
 test('creates an empty founder with expected version zero and preserves UNKNOWN', async () => {
   portfolio = { founder: null, projects: [] };
   render(<PortfolioView />);
-  await screen.findByRole('button', { name: 'Save founder profile' });
+  await userEvent.click(await screen.findByRole('button', { name: 'Edit founder profile' }));
   await userEvent.type(screen.getByLabelText('Country of residence'), 'Spain');
   await userEvent.click(screen.getByRole('button', { name: 'Save founder profile' }));
   await waitFor(() => expect(saved).toHaveLength(1));
   expect(saved[0]).toMatchObject({ body: { expected_version: 0, profile: { country_of_residence: { value: 'Spain', provenance: 'USER_ASSERTED' } } } });
   const profile = saved[0].body.profile as FounderProfile;
   expect(profile.legal_form?.value ?? null).toBeNull();
+});
+
+test('opens a view-first dossier with actual facts and provenance, without inventing identity', async () => {
+  render(<PortfolioView />);
+  expect(await screen.findByText('Spain')).toBeVisible();
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  expect(screen.getAllByText('DOCUMENTED').length).toBeGreaterThan(0);
+  expect(screen.getByText('Research overhead')).toBeVisible();
+  expect(screen.queryByText(/Rostyslav/i)).not.toBeInTheDocument();
+  expect(saved).toHaveLength(0);
+});
+
+test('distinguishes known empty project lists from UNKNOWN in the dossier without changing their provenance', async () => {
+  portfolio.projects[0]!.available_features = { value: [], provenance: 'USER_ASSERTED', evidence_refs: ['empty-list-proof'] };
+  portfolio.projects[0]!.project_lineage = { value: null, provenance: 'UNKNOWN', evidence_refs: [] };
+  render(<PortfolioView />);
+  await screen.findByText('Spain');
+  const known = screen.getByText('Available features').parentElement!;
+  const unknown = screen.getByText('Project lineage').parentElement!;
+  expect(within(known).getByText('None recorded')).toBeVisible();
+  expect(within(known).getByText('USER_ASSERTED')).toBeVisible();
+  expect(within(unknown).getByText('UNKNOWN')).toBeVisible();
+  expect(saved).toHaveLength(0);
+});
+
+test('back to dossier preserves unsaved edits, while cancel explicitly discards them without writing', async () => {
+  render(<PortfolioView />);
+  await userEvent.click(await screen.findByRole('button', { name: 'Edit founder profile' }));
+  await userEvent.type(screen.getByLabelText('Country of residence'), ' pending');
+  await userEvent.click(screen.getByRole('button', { name: 'Back to dossier' }));
+  expect(screen.getByText('Spain')).toBeVisible();
+  expect(screen.getByText('Unsaved changes retained')).toBeVisible();
+  await userEvent.click(screen.getByRole('button', { name: 'Edit founder profile' }));
+  expect(screen.getByLabelText('Country of residence')).toHaveValue('Spain pending');
+  await userEvent.click(screen.getByRole('button', { name: 'Cancel changes' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Edit founder profile' }));
+  expect(screen.getByLabelText('Country of residence')).toHaveValue('Spain');
+  expect(saved).toHaveLength(0);
 });
 
 test('moves focus to the new project name when adding a project', async () => {
@@ -146,4 +193,12 @@ test('marks changed cash as user asserted without retaining evidence for the pri
   expect(saved[0]).toMatchObject({ body: { profile: {
     max_cash_commitment: { value: { amount: '125.50', currency: 'EUR' }, provenance: 'USER_ASSERTED', evidence_refs: [] },
   } } });
+});
+
+test('groups existing founder inputs and keeps UNKNOWN visible beside blank facts', async () => {
+  await open();
+  const form = screen.getByRole('form', { name: 'Founder profile' });
+  expect(within(form).getByRole('group', { name: 'Identity' })).toBeVisible();
+  expect(within(form).getByRole('group', { name: 'Constraints & capacity' })).toBeVisible();
+  expect(screen.getByLabelText('Incorporation date')).toHaveAccessibleDescription('UNKNOWN');
 });

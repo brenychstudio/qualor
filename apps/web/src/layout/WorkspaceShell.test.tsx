@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { App } from '../App';
+import { WorkspaceFrame } from './WorkspaceShell';
+import { DecisionTrace } from './DecisionTrace';
 
 function mount(path = '/inbox') { return render(<MemoryRouter initialEntries={[path]}><App /></MemoryRouter>); }
 beforeEach(() => {
@@ -11,7 +13,7 @@ beforeEach(() => {
     : url.endsWith('/session') ? { read_only: true, action_token: null }
     : { founder: null, projects: [] })));
 });
-test('keeps queue, decision, proof and activity in semantic reading order', async () => {
+test('projects opportunity, decision, proof and intelligence in sequential reading order', async () => {
   mount();
   await screen.findByRole('link', { name: /complete profile/i });
   const queue = screen.getByRole('complementary', { name: 'Opportunity inbox' });
@@ -21,7 +23,8 @@ test('keeps queue, decision, proof and activity in semantic reading order', asyn
   expect(queue.compareDocumentPosition(decision) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(decision.compareDocumentPosition(proof) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(proof.compareDocumentPosition(activity) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(decision.closest('.workspace-grid')).toHaveClass('workspace-grid--three-zone');
+  expect(proof.parentElement).toBe(decision.parentElement);
+  expect(decision.contains(proof)).toBe(false);
 });
 test('selects Portfolio through working keyboard navigation', async () => {
   mount();
@@ -32,7 +35,7 @@ test('selects Portfolio through working keyboard navigation', async () => {
   await userEvent.tab();
   expect(within(nav).getByRole('link', { name: 'Portfolio' })).toHaveFocus();
   await userEvent.keyboard('{Enter}');
-  expect(await screen.findByRole('heading', { name: 'Your foundation.' })).toBeVisible();
+  expect(await screen.findByRole('heading', { name: 'Portfolio' })).toBeVisible();
   expect(within(nav).getByRole('link', { name: 'Portfolio' })).toHaveAttribute('aria-current', 'page');
 });
 test('retains the primary action and user-invoked context at 320 pixels', async () => {
@@ -112,4 +115,116 @@ test('keeps every returned research mode explicit in a mixed shortlist', async (
   mount();
   expect(await screen.findByText('LIVE · REPLAY · FIXTURE')).toBeVisible();
   expect(screen.getByText('Local controller connected')).toBeVisible();
+});
+
+test('shows actual setup facts from the protected portfolio read', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.endsWith('/portfolio')
+    ? { founder: null, projects: [{ id: 'project-1', name: 'Saved project', version: 1 }] }
+    : { items: [], profile_present: false, page: { offset: 0, limit: 50, total: 0, has_more: false } })));
+  mount();
+  expect(await screen.findByRole('heading', { name: 'No active decision' })).toBeVisible();
+  const facts = screen.getByRole('group', { name: 'Portfolio context' });
+  expect(await within(facts).findByText('1 project')).toBeVisible();
+  expect(within(facts).getByText('Not added')).toBeVisible();
+});
+test('keeps loading and failed reads distinct from a successful empty workspace', async () => {
+  let rejectRead!: (reason: Error) => void;
+  vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((_resolve, reject) => { rejectRead = reject; })));
+  mount();
+  expect(screen.getByRole('heading', { name: 'Opening workspace' })).toBeVisible();
+  expect(screen.queryByRole('heading', { name: 'No active decision' })).not.toBeInTheDocument();
+  await act(async () => rejectRead(new TypeError('offline')));
+  expect(await screen.findByRole('heading', { name: 'Workspace unavailable' })).toBeVisible();
+  expect(screen.queryByRole('heading', { name: 'No active decision' })).not.toBeInTheDocument();
+});
+test('does not turn unavailable portfolio facts into zero projects', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url.endsWith('/portfolio')) throw new TypeError('offline');
+    return Response.json({ items: [], profile_present: false, page: { offset: 0, limit: 50, total: 0, has_more: false } });
+  }));
+  mount();
+  expect(await screen.findByText('Portfolio context unavailable')).toBeVisible();
+  expect(screen.queryByText('0 projects')).not.toBeInTheDocument();
+});
+
+test('labels explicitly flagged local API synthetic QA without changing the LOCAL runtime identity', async () => {
+  mount('/portfolio?qa=synthetic-fixture');
+  expect(await screen.findByText('LOCAL API QA · SYNTHETIC FIXTURE DATA · NO LIVE DATA')).toBeVisible();
+  expect(screen.getByText('LOCAL')).toBeVisible();
+  expect(screen.queryByText('DESIGN PREVIEW · SYNTHETIC FIXTURE · READ ONLY')).not.toBeInTheDocument();
+});
+
+test('does not expose the local synthetic QA presentation flag in production', async () => {
+  vi.stubEnv('DEV', false);
+  try {
+    mount('/portfolio?qa=synthetic-fixture');
+    await screen.findByRole('heading', { name: 'Portfolio' });
+    expect(screen.queryByText('LOCAL API QA · SYNTHETIC FIXTURE DATA · NO LIVE DATA')).not.toBeInTheDocument();
+  } finally { vi.unstubAllEnvs(); }
+});
+
+test('keeps dormant trace phases unavailable without implying research or approval', async () => {
+  mount();
+  await screen.findByRole('heading', { name: 'No active decision' });
+  const trace = screen.getByRole('list', { name: 'Decision trace' });
+  expect(within(trace).getAllByRole('listitem')).toHaveLength(5);
+  expect(within(trace).getAllByText('Unavailable')).toHaveLength(4);
+  expect(within(trace).getByText('Not requested')).toBeVisible();
+  expect(within(trace).queryByText(/completed|verified/i)).not.toBeInTheDocument();
+});
+
+test('expands proof material, focuses it and restores the exact trigger on Escape', async () => {
+  render(<MemoryRouter><WorkspaceFrame queue={null} context={null} proof={<p>Source peek</p>} evidenceContent={<p>Actual source material</p>}><h1>PREPARE</h1></WorkspaceFrame></MemoryRouter>);
+  const trigger = screen.getByRole('button', { name: /why this decision/i });
+  await userEvent.click(trigger);
+  const plane = screen.getByRole('region', { name: 'Decision proof' });
+  expect(plane).toHaveFocus();
+  expect(within(plane).getByText('Actual source material')).toBeVisible();
+  await userEvent.keyboard('{Escape}');
+  expect(screen.queryByRole('region', { name: 'Decision proof' })).not.toBeInTheDocument();
+  expect(trigger).toHaveFocus();
+});
+
+test('keeps keyboard navigation inside full-screen proof until it closes', async () => {
+  vi.stubGlobal('innerWidth', 390);
+  render(<MemoryRouter><WorkspaceFrame queue={null} context={null} proof={null} evidenceContent={<a href="https://example.org">Proof source</a>}><h1>PREPARE</h1></WorkspaceFrame></MemoryRouter>);
+  await userEvent.click(screen.getByRole('button', { name: /why this decision/i }));
+  const source = screen.getByRole('link', { name: 'Proof source' });
+  source.focus();
+  await userEvent.tab();
+  expect(screen.getByRole('button', { name: /close proof/i })).toHaveFocus();
+  await userEvent.tab({ shift: true });
+  expect(source).toHaveFocus();
+});
+
+test('restores proof focus only after the mobile background becomes interactive again', async () => {
+  vi.stubGlobal('innerWidth', 390);
+  render(<MemoryRouter><WorkspaceFrame queue={null} context={null} proof={null} evidenceContent={<p>Proof</p>}><h1>PREPARE</h1></WorkspaceFrame></MemoryRouter>);
+  const trigger = screen.getByRole('button', { name: /why this decision/i });
+  await userEvent.click(trigger);
+  expect(trigger.closest('[inert]')).not.toBeNull();
+  let inertOnFocus: boolean | undefined;
+  trigger.addEventListener('focus', () => { inertOnFocus = !!trigger.closest('[inert]'); });
+  await userEvent.keyboard('{Escape}');
+  expect(inertOnFocus).toBe(false);
+  expect(trigger).toHaveFocus();
+});
+
+test('separates recorded fixture discovery from evaluated result and unrecorded verification', () => {
+  render(<DecisionTrace evaluated discoveryRecorded />);
+  const trace = screen.getByRole('list', { name: 'Decision trace' });
+  expect(within(trace).getByText('Fixture recorded')).toBeVisible();
+  expect(within(trace).getAllByText('Fixture evaluated')).toHaveLength(2);
+  expect(within(trace).getByText('Unavailable')).toBeVisible();
+});
+
+test('acknowledges existing founder and project context without asking to add them again', async () => {
+  const record = { id: 'saved-founder', version: 1, schema_version: '1', provenance: 'USER_ASSERTED', created_at: '2026-09-01T00:00:00Z', updated_at: '2026-09-01T00:00:00Z' };
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.endsWith('/portfolio')
+    ? { founder: record, projects: [{ ...record, id: 'saved-project', name: 'Saved project' }] }
+    : { items: [], profile_present: true, page: { offset: 0, limit: 50, total: 0, has_more: false } })));
+  mount();
+  expect(await screen.findByText('Portfolio context is available. No opportunity decision is selected.')).toBeVisible();
+  expect(screen.getByRole('link', { name: /review portfolio/i })).toBeVisible();
+  expect(screen.queryByText('Add your profile and a project to establish the context for qualification.')).not.toBeInTheDocument();
 });
