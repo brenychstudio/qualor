@@ -283,6 +283,12 @@
         "deadline": {
           "$ref": "#/$defs/DeadlineView"
         },
+        "discovered_at": {
+          "description": "Earliest persisted created_at for this stable opportunity identity.",
+          "format": "date-time",
+          "title": "Discovered At",
+          "type": "string"
+        },
         "edition": {
           "minLength": 1,
           "title": "Edition",
@@ -337,6 +343,12 @@
           ],
           "title": "Primary Blocker"
         },
+        "priority_rank": {
+          "description": "Absolute server priority position; lower is higher. Not for display.",
+          "minimum": 0,
+          "title": "Priority Rank",
+          "type": "integer"
+        },
         "program_name": {
           "minLength": 1,
           "title": "Program Name",
@@ -380,6 +392,8 @@
       },
       "required": [
         "opportunity_id",
+        "priority_rank",
+        "discovered_at",
         "version",
         "program_name",
         "organizer",

@@ -1062,11 +1062,19 @@ export type SourceId5 = string;
 export type SourceUrl1 = string;
 export type Title1 = string | null;
 export type Url1 = string;
+/**
+ * Earliest persisted created_at for this stable opportunity identity.
+ */
+export type DiscoveredAt = string;
 export type Edition1 = string;
 export type HumanActionAvailable = boolean;
 export type OpportunityId6 = string;
 export type Organizer1 = string;
 export type PrimaryBlocker1 = string | null;
+/**
+ * Absolute server priority position; lower is higher. Not for display.
+ */
+export type PriorityRank = number;
 export type ProgramName1 = string;
 export type Version15 = number;
 /**
@@ -2164,6 +2172,7 @@ export interface FetchedSourceRef {
 export interface InboxItem {
   best_project: ProjectSummary | null;
   deadline: DeadlineView;
+  discovered_at: DiscoveredAt;
   edition: Edition1;
   effort: EffortEstimate | null;
   freshness: FreshnessStatus;
@@ -2172,6 +2181,7 @@ export interface InboxItem {
   opportunity_id: OpportunityId6;
   organizer: Organizer1;
   primary_blocker: PrimaryBlocker1;
+  priority_rank: PriorityRank;
   program_name: ProgramName1;
   readiness: ReadinessAssessment | null;
   recommendation: Recommendation | null;

@@ -153,6 +153,24 @@ The UI derives processing labels and live phase copy from `RunRecord` and `RunEv
 
 Default sorting is **Priority**, derived from the existing deterministic decision layer. It must not be presented as opaque AI ranking. Other V1 sort modes are **Deadline**, **Newest**, and **Decision**.
 
+### Inbox Priority Contract V1
+
+Owner-approved change record: `QUALOR-04A-TASK8-PREREQ-01` establishes `QUALOR_INBOX_PRIORITY_CONTRACT_V1`. Priority ranks what deserves the user's attention now. `WorkspaceService` owns this deterministic total order; neither React, the repository, nor an LLM owns ranking policy.
+
+Apply these keys in order:
+
+1. **Current attention tier:** `EVALUATED + APPLY` (0), `EVALUATED + PREPARE` (1), `NEEDS_REVIEW` (2), `EVALUATED + WATCH` (3), `VERIFYING` (4), `DISCOVERED` (5), `EVALUATED + SKIP` (6). Current presentation consumes persisted run state and existing deterministic safety results. A retained older recommendation does not override `NEEDS_REVIEW`; a completed evaluation without a safe selected recommendation requires review. Ranking never fabricates, erases, or rewrites the underlying recommendation.
+2. **Deadline within the tier:** reliable UTC future deadlines first, earliest first; unknown, missing, calendar-only or otherwise unreliable deadlines second; past deadlines last. The earliest reliable deadline determines the bucket. At the exact deadline instant it is past, consistent with the existing `deadline <= now` boundary. Unknown and past buckets have no further timestamp ordering. Deadline never crosses attention tiers. Capture one UTC `now` per ordering operation for all current-state and deadline evaluation.
+3. **Strategy:** known `strategy_score` descending, null/unknown after known scores. Strategy is prioritization, not win probability.
+4. **Newest:** first-discovered time descending. `InboxItem.discovered_at` is the earliest persisted `created_at` across all versions of the stable opportunity identity. A later version, including A → B → A, must not make the identity new again.
+5. **Final tie-break:** `opportunity_id` ascending, producing a total stable order.
+
+`UNKNOWN != PASS`: unknown strategy cannot outrank a known score at equal preceding keys; an unreliable deadline follows reliable future deadlines in the same tier; unresolved best project stays null. Do not introduce `STALE = NEEDS_REVIEW` as a blanket rule. Consume the existing safety assessment of consequential use, preserve previous recommendations and freshness/partial information, and retain distinct LIVE/FIXTURE/REPLAY modes. Deadline-only action denial is represented by the deadline ordering dimension; it does not itself rewrite attention tier. Ordinary WATCH/SKIP non-actionability is not an evidence/graph safety failure.
+
+The existing persisted-state projection is: no run → `DISCOVERED`; created/running run → `VERIFYING`; incomplete terminal run → `NEEDS_REVIEW`; completed run → its evaluated recommendation tier unless selection or existing evidence/graph/policy safety requires review. This ordering projection grants no new approval or drafting authority.
+
+The public contract adds required `InboxItem.priority_rank` (integer ≥ 0, lower means higher priority, never displayed as a score) and `InboxItem.discovered_at` (UTC datetime using the existing serialization convention). Both are derived read values, without a persisted priority column or migration. Construct current read inputs for all stable opportunity identities, compute the total order, assign absolute zero-based ranks, then apply `limit`/`offset` and return the bounded existing `InboxResponse` from `GET /api/v1/inbox`. Never paginate by repository ID before ranking. The browser consumes these typed values without reconstructing the policy.
+
 V1 filters are **All**, **Apply**, **Prepare**, **Watch**, and **Skip**. A simple text search matches opportunity title and organizer. Advanced query builders, complex geography filtering, saved-filter systems, and configurable dashboard layouts are outside scope.
 
 A restrained summary such as `2 apply · 3 prepare · 4 watch · 3 skip` may appear above the list. It uses text hierarchy rather than a row of colored chips.

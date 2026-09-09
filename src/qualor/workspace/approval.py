@@ -156,7 +156,12 @@ class ApprovalService:
         return expected
 
     def _graph_reason(
-        self, store: WorkspaceStore, binding: ApprovalBindings, now: datetime
+        self,
+        store: WorkspaceStore,
+        binding: ApprovalBindings,
+        now: datetime,
+        *,
+        require_deadline: bool = True,
     ) -> ApprovalReason | None:
         if binding.policy_versions != self.policy_versions:
             return ApprovalReason.POLICY_MISMATCH
@@ -228,10 +233,17 @@ class ApprovalService:
                 binding.decision_version,
             ):
                 return ApprovalReason.GRAPH_MISMATCH
-        if not opportunity.deadlines or any(type(d) is date for d in opportunity.deadlines):
+        uncertain_deadline = not opportunity.deadlines or any(
+            type(d) is date for d in opportunity.deadlines
+        )
+        if require_deadline and uncertain_deadline:
             return ApprovalReason.DEADLINE_UNKNOWN
-        deadline = min(opportunity.deadlines)
-        if deadline <= now:
+        deadline = (
+            next((d for d in opportunity.deadlines if type(d) is date), None)
+            if uncertain_deadline
+            else min(opportunity.deadlines)
+        )
+        if require_deadline and deadline <= now:
             return ApprovalReason.DEADLINE_PASSED
         gate = decision.eligibility_gate
         if gate.policy_version != self.policy_versions.eligibility:
@@ -281,7 +293,13 @@ class ApprovalService:
                         item.source_type == "SYNTHETIC_FIXTURE" and self.mode == RuntimeMode.FIXTURE
                     )
                 )
-                or evaluate_freshness(item.retrieved_at, now, deadline) != "FRESH"
+                or evaluate_freshness(
+                    item.retrieved_at,
+                    now,
+                    deadline,
+                    unknown_deadline=not opportunity.deadlines,
+                )
+                != "FRESH"
             ):
                 return ApprovalReason.EVIDENCE_NOT_ACTIONABLE
         evaluations = {item.rule_id: item for item in gate.evaluations}
@@ -317,7 +335,13 @@ class ApprovalService:
                             and self.mode == RuntimeMode.FIXTURE
                         )
                     )
-                    or evaluate_freshness(item.retrieved_at, now, deadline) != "FRESH"
+                    or evaluate_freshness(
+                        item.retrieved_at,
+                        now,
+                        deadline,
+                        unknown_deadline=not opportunity.deadlines,
+                    )
+                    != "FRESH"
                 ):
                     return False
             return all(verified(child, category) for child in evaluation.children)
@@ -412,6 +436,22 @@ class ApprovalService:
         with self.database.transaction() as connection:
             reason = self._graph_reason(WorkspaceStore(connection), expected, instant)
         return ApprovalValidation(reason is None, reason or ApprovalReason.VALID, None)
+
+    def inspect_consequential_safety(
+        self, bindings: ApprovalBindings, now: datetime
+    ) -> ApprovalReason:
+        """Read-only Inbox safety reason, excluding its separate deadline dimension.
+
+        This grants no action capability. Normal approval paths always require
+        the deadline and revalidate the entire graph at their own boundary.
+        """
+        expected = self._expected(bindings)
+        instant = _INSTANT.validate_python(now)
+        with self.database.transaction() as connection:
+            reason = self._graph_reason(
+                WorkspaceStore(connection), expected, instant, require_deadline=False
+            )
+        return reason or ApprovalReason.VALID
 
     def inspect_approval(
         self, approval_id: str, expected_versions: ApprovalBindings, now: datetime

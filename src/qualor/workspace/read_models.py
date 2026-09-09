@@ -148,6 +148,16 @@ class DecisionCanvasView(Contract):
 
 class InboxItem(Contract):
     opportunity_id: NonEmpty
+    priority_rank: Annotated[
+        NonNegativeInt,
+        Field(
+            description="Absolute server priority position; lower is higher. Not for display."
+        ),
+    ]
+    discovered_at: Annotated[
+        UtcInstant,
+        Field(description="Earliest persisted created_at for this stable opportunity identity."),
+    ]
     version: PositiveInt
     program_name: NonEmpty
     organizer: NonEmpty

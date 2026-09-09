@@ -104,3 +104,14 @@ def test_committed_schemas_are_current():
     from qualor.schemas.export import check_schemas
 
     assert check_schemas(Path(__file__).parents[2] / "schemas")
+
+
+def test_inbox_priority_contract_is_required_and_bounded(tmp_path):
+    from qualor.schemas.export import export_schemas
+
+    export_schemas(tmp_path)
+    item = json.loads((tmp_path / "InboxItem.schema.json").read_text())
+    assert {"priority_rank", "discovered_at"} <= set(item["required"])
+    assert item["properties"]["priority_rank"]["type"] == "integer"
+    assert item["properties"]["priority_rank"]["minimum"] == 0
+    assert item["properties"]["discovered_at"]["format"] == "date-time"

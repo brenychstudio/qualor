@@ -90,9 +90,11 @@ class WorkspaceService:
             projects = store.projects.list_current()
         return PortfolioView(founder=founder, projects=projects)
 
-    def _aggregate(self, opportunity_id):
+    def _aggregate(self, opportunity_id, *, now=None):
         try:
-            return self.lifecycle.reconstruct_current_for_product(opportunity_id, self.clock())
+            return self.lifecycle.reconstruct_current_for_product(
+                opportunity_id, self.clock() if now is None else now
+            )
         except KeyError:
             raise ProductFailure("NOT_FOUND", 404) from None
 
@@ -124,7 +126,8 @@ class WorkspaceService:
             actor_id=self.approvals.actor_id, opportunity_id=opportunity_id, **request.model_dump()
         )
 
-    def _canvas(self, aggregate):
+    def _canvas(self, aggregate, *, now=None):
+        instant = self.clock() if now is None else now
         opportunity = aggregate.current.opportunity
         snapshot = self._selected(aggregate)
         decision = snapshot.decision if snapshot else None
@@ -158,8 +161,8 @@ class WorkspaceService:
             )
             binding = self._bindings(opportunity.id, request)
             try:
-                authority = self.approvals.for_workspace_request(binding, self.clock())
-                result = authority.inspect_request(binding, self.clock())
+                authority = self.approvals.for_workspace_request(binding, instant)
+                result = authority.inspect_request(binding, instant)
                 capability = ActionCapability(
                     available=result.actionable, reason=result.reason, approval_request=request
                 )
@@ -198,39 +201,104 @@ class WorkspaceService:
             primary_action=capability,
         )
 
+    def _attention_tier(self, canvas, run, opportunity_id, now):
+        """Presentation consumes existing run/safety results; never edits a decision."""
+        if run is None:
+            return 5  # DISCOVERED
+        if run.state in {"CREATED", "RUNNING"}:
+            return 4  # VERIFYING
+        if run.state != "COMPLETED" or canvas.recommendation is None:
+            return 2  # NEEDS_REVIEW
+        if canvas.recommendation in {"APPLY", "PREPARE"}:
+            if canvas.primary_action.approval_request is None:
+                return 2
+            binding = self._bindings(opportunity_id, canvas.primary_action.approval_request)
+            try:
+                authority = self.approvals.for_workspace_request(binding, now)
+                reason = authority.inspect_consequential_safety(binding, now)
+            except ApprovalDenied as exc:
+                reason = exc.reason
+            if reason != "VALID":
+                return 2
+            return 0 if canvas.recommendation == "APPLY" else 1
+        reason = canvas.primary_action.reason
+        if reason not in {
+            "VALID",
+            "DECISION_NOT_ACTIONABLE",
+            "DEADLINE_UNKNOWN",
+            "DEADLINE_PASSED",
+        }:
+            return 2  # Existing evidence/graph/policy safety denial.
+        return {"WATCH": 3, "SKIP": 6}[canvas.recommendation]
+
+    @staticmethod
+    def _deadline_priority(deadline, now):
+        if deadline.timezone_status != "UTC" or not deadline.values:
+            return 1, now  # UNKNOWN: no invented instant.
+        earliest = min(deadline.values)
+        if earliest <= now:
+            return 2, now  # PAST: timestamps do not order this bucket.
+        return 0, earliest
+
+    def _inbox_priority(self, canvas, run, discovered_at, opportunity_id, now):
+        score = canvas.strategy.score
+        return (
+            self._attention_tier(canvas, run, opportunity_id, now),
+            *self._deadline_priority(canvas.deadline, now),
+            score is None,
+            -score if score is not None else 0,
+            datetime.max.replace(tzinfo=UTC) - discovered_at,
+            opportunity_id,
+        )
+
     def inbox(self, *, limit=50, offset=0) -> InboxResponse:
+        now = self.clock()
         with self.database.transaction() as connection:
-            records, total = WorkspaceStore(connection).opportunities.page_current(limit, offset)
-            ids = tuple(o.id for o in records)
+            repository = WorkspaceStore(connection).opportunities
+            discoveries = {
+                record.id: min(
+                    version.created_at for version in repository.list_versions(record.id)
+                )
+                for record in repository.list_current()
+            }
         items = []
-        for opportunity_id in ids:
-            aggregate = self._aggregate(opportunity_id)
+        for opportunity_id, discovered_at in discoveries.items():
+            aggregate = self._aggregate(opportunity_id, now=now)
             opportunity = aggregate.current.opportunity
-            canvas = self._canvas(aggregate)
+            canvas = self._canvas(aggregate, now=now)
             run = max(aggregate.current.runs, key=lambda r: (r.created_at, r.id), default=None)
             items.append(
-                InboxItem(
-                    opportunity_id=opportunity.id,
-                    version=opportunity.version,
-                    program_name=opportunity.program_name,
-                    organizer=opportunity.organizer,
-                    edition=opportunity.edition,
-                    recommendation=canvas.recommendation,
-                    run_state=run.state if run else None,
-                    mode=run.mode if run else None,
-                    best_project=canvas.best_project,
-                    deadline=canvas.deadline,
-                    effort=canvas.effort,
-                    readiness=canvas.readiness,
-                    primary_blocker=canvas.primary_blocker,
-                    freshness=aggregate.freshness,
-                    human_action_available=canvas.primary_action.available,
+                (
+                    self._inbox_priority(canvas, run, discovered_at, opportunity_id, now),
+                    InboxItem(
+                        opportunity_id=opportunity.id,
+                        priority_rank=0,
+                        discovered_at=discovered_at,
+                        version=opportunity.version,
+                        program_name=opportunity.program_name,
+                        organizer=opportunity.organizer,
+                        edition=opportunity.edition,
+                        recommendation=canvas.recommendation,
+                        run_state=run.state if run else None,
+                        mode=run.mode if run else None,
+                        best_project=canvas.best_project,
+                        deadline=canvas.deadline,
+                        effort=canvas.effort,
+                        readiness=canvas.readiness,
+                        primary_blocker=canvas.primary_blocker,
+                        freshness=aggregate.freshness,
+                        human_action_available=canvas.primary_action.available,
+                    ),
                 )
             )
+        items.sort(key=lambda entry: entry[0])
+        ranked = tuple(
+            item.model_copy(update={"priority_rank": rank}) for rank, (_, item) in enumerate(items)
+        )
         return InboxResponse(
-            items=tuple(items),
+            items=ranked[offset : offset + limit],
             profile_present=self.portfolio().founder is not None,
-            page=page_info(total, limit, offset),
+            page=page_info(len(ranked), limit, offset),
         )
 
     def workspace(

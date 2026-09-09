@@ -147,6 +147,10 @@ def test_every_read_route_and_real_activity(tmp_path):
         assert row["recommendation"] == decision.recommendation
         assert row["run_state"] == "COMPLETED"
         assert row["mode"] == "FIXTURE"
+        assert row["priority_rank"] == 0
+        assert row["discovered_at"] == fixture.opportunity.created_at.isoformat().replace(
+            "+00:00", "Z"
+        )
         workspace = client.get(f"/api/v1/opportunities/{fixture.opportunity.id}/workspace").json()
         assert workspace["decision"]["best_project"]["id"] == decision.project_id
         assert workspace["decision"]["effort"] == decision.effort.model_dump(mode="json")
