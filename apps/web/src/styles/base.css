@@ -122,8 +122,15 @@ h2, h3 { font-size: 14px; }
 .intelligence-number { font-size: 36px !important; letter-spacing: -.05em; line-height: 1.2; }
 .intelligence-number span { font-size: 10px; letter-spacing: 0; display: block; color: var(--text-secondary); margin-top: 7px; }
 .event-axis { margin-top: 19px; display: flex; flex-direction: column; gap: 18px; }
-.event-axis > div { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 14px; font-size: 10px; line-height: 1.6; }
+.event-axis > :is(div, li) { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 14px; font-size: 10px; line-height: 1.6; }
 .event-axis time { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+ol.event-axis { list-style: none; padding: 0; margin-bottom: 0; }
+.runtime-mode { margin-top: 12px; display: flex; align-items: center; gap: 8px; }
+.runtime-mode .state-stale { font-size: 9px; letter-spacing: .055em; }
+.activity-runs { list-style: none; padding: 0; margin-top: 24px; display: flex; flex-direction: column; gap: 16px; }
+.activity-runs > li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; padding-top: 14px; border-top: 1px solid var(--divider); font-size: 12px; }
+.activity-runs .section-index { font-variant-numeric: tabular-nums; }
+.activity-runs .quiet { font-size: 10px; }
 .context-facts { margin: 18px 0 0; }
 .context-facts > div + div { margin-top: 14px; }
 .context-facts dt { color: var(--text-muted); font-size: 9px; }
@@ -302,8 +309,8 @@ h2, h3 { font-size: 14px; }
 .proof-sheet-freshness { font-size: 9px; color: var(--proof-muted); margin-top: 21px; line-height: 1.7; }
 .proof-sheet-freshness span { display: block; font-size: 8px; }
 .fixture-events .event-axis { gap: 24px; margin-left: 8px; border-left: 1px solid #385569; padding-left: 17px; }
-.fixture-events .event-axis > div { position: relative; display: flex; flex-direction: column; gap: 5px; font-size: 11px; }
-.fixture-events .event-axis > div::before { content: ''; position: absolute; left: -21px; top: 4px; height: 6px; width: 6px; border-radius: 50%; border: 1px solid #8ab1cb; background: var(--workspace); }
+.fixture-events .event-axis > :is(div, li) { position: relative; display: flex; flex-direction: column; gap: 5px; font-size: 11px; }
+.fixture-events .event-axis > :is(div, li)::before { content: ''; position: absolute; left: -21px; top: 4px; height: 6px; width: 6px; border-radius: 50%; border: 1px solid #8ab1cb; background: var(--workspace); }
 .fixture-events .event-axis time { font-size: 10px; }
 .fixture-events .quiet { margin-top: 24px; }
 .rail-runtime h3 { color: var(--text-secondary); }

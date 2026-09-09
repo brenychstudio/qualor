@@ -4,6 +4,7 @@ import json
 from dataclasses import asdict
 from decimal import Decimal
 from pathlib import Path
+from uuid import uuid4
 
 from .budget import LiveBudgetGuard, LiveBudgetPolicy
 from .run_models import StudioInput
@@ -20,41 +21,66 @@ def diagnostic_policy() -> LiveBudgetPolicy:
     )
 
 
-def execute_live(inputs: StudioInput, gateway_id: str, *, diagnostic=False):
-    from .agent import live_extractor, live_model, run_agent
-    from .loop import OpportunityRun
-    from .search import AgentCoreSearchProvider
-    from .search_transport import open_gateway_transport
-    from .sources import OfficialSourceFetcher
-
-    budget = LiveBudgetGuard(
+def live_budget(diagnostic: bool = False) -> LiveBudgetGuard:
+    return LiveBudgetGuard(
         diagnostic_policy()
         if diagnostic
         else LiveBudgetPolicy(
             inference_max_calls=6, cost_cap_usd=Decimal(".20"), authorization="QUALOR_03B3"
         )
     )
-    with open_gateway_transport(mode="LIVE", gateway_id=gateway_id) as transport:
-        search = AgentCoreSearchProvider(mode="LIVE", transport=transport, budget=budget)
-        fetcher = OfficialSourceFetcher(
-            mode="LIVE", allowed_hosts=inputs.allowed_hosts, budget=budget
-        )
-        model = live_model(budget)
-        run = OpportunityRun(
-            inputs,
-            mode="LIVE",
-            search=search,
-            fetcher=fetcher,
-            extractor=live_extractor(model),
-            budget=budget,
-        )
-        result, metrics = run_agent(run, model=model)
-        metrics["gateway_mcp_calls"] = transport.http_calls
-        metrics["budget"] = asdict(budget.snapshot())
-    return result, metrics
 
 
-def run_command(profile: Path, gateway_id: str, *, diagnostic=False):
+def workspace_run_capture(database_path: Path, *, budget=None, run_id: str | None = None):
+    """Build the persistence sink only when workspace persistence is enabled."""
+    from qualor.persistence import Database
+    from qualor.workspace.run_capture import WorkspaceRunCapture
+
+    return WorkspaceRunCapture(
+        Database(database_path), run_id=run_id or uuid4().hex, mode="LIVE", budget=budget
+    )
+
+
+def execute_live(inputs: StudioInput, gateway_id: str, *, diagnostic=False, sink=None, budget=None):
+    from .agent import live_extractor, live_model, run_agent
+    from .loop import OpportunityRun
+    from .mode import ProviderBoundaryError
+    from .search import AgentCoreSearchProvider
+    from .search_transport import open_gateway_transport
+    from .sources import OfficialSourceFetcher
+
+    budget = budget or live_budget(diagnostic)
+    try:
+        with open_gateway_transport(mode="LIVE", gateway_id=gateway_id) as transport:
+            search = AgentCoreSearchProvider(mode="LIVE", transport=transport, budget=budget)
+            fetcher = OfficialSourceFetcher(
+                mode="LIVE", allowed_hosts=inputs.allowed_hosts, budget=budget
+            )
+            model = live_model(budget)
+            run = OpportunityRun(
+                inputs,
+                mode="LIVE",
+                search=search,
+                fetcher=fetcher,
+                extractor=live_extractor(model),
+                budget=budget,
+                sink=sink,
+            )
+            result, metrics = run_agent(run, model=model)
+            metrics["gateway_mcp_calls"] = transport.http_calls
+            metrics["budget"] = asdict(budget.snapshot())
+        return result, metrics
+    except ProviderBoundaryError:
+        # A live provider that never connected is recorded as a degraded LIVE run, not a success.
+        if sink is not None:
+            sink.run_failed(
+                termination_reason="PROVIDER_DISCONNECTED",
+                provider_state="DISCONNECTED_LIVE_PROVIDER",
+            )
+        raise
+
+
+def run_command(profile: Path, gateway_id: str, *, diagnostic=False, workspace_database=None):
     data = profile.read_bytes()
     if len(data) > 100_000:
         raise ValueError("Profile input too large")
@@ -70,7 +96,15 @@ def run_command(profile: Path, gateway_id: str, *, diagnostic=False):
         json.dump(
             {"status": "STARTED", "task_cost_reserved_usd": "0.15" if diagnostic else "0.20"}, file
         )
-    result, metrics = execute_live(inputs, gateway_id, diagnostic=diagnostic)
+    budget = live_budget(diagnostic)
+    sink = (
+        workspace_run_capture(workspace_database, budget=budget)
+        if workspace_database is not None
+        else None
+    )
+    result, metrics = execute_live(
+        inputs, gateway_id, diagnostic=diagnostic, sink=sink, budget=budget
+    )
     report.write_text(
         json.dumps(
             {"result": result.model_dump(mode="json"), "metrics": metrics}, default=str, indent=2

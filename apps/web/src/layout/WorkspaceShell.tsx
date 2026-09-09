@@ -5,6 +5,7 @@ import { apiRequest, ApiError } from '../api/client';
 import type { InboxResponse, OpportunityWorkspaceResponse } from '../generated/domain';
 import { OpportunityInbox } from '../features/inbox/OpportunityInbox';
 import { EvidenceSheet } from '../features/evidence/EvidenceSheet';
+import { IntelligenceRail } from '../features/activity/IntelligenceRail';
 
 interface WorkspaceContext {
   inbox: InboxResponse | null;
@@ -141,6 +142,7 @@ export function WorkspaceShell() {
     qaLabel={qaLabel}
     queue={<OpportunityInbox inbox={inbox} error={error} />}
     context={<>
+      <IntelligenceRail />
       <section className="rail-section"><h3>Local controller</h3><p className="connection-state" role="status">{error ?? (inbox ? 'Local controller connected' : 'Connecting to local controller…')}</p><p className="quiet">A local connection does not indicate LIVE research.</p></section>
       {selectedWorkspace ? <>
         <section className="rail-section"><h3>Current decision</h3><p>{selectedWorkspace.decision.recommendation ?? 'UNKNOWN'} · {stateText(selectedWorkspace.presentation_state)}</p><dl className="context-facts"><div><dt>Freshness</dt><dd>{selectedWorkspace.freshness}</dd></div><div><dt>Primary blocker</dt><dd>{selectedWorkspace.decision.primary_blocker ? stateText(selectedWorkspace.decision.primary_blocker) : 'None recorded'}</dd></div></dl></section>

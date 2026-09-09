@@ -6,6 +6,7 @@ import { WorkspaceShell, useWorkspace } from './layout/WorkspaceShell';
 import { PortfolioView } from './features/portfolio/PortfolioView';
 import { DecisionTrace } from './layout/DecisionTrace';
 import { DecisionCanvas } from './features/decision/DecisionCanvas';
+import { ActivityHistory } from './features/activity/ActivityHistory';
 
 function InboxFoundation() {
   const { inbox, error, selectedWorkspace, selectedWorkspaceError, selectedWorkspaceLoading } = useWorkspace();
@@ -45,8 +46,8 @@ function InboxFoundation() {
 function UnavailableView({ title, description }: { title: string; description: string }) {
   return <section className="structural-state"><span className="eyebrow">Workspace foundation</span><h1>{title}</h1><p>{description}</p><Link className="inline-link" to="/inbox">Return to inbox ↗</Link></section>;
 }
-function StructuralView({ kind }: { kind: 'activity' | 'pack' }) {
-  return <UnavailableView title={kind === 'activity' ? 'Activity view not yet available' : 'Draft pack view not yet available'} description={kind === 'activity' ? 'Recorded research history will be available in a later workspace task.' : 'This workspace foundation does not yet display prepared application documents.'} />;
+function StructuralView({ kind }: { kind: 'pack' }) {
+  return <UnavailableView title={kind === 'pack' ? 'Draft pack view not yet available' : ''} description="This workspace foundation does not yet display prepared application documents." />;
 }
 export function App() {
   return <Routes><Route element={<WorkspaceShell />}>
@@ -54,7 +55,7 @@ export function App() {
     <Route path="inbox" element={<InboxFoundation />} />
     <Route path="inbox/:opportunityId" element={<InboxFoundation />} />
     <Route path="portfolio" element={<PortfolioView />} />
-    <Route path="activity" element={<StructuralView kind="activity" />} />
+    <Route path="activity" element={<ActivityHistory />} />
     <Route path="draft-packs/:packId" element={<StructuralView kind="pack" />} />
     <Route path="*" element={<Navigate to="/inbox" replace />} />
   </Route></Routes>;

@@ -143,8 +143,8 @@
   .workspace:not(.workspace--optical-preview) .proof-context--available { margin-top: 6px; border-radius: 2px; padding: 24px 20px; }
   .workspace:not(.workspace--optical-preview) .workspace-rail { padding: 28px 24px 36px; background: linear-gradient(110deg, #0c1d28, #061018); }
   .fixture-events .event-axis { flex-direction: row; gap: 25px; margin-left: 0; padding-left: 0; border-left: 0; }
-  .fixture-events .event-axis > div { flex: 1; padding-top: 13px; border-top: 1px solid #355568; }
-  .fixture-events .event-axis > div::before { left: 0; top: -4px; }
+  .fixture-events .event-axis > :is(div, li) { flex: 1; padding-top: 13px; border-top: 1px solid #355568; }
+  .fixture-events .event-axis > :is(div, li)::before { left: 0; top: -4px; }
   .workspace:not(.workspace--optical-preview) .empty-decision .decision-state { padding: 28px 0 30px 20px; margin-block: 35px 30px; }
   .workspace:not(.workspace--optical-preview) .empty-decision h1 { font-size: 23px; }
   .workspace:not(.workspace--optical-preview) .decision-readouts { gap: 22px; }

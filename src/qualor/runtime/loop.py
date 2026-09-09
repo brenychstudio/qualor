@@ -21,9 +21,31 @@ from .run_models import AgentRunResult, SourceCitation, StudioInput, TraceEvent
 from .urls import RegisteredCandidate, canonical_url_identity, sanitized_public_url
 
 
+class NullRunEventSink:
+    """Default sink. Deterministic and replay runs stay isolated from any persistence."""
+
+    def trace_event(self, event, *, mode):
+        del event, mode
+
+    def run_finished(self, result):
+        del result
+
+    def run_failed(self, *, termination_reason, provider_state=None):
+        del termination_reason, provider_state
+
+
 class OpportunityRun:
     def __init__(
-        self, inputs: StudioInput, *, mode, search, fetcher, budget, extractor=None, max_steps=24
+        self,
+        inputs: StudioInput,
+        *,
+        mode,
+        search,
+        fetcher,
+        budget,
+        extractor=None,
+        max_steps=24,
+        sink=None,
     ):
         self.inputs = StudioInput.model_validate(inputs)
         self.mode = RuntimeMode(mode).value
@@ -62,6 +84,7 @@ class OpportunityRun:
         self._candidate_identities = {}
         self._source_candidates = {}
         self.trace = []
+        self.sink = sink or NullRunEventSink()
         self.boundary_events = []
         self.actions = set()
         self.termination_reason = None
@@ -80,19 +103,27 @@ class OpportunityRun:
         normalization_status=None,
         normalizer_version=None,
     ):
+        record = TraceEvent(
+            event=event,
+            reason_code=reason,
+            source_ids=ids,
+            span_ids=span_ids,
+            count=count,
+            normalized_field=normalized_field,
+            normalization_status=normalization_status,
+            normalizer_version=normalizer_version,
+        )
         if len(self.trace) < 99:
-            self.trace.append(
-                TraceEvent(
-                    event=event,
-                    reason_code=reason,
-                    source_ids=ids,
-                    span_ids=span_ids,
-                    count=count,
-                    normalized_field=normalized_field,
-                    normalization_status=normalization_status,
-                    normalizer_version=normalizer_version,
-                )
-            )
+            self.trace.append(record)
+        # The sink observes what happened; it never decides what the run reports.
+        self._notify(lambda: self.sink.trace_event(record, mode=self.mode))
+
+    @staticmethod
+    def _notify(deliver):
+        try:
+            deliver()
+        except Exception:  # noqa: BLE001 - a failing observer never breaks a run
+            pass
 
     def stop(self, reason):
         if self.termination_reason is None:
@@ -581,7 +612,7 @@ class OpportunityRun:
                 "Run ended without an admitted critical claim; no evidence is fabricated.",
             )
         self.event("RUN_TERMINATED", self.termination_reason)
-        return AgentRunResult(
+        result = AgentRunResult(
             mode=self.mode,
             decision=self.decision,
             claims=tuple(self.claims.values()),
@@ -617,3 +648,5 @@ class OpportunityRun:
                 for s in self.sources.values()
             ),
         )
+        self._notify(lambda: self.sink.run_finished(result))
+        return result
