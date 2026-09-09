@@ -148,6 +148,8 @@ class DecisionCanvasView(Contract):
 
 
 class InboxPresentationState(StrEnum):
+    """Server-derived current attention state; preserves recommendation."""
+
     DISCOVERED = "DISCOVERED"
     VERIFYING = "VERIFYING"
     EVALUATED = "EVALUATED"
@@ -171,10 +173,7 @@ class InboxItem(Contract):
     organizer: NonEmpty
     edition: NonEmpty
     recommendation: Recommendation | None
-    presentation_state: Annotated[
-        InboxPresentationState,
-        Field(description="Server-derived current attention state; preserves recommendation."),
-    ]
+    presentation_state: InboxPresentationState
     run_state: RunState | None
     mode: RuntimeMode | None
     best_project: ProjectSummary | None
@@ -223,6 +222,9 @@ class OpportunityWorkspaceResponse(Contract):
     program_name: NonEmpty
     organizer: NonEmpty
     edition: NonEmpty
+    presentation_state: InboxPresentationState
+    run_state: RunState | None
+    mode: RuntimeMode | None
     decision: DecisionCanvasView
     freshness: FreshnessStatus
     last_refresh_failed_at: UtcInstant | None

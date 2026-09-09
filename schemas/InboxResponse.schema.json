@@ -332,8 +332,7 @@
           "type": "string"
         },
         "presentation_state": {
-          "$ref": "#/$defs/InboxPresentationState",
-          "description": "Server-derived current attention state; preserves recommendation."
+          "$ref": "#/$defs/InboxPresentationState"
         },
         "primary_blocker": {
           "anyOf": [
@@ -418,6 +417,7 @@
       "type": "object"
     },
     "InboxPresentationState": {
+      "description": "Server-derived current attention state; preserves recommendation.",
       "enum": [
         "DISCOVERED",
         "VERIFYING",

@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -43,6 +44,19 @@ def test_generation_is_deterministic_and_check_detects_drift_without_writing(tmp
     assert generate("--check").returncode == 0
 
 
+def test_workspace_and_inbox_reuse_one_generated_presentation_enum(tmp_path):
+    output = tmp_path / "domain.ts"
+    result = generate("--output", output)
+    assert result.returncode == 0, result.stderr
+    generated = output.read_text(encoding="utf-8")
+    assert generated.count("export type InboxPresentationState =") == 1
+    assert "InboxPresentationState1" not in generated
+    for name in ("InboxItem", "OpportunityWorkspaceResponse"):
+        interface = re.search(r"export interface " + name + r" \{([^}]+)\}", generated)
+        assert interface is not None
+        assert "presentation_state: InboxPresentationState;" in interface[1]
+
+
 def test_all_public_types_compile_and_reject_invalid_contracts(tmp_path):
     output = tmp_path / "domain.ts"
     result = generate("--output", output)
@@ -59,6 +73,15 @@ def test_all_public_types_compile_and_reject_invalid_contracts(tmp_path):
         "const states: InboxPresentationState[] = "
         "['DISCOVERED', 'VERIFYING', 'EVALUATED', 'NEEDS_REVIEW'];\n"
         "const state: InboxItem['presentation_state'] = states[0];\n"
+        "const workspaceState: OpportunityWorkspaceResponse['presentation_state'] = states[0];\n"
+        "const workspaceRun: OpportunityWorkspaceResponse['run_state'] = 'PARTIAL';\n"
+        "const noWorkspaceRun: OpportunityWorkspaceResponse['run_state'] = null;\n"
+        "const workspaceMode: OpportunityWorkspaceResponse['mode'] = 'REPLAY';\n"
+        "const noWorkspaceMode: OpportunityWorkspaceResponse['mode'] = null;\n"
+        "// @ts-expect-error workspace presentation state is not nullable\n"
+        "const nullWorkspaceState: OpportunityWorkspaceResponse['presentation_state'] = null;\n"
+        "// @ts-expect-error local connection is not a research mode\n"
+        "const localWorkspaceMode: OpportunityWorkspaceResponse['mode'] = 'LOCAL';\n"
         "// @ts-expect-error presentation state cannot be a recommendation\n"
         "const badState: InboxItem['presentation_state'] = 'APPLY';\n"
         "// @ts-expect-error presentation state is non-null\n"

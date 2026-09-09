@@ -39,6 +39,15 @@ def test_inbox_public_presentation_state_survives_restart(
         row = response.json()["items"][0]
         assert row["presentation_state"] == expected
         assert row["recommendation"] == ("APPLY" if run_state else None)
+        workspace_response = client.get(
+            f"/api/v1/opportunities/{fixture.opportunity.id}/workspace"
+        )
+        assert workspace_response.status_code == 200
+        workspace = workspace_response.json()
+        assert workspace["presentation_state"] == expected
+        assert workspace["run_state"] == run_state
+        assert workspace["mode"] == ("FIXTURE" if run_state else None)
+        assert workspace["decision"]["recommendation"] == ("APPLY" if run_state else None)
         schemas = client.app.openapi()["components"]["schemas"]
         assert "presentation_state" in schemas["InboxItem"]["required"]
         assert schemas["InboxItem"]["properties"]["presentation_state"]["$ref"] == (
@@ -47,8 +56,47 @@ def test_inbox_public_presentation_state_survives_restart(
         assert schemas["InboxPresentationState"]["enum"] == [
             "DISCOVERED", "VERIFYING", "EVALUATED", "NEEDS_REVIEW",
         ]
+        assert {"presentation_state", "run_state", "mode"} <= set(
+            schemas["OpportunityWorkspaceResponse"]["required"]
+        )
     with client_for(make_app(Database(database.path), fixture, decision)) as client:
         assert client.get("/api/v1/inbox").json()["items"][0] == row
+        assert client.get(
+            f"/api/v1/opportunities/{fixture.opportunity.id}/workspace"
+        ).json() == workspace
+
+
+def test_direct_workspace_exposes_recorded_run_truth_outside_loaded_inbox_page(tmp_path):
+    from qualor.domain import OpportunityRecord
+    from qualor.workspace.versioning import opportunity_semantic_digest
+
+    database, fixture, decision = seed(tmp_path)
+    off_page = OpportunityRecord.model_validate({
+        **fixture.opportunity.model_dump(), "program_name": "Persisted off-page opportunity",
+    })
+    with database.transaction() as connection:
+        store = WorkspaceStore(connection)
+        store.opportunities.put_opportunity_version(
+            off_page, content_hash=opportunity_semantic_digest(off_page),
+        )
+        store.runs.create_run(RunRecord.model_validate({
+            **store.runs.current("research").model_dump(), "id": "off-page-run",
+            "opportunity_id": off_page.id, "mode": "LIVE", "state": "PARTIAL",
+            "decision_id": None, "decision_version": None, "completed_at": None,
+        }))
+    # The local controller is configured for FIXTURE; that must not overwrite
+    # the separately persisted run mode. No provider is invoked by this read.
+    with client_for(make_app(database, fixture, decision)) as client:
+        response = client.get(f"/api/v1/opportunities/{off_page.id}/workspace")
+        assert response.status_code == 200
+        workspace = response.json()
+        assert workspace["presentation_state"] == "NEEDS_REVIEW"
+        assert workspace["run_state"] == "PARTIAL"
+        assert workspace["mode"] == "LIVE"
+        assert workspace["decision"]["recommendation"] is None
+        page = client.get("/api/v1/inbox?limit=1").json()
+        assert page["page"]["has_more"]
+        assert off_page.id not in {row["opportunity_id"] for row in page["items"]}
 
 
 def approval_request(client, fixture):

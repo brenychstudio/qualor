@@ -202,6 +202,11 @@ class WorkspaceService:
             primary_action=capability,
         )
 
+    @staticmethod
+    def _current_run(aggregate):
+        """Use the current aggregate, never the separately paged public run history."""
+        return max(aggregate.current.runs, key=lambda r: (r.created_at, r.id), default=None)
+
     def _inbox_presentation_state(self, canvas, run, opportunity_id, now) -> InboxPresentationState:
         """Presentation consumes existing run/safety results; never edits a decision."""
         if run is None:
@@ -278,7 +283,7 @@ class WorkspaceService:
             aggregate = self._aggregate(opportunity_id, now=now)
             opportunity = aggregate.current.opportunity
             canvas = self._canvas(aggregate, now=now)
-            run = max(aggregate.current.runs, key=lambda r: (r.created_at, r.id), default=None)
+            run = self._current_run(aggregate)
             presentation_state = self._inbox_presentation_state(canvas, run, opportunity_id, now)
             items.append(
                 (
@@ -320,9 +325,12 @@ class WorkspaceService:
     def workspace(
         self, opportunity_id, *, limit=50, run_offset=0, approval_offset=0
     ) -> OpportunityWorkspaceResponse:
-        aggregate = self._aggregate(opportunity_id)
+        now = self.clock()
+        aggregate = self._aggregate(opportunity_id, now=now)
         opportunity = aggregate.current.opportunity
         snapshot = self._selected(aggregate)
+        canvas = self._canvas(aggregate, now=now)
+        run = self._current_run(aggregate)
         with self.database.transaction() as connection:
             store = WorkspaceStore(connection)
             runs, runs_total = store.runs.page_current(
@@ -337,7 +345,10 @@ class WorkspaceService:
             program_name=opportunity.program_name,
             organizer=opportunity.organizer,
             edition=opportunity.edition,
-            decision=self._canvas(aggregate),
+            presentation_state=self._inbox_presentation_state(canvas, run, opportunity_id, now),
+            run_state=run.state if run else None,
+            mode=run.mode if run else None,
+            decision=canvas,
             freshness=aggregate.freshness,
             last_refresh_failed_at=aggregate.last_refresh_failed_at,
             rewards=opportunity.rewards,

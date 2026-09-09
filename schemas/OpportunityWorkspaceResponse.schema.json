@@ -796,6 +796,17 @@
       "title": "HourRange",
       "type": "object"
     },
+    "InboxPresentationState": {
+      "description": "Server-derived current attention state; preserves recommendation.",
+      "enum": [
+        "DISCOVERED",
+        "VERIFYING",
+        "EVALUATED",
+        "NEEDS_REVIEW"
+      ],
+      "title": "InboxPresentationState",
+      "type": "string"
+    },
     "MaterialKind": {
       "enum": [
         "REPOSITORY",
@@ -1164,6 +1175,19 @@
       "title": "RewardKind",
       "type": "string"
     },
+    "RunState": {
+      "enum": [
+        "CREATED",
+        "RUNNING",
+        "COMPLETED",
+        "PARTIAL",
+        "FAILED",
+        "CANCELLED",
+        "BUDGET_STOPPED"
+      ],
+      "title": "RunState",
+      "type": "string"
+    },
     "RuntimeMode": {
       "enum": [
         "LIVE",
@@ -1325,6 +1349,16 @@
       ],
       "title": "Last Refresh Failed At"
     },
+    "mode": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RuntimeMode"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "opportunity_id": {
       "minLength": 1,
       "title": "Opportunity Id",
@@ -1334,6 +1368,9 @@
       "minLength": 1,
       "title": "Organizer",
       "type": "string"
+    },
+    "presentation_state": {
+      "$ref": "#/$defs/InboxPresentationState"
     },
     "program_name": {
       "minLength": 1,
@@ -1357,6 +1394,16 @@
       "title": "Run Ids",
       "type": "array"
     },
+    "run_state": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RunState"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "runs_page": {
       "$ref": "#/$defs/PageInfo"
     },
@@ -1372,6 +1419,9 @@
     "program_name",
     "organizer",
     "edition",
+    "presentation_state",
+    "run_state",
+    "mode",
     "decision",
     "freshness",
     "last_refresh_failed_at",

@@ -37,14 +37,26 @@ def service(database, fixture, decision):
     return WorkspaceService(database, approvals=approvals, clock=lambda: NOW)
 
 
-@pytest.mark.parametrize("state", ["COMPLETED", "PARTIAL", "FAILED", "BUDGET_STOPPED", "RUNNING"])
+@pytest.mark.parametrize(
+    "state", ["CREATED", "RUNNING", "COMPLETED", "PARTIAL", "FAILED", "CANCELLED", "BUDGET_STOPPED"]
+)
 @pytest.mark.parametrize("mode", ["FIXTURE", "REPLAY", "LIVE"])
 def test_run_states_and_modes_preserved(tmp_path, state, mode):
     database, fixture, decision = seed(tmp_path, state=state, mode=mode)
-    row = service(database, fixture, decision).inbox().items[0]
+    reader = service(database, fixture, decision)
+    row = reader.inbox().items[0]
     assert row.run_state == state
     assert row.mode == mode
     assert row.recommendation == decision.recommendation
+    workspace = reader.workspace(fixture.opportunity.id)
+    assert workspace.run_state == state
+    assert workspace.mode == mode
+    assert workspace.presentation_state == row.presentation_state
+    assert workspace.decision.recommendation == decision.recommendation
+    if state in {"CREATED", "RUNNING"}:
+        assert workspace.presentation_state == "VERIFYING"
+    elif state != "COMPLETED":
+        assert workspace.presentation_state == "NEEDS_REVIEW"
 
 
 def test_stale_retains_exact_proof_and_prior_decision(tmp_path):
@@ -55,6 +67,9 @@ def test_stale_retains_exact_proof_and_prior_decision(tmp_path):
     reader = service(database, fixture, decision)
     result = reader.workspace(fixture.opportunity.id)
     assert result.freshness == "STALE"
+    assert result.presentation_state == "NEEDS_REVIEW"
+    assert result.run_state == "COMPLETED"
+    assert result.mode == "FIXTURE"
     assert result.decision.recommendation == decision.recommendation
     assert not result.decision.primary_action.available
     assert all(p.freshness == "STALE" for p in reader.evidence(fixture.opportunity.id).proofs)
@@ -62,7 +77,10 @@ def test_stale_retains_exact_proof_and_prior_decision(tmp_path):
 
 def test_no_decision_has_no_invented_project_score_or_recommendation(tmp_path):
     database, fixture, decision = seed(tmp_path, decision_present=False)
-    canvas = service(database, fixture, decision).workspace(fixture.opportunity.id).decision
+    workspace = service(database, fixture, decision).workspace(fixture.opportunity.id)
+    assert workspace.presentation_state == "NEEDS_REVIEW"
+    assert workspace.run_state == "COMPLETED"
+    canvas = workspace.decision
     assert canvas.best_project is None
     assert canvas.recommendation is None
     assert canvas.eligibility is None
@@ -561,3 +579,64 @@ def test_priority_stale_supplementary_proof_does_not_override_valid_authority(tm
     assert canvas.primary_action.reason == "VALID"
     assert [row.program_name for row in reader.inbox().items] == ["apply", "prepare"]
     assert reader.inbox().items[0].presentation_state == "EVALUATED"
+    assert reader.workspace(opportunity.id).presentation_state == "EVALUATED"
+
+
+def test_workspace_current_run_is_independent_of_paged_history_and_insertion_order(tmp_path):
+    from datetime import timedelta
+
+    from qualor.workspace.models import RunRecord
+    from qualor.workspace.store import WorkspaceStore
+
+    database, fixture, decision = seed(tmp_path)
+    # The current run is inserted before a historical run. History begins with
+    # that older run and can be paged so neither page contains the current run.
+    with database.transaction() as connection:
+        store = WorkspaceStore(connection)
+        original = store.runs.current("research")
+        for identity, created_at, state, mode in [
+            ("a-current", NOW + timedelta(microseconds=1), "RUNNING", "REPLAY"),
+            ("z-history", NOW - timedelta(days=1), "FAILED", "LIVE"),
+        ]:
+            store.runs.create_run(RunRecord.model_validate({
+                **original.model_dump(), "id": identity, "created_at": created_at,
+                "updated_at": created_at, "started_at": created_at, "completed_at": None,
+                "decision_id": None, "decision_version": None, "state": state, "mode": mode,
+            }))
+    reader = service(database, fixture, decision)
+    for offset, expected_history in [(0, ("z-history",)), (1, ("research",)), (10, ())]:
+        workspace = reader.workspace(fixture.opportunity.id, limit=1, run_offset=offset)
+        assert workspace.run_ids == expected_history
+        assert workspace.run_state == "RUNNING"
+        assert workspace.mode == "REPLAY"
+        assert workspace.presentation_state == "VERIFYING"
+        assert workspace.decision.recommendation == "APPLY"
+        row = reader.inbox().items[0]
+        assert (row.run_state, row.mode, row.presentation_state) == (
+            workspace.run_state, workspace.mode, workspace.presentation_state,
+        )
+
+
+def test_workspace_current_run_keeps_existing_identity_tie_break(tmp_path):
+    from qualor.workspace.models import RunRecord
+    from qualor.workspace.store import WorkspaceStore
+
+    database, fixture, decision = seed(tmp_path)
+    with database.transaction() as connection:
+        store = WorkspaceStore(connection)
+        original = store.runs.current("research")
+        store.runs.create_run(RunRecord.model_validate({
+            **original.model_dump(), "id": "z-current", "state": "RUNNING", "mode": "REPLAY",
+            "completed_at": None, "decision_id": None, "decision_version": None,
+        }))
+    reader = service(database, fixture, decision)
+    workspace = reader.workspace(fixture.opportunity.id, limit=1)
+    assert workspace.run_ids == ("research",)
+    assert workspace.run_state == "RUNNING"
+    assert workspace.mode == "REPLAY"
+    assert workspace.presentation_state == "VERIFYING"
+    assert workspace.decision.recommendation is None
+    row = reader.inbox().items[0]
+    assert (row.run_state, row.mode, row.presentation_state) == (
+        workspace.run_state, workspace.mode, workspace.presentation_state,
+    )

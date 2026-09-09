@@ -132,3 +132,23 @@ def test_inbox_presentation_state_is_required_typed_enum(tmp_path):
             "DISCOVERED", "VERIFYING", "EVALUATED", "NEEDS_REVIEW",
         ]
         assert schema["$defs"]["InboxPresentationState"]["type"] == "string"
+
+
+def test_workspace_run_presentation_is_required_and_preserves_nullable_run_facts(tmp_path):
+    from qualor.schemas.export import export_schemas
+
+    export_schemas(tmp_path)
+    schema = json.loads((tmp_path / "OpportunityWorkspaceResponse.schema.json").read_text())
+    inbox = json.loads((tmp_path / "InboxItem.schema.json").read_text())
+    assert schema["properties"]["presentation_state"] == inbox["properties"]["presentation_state"]
+    assert {"presentation_state", "run_state", "mode"} <= set(schema["required"])
+    assert schema["properties"]["presentation_state"]["$ref"] == (
+        "#/$defs/InboxPresentationState"
+    )
+    assert schema["$defs"]["InboxPresentationState"]["enum"] == [
+        "DISCOVERED", "VERIFYING", "EVALUATED", "NEEDS_REVIEW",
+    ]
+    for field, enum in [("run_state", "RunState"), ("mode", "RuntimeMode")]:
+        assert schema["properties"][field]["anyOf"] == [
+            {"$ref": f"#/$defs/{enum}"}, {"type": "null"},
+        ]

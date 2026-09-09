@@ -2206,11 +2206,14 @@ export interface OpportunityWorkspaceResponse {
   edition: Edition2;
   freshness: FreshnessStatus;
   last_refresh_failed_at: LastRefreshFailedAt1;
+  mode: RuntimeMode | null;
   opportunity_id: OpportunityId7;
   organizer: Organizer2;
+  presentation_state: InboxPresentationState;
   program_name: ProgramName2;
   rewards: Rewards2;
   run_ids: RunIds;
+  run_state: RunState | null;
   runs_page: PageInfo;
   version: Version16;
 }
