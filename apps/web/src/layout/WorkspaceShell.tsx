@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation, useOutletContext } from 'react-router-dom';
 import { apiRequest, ApiError } from '../api/client';
 import type { InboxResponse } from '../generated/domain';
+import { OpportunityInbox } from '../features/inbox/OpportunityInbox';
 
 interface WorkspaceContext { inbox: InboxResponse | null; error: string | null; }
 export function useWorkspace() { return useOutletContext<WorkspaceContext>(); }
@@ -87,6 +88,7 @@ export function WorkspaceShell() {
   const [inbox, setInbox] = useState<InboxResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const location = useLocation();
+  const inboxReadRoute = /^\/inbox(?:\/|$)/.test(location.pathname) ? '/inbox' : location.pathname;
   useEffect(() => {
     const controller = new AbortController();
     setInbox(null); setError(null);
@@ -96,17 +98,13 @@ export function WorkspaceShell() {
       if (!controller.signal.aborted) setError(error instanceof ApiError ? error.message : 'Local workspace unavailable');
     });
     return () => controller.abort();
-  }, [location.pathname]);
+  }, [inboxReadRoute]);
   const modes = [...new Set(inbox?.items.flatMap(item => item.mode ? [item.mode] : []) ?? [])];
   const qaLabel = import.meta.env.DEV && new URLSearchParams(location.search).get('qa') === 'synthetic-fixture'
     ? 'LOCAL API QA · SYNTHETIC FIXTURE DATA · NO LIVE DATA' : undefined;
   return <WorkspaceFrame
     qaLabel={qaLabel}
-    queue={<>
-      <div className="zone-heading"><h2>Opportunities</h2><span>{inbox ? inbox.page.total : '—'}</span></div>
-      <div className="queue-empty"><p>{error ? 'Queue unavailable' : !inbox ? 'Opening workspace…' : inbox.page.total ? 'Your saved opportunities' : 'No saved opportunities.'}</p></div>
-      <p className="queue-footnote">Saved in this workspace</p>
-    </>}
+    queue={<OpportunityInbox inbox={inbox} error={error} />}
     context={<>
       <section className="rail-section"><h3>Local controller</h3><p className="connection-state" role="status">{error ?? (inbox ? 'Local controller connected' : 'Connecting to local controller…')}</p><p className="quiet">A local connection does not indicate LIVE research.</p></section>
       <section className="rail-section"><h3>Selected run</h3><p>No run selected</p><dl className="context-facts"><div><dt>Research mode</dt><dd>{modes.length ? modes.join(' · ') : 'Unavailable'}</dd></div><div><dt>Source context</dt><dd>Unavailable</dd></div></dl>{modes.length > 0 && <p className="quiet">Recorded research modes in your shortlist.</p>}<Link className="inline-link" to="/activity">View activity <span aria-hidden="true">↗</span></Link></section>

@@ -52,6 +52,16 @@ h2, h3 { font-size: 14px; }
 .queue-decision-axis { display: flex; justify-content: space-between; width: 100%; margin-top: 12px; align-items: center; font-size: 10px; font-variant-numeric: tabular-nums; }
 .queue-decision-axis b { font-weight: 500; font-size: 12px; letter-spacing: .04em; }
 .queue-project { font-size: 9px; margin-top: 4px; }
+.inbox-controls { margin-top: 16px; display: grid; gap: 10px; }
+.inbox-controls label { display: grid; gap: 4px; min-width: 0; font-size: 10px; color: var(--text-muted); }
+.inbox-controls input, .inbox-controls select { width: 100%; min-width: 0; border: 1px solid var(--divider); border-radius: 3px; background: var(--workspace); color: var(--text-primary); font-size: 11px; padding: 7px; }
+.inbox-view-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.inbox-queue { list-style: none; padding: 0; margin-bottom: 0; }
+.inbox-queue > li { min-width: 0; flex: 0 0 226px; }
+.inbox-queue .opportunity-row { overflow-wrap: anywhere; }
+.inbox-queue .opportunity-row:focus-visible { outline-offset: -2px; }
+.queue-pipeline, .queue-deadline, .queue-condition { font-size: 10px; line-height: 1.6; margin-top: 4px; }
+.queue-condition { display: flex; flex-wrap: wrap; gap: 4px 10px; }
 .workspace-canvas { grid-area: canvas; min-width: 0; padding: 0 36px 0 30px; display: flex; flex-direction: column; background: radial-gradient(ellipse at 76% 48%, #173b532e, transparent 58%), linear-gradient(115deg, #0b151e88, #0b19234d); }
 .canvas-topline { display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 24px; }
 .context-toggle.text-button, .context-close.text-button { display: none; }
