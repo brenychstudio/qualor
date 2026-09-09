@@ -205,6 +205,7 @@ def put_priority_item(
 
 
 def test_priority_attention_order_preserves_recommendations(tmp_path):
+    from qualor.persistence import Database
     from qualor.workspace.store import WorkspaceStore
 
     database, fixture, decision = priority_workspace(tmp_path)
@@ -240,6 +241,16 @@ def test_priority_attention_order_preserves_recommendations(tmp_path):
         "a-skip",
     ]
     assert [row.priority_rank for row in rows] == list(range(7))
+    assert [row.presentation_state for row in rows] == [
+        "EVALUATED", "EVALUATED", "NEEDS_REVIEW", "EVALUATED",
+        "VERIFYING", "DISCOVERED", "EVALUATED",
+    ]
+    assert [row.recommendation for row in rows] == [
+        "APPLY", "PREPARE", "APPLY", "WATCH", None, None, "SKIP",
+    ]
+    # Each transaction closes its connection; reopen the persisted workspace and services.
+    reopened = service(Database(database.path), fixture, decision).inbox()
+    assert reopened.items == rows
     assert rows[2].recommendation == "APPLY"
     assert rows[4].best_project is None
     assert rows[4].recommendation is None
@@ -273,6 +284,7 @@ def test_priority_deadline_buckets_and_exact_boundary(tmp_path):
     ]
     assert rows[2].deadline.timezone_status == "CALENDAR_DATE_ONLY"
     assert rows[3].deadline.timezone_status == "UNKNOWN"
+    assert all(row.presentation_state == "EVALUATED" for row in rows)
 
 
 def test_priority_strategy_null_then_first_discovery_then_id(tmp_path):
@@ -396,6 +408,7 @@ def test_priority_completed_without_selection_requires_review(tmp_path):
     rows = service(database, fixture, decision).inbox().items
     assert [row.program_name for row in rows] == ["z-unresolved", "a-watch"]
     assert rows[0].best_project is None and rows[0].recommendation is None
+    assert rows[0].presentation_state == "NEEDS_REVIEW"
 
 
 @pytest.mark.parametrize(
@@ -410,6 +423,9 @@ def test_priority_current_run_state_precedes_retained_recommendation(tmp_path, s
     assert [r.program_name for r in rows] == expected
     retained = next(r for r in rows if r.program_name == "retained")
     assert retained.recommendation == "APPLY" and retained.run_state == state
+    assert retained.presentation_state == (
+        "VERIFYING" if state in {"CREATED", "RUNNING"} else "NEEDS_REVIEW"
+    )
     assert not retained.human_action_available
 
 
@@ -457,6 +473,8 @@ def test_priority_deadline_denial_cannot_hide_failed_refresh(tmp_path, deadlines
     rows = service(database, fixture, decision).inbox().items
     assert [r.program_name for r in rows] == ["safe", "failed"]
     assert rows[1].freshness == "STALE" and rows[1].recommendation == "APPLY"
+    assert rows[1].presentation_state == "NEEDS_REVIEW"
+    assert rows[0].presentation_state == "EVALUATED"
     assert not rows[1].human_action_available
 
 
@@ -478,6 +496,7 @@ def test_priority_unknown_deadline_cannot_mask_nonfresh_proof(tmp_path, age_hour
     assert [r.program_name for r in rows] == ["safe", "unsafe"]
     assert rows[1].freshness == freshness
     assert rows[1].recommendation == "APPLY"
+    assert rows[1].presentation_state == "NEEDS_REVIEW"
 
 
 @pytest.mark.parametrize("deadlines", [(), (NOW,)])
@@ -508,6 +527,8 @@ def test_priority_deadline_cannot_hide_ambiguous_required_proof(tmp_path, deadli
     assert authority.inspect_consequential_safety(binding, NOW) == "EVIDENCE_CHANGED"
     assert authority.inspect_request(binding, NOW).reason == before.reason
     assert [row.program_name for row in reader.inbox().items] == ["safe", "ambiguous"]
+    assert reader.inbox().items[1].presentation_state == "NEEDS_REVIEW"
+    assert reader.inbox().items[1].recommendation == "APPLY"
     assert reader.workspace(opportunity.id).decision.primary_action == before
     with database.transaction() as connection:
         assert WorkspaceStore(connection).approvals.list_for_opportunity(opportunity.id) == ()
@@ -539,3 +560,4 @@ def test_priority_stale_supplementary_proof_does_not_override_valid_authority(tm
     assert canvas.freshness == "STALE" and canvas.primary_action.available
     assert canvas.primary_action.reason == "VALID"
     assert [row.program_name for row in reader.inbox().items] == ["apply", "prepare"]
+    assert reader.inbox().items[0].presentation_state == "EVALUATED"

@@ -115,3 +115,20 @@ def test_inbox_priority_contract_is_required_and_bounded(tmp_path):
     assert item["properties"]["priority_rank"]["type"] == "integer"
     assert item["properties"]["priority_rank"]["minimum"] == 0
     assert item["properties"]["discovered_at"]["format"] == "date-time"
+
+
+def test_inbox_presentation_state_is_required_typed_enum(tmp_path):
+    from qualor.schemas.export import export_schemas
+
+    export_schemas(tmp_path)
+    for name in ("InboxItem", "InboxResponse"):
+        schema = json.loads((tmp_path / f"{name}.schema.json").read_text())
+        item = schema if name == "InboxItem" else schema["$defs"]["InboxItem"]
+        assert "presentation_state" in item["required"]
+        assert item["properties"]["presentation_state"]["$ref"] == (
+            "#/$defs/InboxPresentationState"
+        )
+        assert schema["$defs"]["InboxPresentationState"]["enum"] == [
+            "DISCOVERED", "VERIFYING", "EVALUATED", "NEEDS_REVIEW",
+        ]
+        assert schema["$defs"]["InboxPresentationState"]["type"] == "string"

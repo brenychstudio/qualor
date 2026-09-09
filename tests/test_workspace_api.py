@@ -146,6 +146,7 @@ def test_every_read_route_and_real_activity(tmp_path):
         assert row["opportunity_id"] == fixture.opportunity.id
         assert row["recommendation"] == decision.recommendation
         assert row["run_state"] == "COMPLETED"
+        assert row["presentation_state"] == "EVALUATED"
         assert row["mode"] == "FIXTURE"
         assert row["priority_rank"] == 0
         assert row["discovered_at"] == fixture.opportunity.created_at.isoformat().replace(

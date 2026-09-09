@@ -7,6 +7,50 @@ from qualor.workspace.models import RunRecord
 from qualor.workspace.store import WorkspaceStore
 
 
+@pytest.mark.parametrize(
+    "run_state,refresh_failed,expected",
+    [
+        (None, False, "DISCOVERED"),
+        ("RUNNING", False, "VERIFYING"),
+        ("COMPLETED", False, "EVALUATED"),
+        ("COMPLETED", True, "NEEDS_REVIEW"),
+    ],
+)
+def test_inbox_public_presentation_state_survives_restart(
+    tmp_path, run_state, refresh_failed, expected
+):
+    from qualor.persistence import Database
+    from qualor.workspace.lifecycle import WorkspaceLifecycle
+    from qualor.workspace.versioning import opportunity_semantic_digest
+
+    database, fixture, decision = seed(tmp_path, state=run_state or "COMPLETED")
+    if run_state is None:
+        database = Database(tmp_path / "discovered.db")
+        with database.transaction() as connection:
+            WorkspaceStore(connection).opportunities.put_opportunity_version(
+                fixture.opportunity,
+                content_hash=opportunity_semantic_digest(fixture.opportunity),
+            )
+    if refresh_failed:
+        WorkspaceLifecycle(database).mark_refresh_failed(fixture.opportunity.id, NOW)
+    with client_for(make_app(database, fixture, decision)) as client:
+        response = client.get("/api/v1/inbox")
+        assert response.status_code == 200
+        row = response.json()["items"][0]
+        assert row["presentation_state"] == expected
+        assert row["recommendation"] == ("APPLY" if run_state else None)
+        schemas = client.app.openapi()["components"]["schemas"]
+        assert "presentation_state" in schemas["InboxItem"]["required"]
+        assert schemas["InboxItem"]["properties"]["presentation_state"]["$ref"] == (
+            "#/components/schemas/InboxPresentationState"
+        )
+        assert schemas["InboxPresentationState"]["enum"] == [
+            "DISCOVERED", "VERIFYING", "EVALUATED", "NEEDS_REVIEW",
+        ]
+    with client_for(make_app(Database(database.path), fixture, decision)) as client:
+        assert client.get("/api/v1/inbox").json()["items"][0] == row
+
+
 def approval_request(client, fixture):
     return client.get(f"/api/v1/opportunities/{fixture.opportunity.id}/workspace").json()[
         "decision"

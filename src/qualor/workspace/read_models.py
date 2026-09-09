@@ -1,5 +1,6 @@
 """Public product contracts; persistence receipts and provider payloads stay private."""
 
+from enum import StrEnum
 from typing import Annotated, Literal
 
 from pydantic import Field, StrictBool, model_validator
@@ -146,6 +147,13 @@ class DecisionCanvasView(Contract):
     primary_action: ActionCapability
 
 
+class InboxPresentationState(StrEnum):
+    DISCOVERED = "DISCOVERED"
+    VERIFYING = "VERIFYING"
+    EVALUATED = "EVALUATED"
+    NEEDS_REVIEW = "NEEDS_REVIEW"
+
+
 class InboxItem(Contract):
     opportunity_id: NonEmpty
     priority_rank: Annotated[
@@ -163,6 +171,10 @@ class InboxItem(Contract):
     organizer: NonEmpty
     edition: NonEmpty
     recommendation: Recommendation | None
+    presentation_state: Annotated[
+        InboxPresentationState,
+        Field(description="Server-derived current attention state; preserves recommendation."),
+    ]
     run_state: RunState | None
     mode: RuntimeMode | None
     best_project: ProjectSummary | None

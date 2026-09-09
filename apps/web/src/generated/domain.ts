@@ -1070,6 +1070,10 @@ export type Edition1 = string;
 export type HumanActionAvailable = boolean;
 export type OpportunityId6 = string;
 export type Organizer1 = string;
+/**
+ * Server-derived current attention state; preserves recommendation.
+ */
+export type InboxPresentationState = "DISCOVERED" | "VERIFYING" | "EVALUATED" | "NEEDS_REVIEW";
 export type PrimaryBlocker1 = string | null;
 /**
  * Absolute server priority position; lower is higher. Not for display.
@@ -2180,6 +2184,7 @@ export interface InboxItem {
   mode: RuntimeMode | null;
   opportunity_id: OpportunityId6;
   organizer: Organizer1;
+  presentation_state: InboxPresentationState;
   primary_blocker: PrimaryBlocker1;
   priority_rank: PriorityRank;
   program_name: ProgramName1;

@@ -25,6 +25,7 @@ from .read_models import (
     EvidenceProofView,
     EvidenceSheetView,
     InboxItem,
+    InboxPresentationState,
     InboxResponse,
     OpportunityWorkspaceResponse,
     PageInfo,
@@ -201,17 +202,17 @@ class WorkspaceService:
             primary_action=capability,
         )
 
-    def _attention_tier(self, canvas, run, opportunity_id, now):
+    def _inbox_presentation_state(self, canvas, run, opportunity_id, now) -> InboxPresentationState:
         """Presentation consumes existing run/safety results; never edits a decision."""
         if run is None:
-            return 5  # DISCOVERED
+            return InboxPresentationState.DISCOVERED
         if run.state in {"CREATED", "RUNNING"}:
-            return 4  # VERIFYING
+            return InboxPresentationState.VERIFYING
         if run.state != "COMPLETED" or canvas.recommendation is None:
-            return 2  # NEEDS_REVIEW
+            return InboxPresentationState.NEEDS_REVIEW
         if canvas.recommendation in {"APPLY", "PREPARE"}:
             if canvas.primary_action.approval_request is None:
-                return 2
+                return InboxPresentationState.NEEDS_REVIEW
             binding = self._bindings(opportunity_id, canvas.primary_action.approval_request)
             try:
                 authority = self.approvals.for_workspace_request(binding, now)
@@ -219,8 +220,8 @@ class WorkspaceService:
             except ApprovalDenied as exc:
                 reason = exc.reason
             if reason != "VALID":
-                return 2
-            return 0 if canvas.recommendation == "APPLY" else 1
+                return InboxPresentationState.NEEDS_REVIEW
+            return InboxPresentationState.EVALUATED
         reason = canvas.primary_action.reason
         if reason not in {
             "VALID",
@@ -228,8 +229,19 @@ class WorkspaceService:
             "DEADLINE_UNKNOWN",
             "DEADLINE_PASSED",
         }:
-            return 2  # Existing evidence/graph/policy safety denial.
-        return {"WATCH": 3, "SKIP": 6}[canvas.recommendation]
+            return InboxPresentationState.NEEDS_REVIEW
+        return InboxPresentationState.EVALUATED
+
+    @staticmethod
+    def _attention_tier(presentation_state: InboxPresentationState, recommendation):
+        """Frozen V1 tiers consume the same assessment exposed on the public row."""
+        if presentation_state == InboxPresentationState.EVALUATED:
+            return {"APPLY": 0, "PREPARE": 1, "WATCH": 3, "SKIP": 6}[recommendation]
+        return {
+            InboxPresentationState.NEEDS_REVIEW: 2,
+            InboxPresentationState.VERIFYING: 4,
+            InboxPresentationState.DISCOVERED: 5,
+        }[presentation_state]
 
     @staticmethod
     def _deadline_priority(deadline, now):
@@ -240,10 +252,10 @@ class WorkspaceService:
             return 2, now  # PAST: timestamps do not order this bucket.
         return 0, earliest
 
-    def _inbox_priority(self, canvas, run, discovered_at, opportunity_id, now):
+    def _inbox_priority(self, canvas, presentation_state, discovered_at, opportunity_id, now):
         score = canvas.strategy.score
         return (
-            self._attention_tier(canvas, run, opportunity_id, now),
+            self._attention_tier(presentation_state, canvas.recommendation),
             *self._deadline_priority(canvas.deadline, now),
             score is None,
             -score if score is not None else 0,
@@ -267,9 +279,12 @@ class WorkspaceService:
             opportunity = aggregate.current.opportunity
             canvas = self._canvas(aggregate, now=now)
             run = max(aggregate.current.runs, key=lambda r: (r.created_at, r.id), default=None)
+            presentation_state = self._inbox_presentation_state(canvas, run, opportunity_id, now)
             items.append(
                 (
-                    self._inbox_priority(canvas, run, discovered_at, opportunity_id, now),
+                    self._inbox_priority(
+                        canvas, presentation_state, discovered_at, opportunity_id, now
+                    ),
                     InboxItem(
                         opportunity_id=opportunity.id,
                         priority_rank=0,
@@ -279,6 +294,7 @@ class WorkspaceService:
                         organizer=opportunity.organizer,
                         edition=opportunity.edition,
                         recommendation=canvas.recommendation,
+                        presentation_state=presentation_state,
                         run_state=run.state if run else None,
                         mode=run.mode if run else None,
                         best_project=canvas.best_project,

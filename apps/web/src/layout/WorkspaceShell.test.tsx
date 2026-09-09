@@ -108,6 +108,7 @@ test('keeps every returned research mode explicit in a mixed shortlist', async (
   const modes: import('../generated/domain').RuntimeMode[] = ['LIVE', 'REPLAY', 'FIXTURE'];
   const items: import('../generated/domain').InboxItem[] = modes.map((mode, priority_rank) => ({
     priority_rank, discovered_at: '2026-09-05T12:00:00Z',
+    presentation_state: 'NEEDS_REVIEW',
     opportunity_id: `test-${mode}`, version: 1, organizer: 'Test organizer', program_name: 'Test program', edition: 'Test edition',
     best_project: null, deadline: { timezone_status: 'UNKNOWN', values: [] }, effort: null, freshness: 'UNKNOWN',
     human_action_available: false, mode, primary_blocker: null, readiness: null, recommendation: null, run_state: 'COMPLETED',

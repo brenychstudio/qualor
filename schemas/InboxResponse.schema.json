@@ -331,6 +331,10 @@
           "title": "Organizer",
           "type": "string"
         },
+        "presentation_state": {
+          "$ref": "#/$defs/InboxPresentationState",
+          "description": "Server-derived current attention state; preserves recommendation."
+        },
         "primary_blocker": {
           "anyOf": [
             {
@@ -399,6 +403,7 @@
         "organizer",
         "edition",
         "recommendation",
+        "presentation_state",
         "run_state",
         "mode",
         "best_project",
@@ -411,6 +416,16 @@
       ],
       "title": "InboxItem",
       "type": "object"
+    },
+    "InboxPresentationState": {
+      "enum": [
+        "DISCOVERED",
+        "VERIFYING",
+        "EVALUATED",
+        "NEEDS_REVIEW"
+      ],
+      "title": "InboxPresentationState",
+      "type": "string"
     },
     "MaterialKind": {
       "enum": [
