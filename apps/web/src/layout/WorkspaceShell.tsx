@@ -4,6 +4,7 @@ import { Link, NavLink, Outlet, useLocation, useOutletContext } from 'react-rout
 import { apiRequest, ApiError } from '../api/client';
 import type { InboxResponse, OpportunityWorkspaceResponse } from '../generated/domain';
 import { OpportunityInbox } from '../features/inbox/OpportunityInbox';
+import { EvidenceSheet } from '../features/evidence/EvidenceSheet';
 
 interface WorkspaceContext {
   inbox: InboxResponse | null;
@@ -24,22 +25,6 @@ function selectedProof(workspace: OpportunityWorkspaceResponse) {
     <div className="proof-document-section proof-document-section--summary" role="group" aria-label="Decision limitations"><div><span className="proof-provenance">Current limitation</span><p>{decision.primary_blocker ? stateText(decision.primary_blocker) : decision.missing_information.length ? stateText(decision.missing_information[0]) : 'No primary blocker recorded'}</p><small>{decision.missing_information.length} unresolved {decision.missing_information.length === 1 ? 'field' : 'fields'}</small></div></div>
     <div className="proof-sheet-freshness">{workspace.freshness} decision context<span>{workspace.mode ?? 'No current run mode'} · {workspace.run_state ? stateText(workspace.run_state) : 'No current run'}</span></div>
   </div>;
-}
-
-function selectedProofDetails(workspace: OpportunityWorkspaceResponse) {
-  const decision = workspace.decision;
-  return <>
-    <p className="proof-introduction">{decision.summary ?? 'No deterministic decision reason is available.'}</p>
-    <dl className="proof-metadata">
-      <div><dt>Recommendation</dt><dd>{decision.recommendation ?? 'UNKNOWN'}</dd></div>
-      <div><dt>Eligibility</dt><dd>{decision.eligibility ? stateText(decision.eligibility) : 'UNKNOWN'}</dd></div>
-      <div><dt>Best project</dt><dd>{decision.best_project?.name ?? 'Unresolved'}</dd></div>
-      <div><dt>Primary blocker</dt><dd>{decision.primary_blocker ? stateText(decision.primary_blocker) : 'None recorded'}</dd></div>
-      <div><dt>Freshness</dt><dd>{workspace.freshness}</dd></div>
-      <div><dt>Coverage</dt><dd>{workspace.coverage.length} critical {workspace.coverage.length === 1 ? 'category' : 'categories'}</dd></div>
-    </dl>
-    <p className="proof-boundary">This view contains the selected decision summary. Documentary proof details are unavailable here.</p>
-  </>;
 }
 
 // Shared presentation frame; the isolated design proof supplies read-only content.
@@ -162,7 +147,7 @@ export function WorkspaceShell() {
         <section className="rail-section"><h3>Selected run</h3><p>{selectedWorkspace.run_state ? stateText(selectedWorkspace.run_state) : 'No current run'}</p><dl className="context-facts"><div><dt>Research mode</dt><dd>{selectedWorkspace.mode ?? 'Unavailable'}</dd></div><div><dt>Critical coverage</dt><dd>{selectedWorkspace.coverage.length} recorded</dd></div></dl>{selectedWorkspace.last_refresh_failed_at && <p className="quiet state-stale">Refresh failed at <time dateTime={selectedWorkspace.last_refresh_failed_at}>{selectedWorkspace.last_refresh_failed_at}</time></p>}<Link className="inline-link" to="/activity">View activity <span aria-hidden="true">↗</span></Link></section>
       </> : <section className="rail-section"><h3>Selected run</h3><p>{selectedWorkspaceError ? 'Selected workspace unavailable' : selectedOpportunityPath ? 'Loading selected run' : 'No run selected'}</p><dl className="context-facts"><div><dt>Research mode</dt><dd>{modes.length ? modes.join(' · ') : 'Unavailable'}</dd></div><div><dt>Source context</dt><dd>Unavailable</dd></div></dl>{modes.length > 0 && <p className="quiet">Recorded research modes in your shortlist.</p>}<Link className="inline-link" to="/activity">View activity <span aria-hidden="true">↗</span></Link></section>}
     </>}
-    evidenceContent={selectedWorkspace ? selectedProofDetails(selectedWorkspace) : undefined}
+    evidenceContent={selectedWorkspace ? <EvidenceSheet opportunityId={selectedWorkspace.opportunity_id} /> : undefined}
     proof={selectedWorkspace ? selectedProof(selectedWorkspace) : <><span className="section-index">Why & proof</span><p>{selectedWorkspaceError ? 'Selected decision context is unavailable.' : selectedOpportunityPath ? 'Loading selected decision context.' : 'No decision selected.'}<br /><span className="quiet">Evidence context is unavailable.</span></p></>}
   ><Outlet context={{ inbox, error, selectedWorkspace, selectedWorkspaceError, selectedWorkspaceLoading: Boolean(selectedOpportunityPath && !selectedWorkspace && !selectedWorkspaceError) } satisfies WorkspaceContext} /></WorkspaceFrame>;
 }
