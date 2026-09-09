@@ -2,11 +2,45 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation, useOutletContext } from 'react-router-dom';
 import { apiRequest, ApiError } from '../api/client';
-import type { InboxResponse } from '../generated/domain';
+import type { InboxResponse, OpportunityWorkspaceResponse } from '../generated/domain';
 import { OpportunityInbox } from '../features/inbox/OpportunityInbox';
 
-interface WorkspaceContext { inbox: InboxResponse | null; error: string | null; }
+interface WorkspaceContext {
+  inbox: InboxResponse | null;
+  error: string | null;
+  selectedWorkspace: OpportunityWorkspaceResponse | null;
+  selectedWorkspaceError: ApiError | null;
+  selectedWorkspaceLoading: boolean;
+}
 export function useWorkspace() { return useOutletContext<WorkspaceContext>(); }
+
+const stateText = (value: string) => value.replaceAll('_', ' ');
+
+function selectedProof(workspace: OpportunityWorkspaceResponse) {
+  const decision = workspace.decision;
+  return <div className="proof-peek">
+    <div className="proof-sheet-title"><h2>Decision context</h2><p>{stateText(workspace.presentation_state)} · {workspace.freshness}</p></div>
+    <div className="proof-document-section proof-document-section--summary" role="group" aria-label="Decision summary"><div><span className="proof-provenance">Recommendation / recorded reason</span><p>{decision.recommendation ?? 'UNKNOWN'} · {decision.summary ?? 'No deterministic decision reason is available.'}</p><small>Server-owned decision summary</small></div></div>
+    <div className="proof-document-section proof-document-section--summary" role="group" aria-label="Decision limitations"><div><span className="proof-provenance">Current limitation</span><p>{decision.primary_blocker ? stateText(decision.primary_blocker) : decision.missing_information.length ? stateText(decision.missing_information[0]) : 'No primary blocker recorded'}</p><small>{decision.missing_information.length} unresolved {decision.missing_information.length === 1 ? 'field' : 'fields'}</small></div></div>
+    <div className="proof-sheet-freshness">{workspace.freshness} decision context<span>{workspace.mode ?? 'No current run mode'} · {workspace.run_state ? stateText(workspace.run_state) : 'No current run'}</span></div>
+  </div>;
+}
+
+function selectedProofDetails(workspace: OpportunityWorkspaceResponse) {
+  const decision = workspace.decision;
+  return <>
+    <p className="proof-introduction">{decision.summary ?? 'No deterministic decision reason is available.'}</p>
+    <dl className="proof-metadata">
+      <div><dt>Recommendation</dt><dd>{decision.recommendation ?? 'UNKNOWN'}</dd></div>
+      <div><dt>Eligibility</dt><dd>{decision.eligibility ? stateText(decision.eligibility) : 'UNKNOWN'}</dd></div>
+      <div><dt>Best project</dt><dd>{decision.best_project?.name ?? 'Unresolved'}</dd></div>
+      <div><dt>Primary blocker</dt><dd>{decision.primary_blocker ? stateText(decision.primary_blocker) : 'None recorded'}</dd></div>
+      <div><dt>Freshness</dt><dd>{workspace.freshness}</dd></div>
+      <div><dt>Coverage</dt><dd>{workspace.coverage.length} critical {workspace.coverage.length === 1 ? 'category' : 'categories'}</dd></div>
+    </dl>
+    <p className="proof-boundary">This view contains the selected decision summary. Documentary proof details are unavailable here.</p>
+  </>;
+}
 
 // Shared presentation frame; the isolated design proof supplies read-only content.
 export function WorkspaceFrame({ children, queue, context, proof, previewLabel, evidenceContent, previewNav, qaLabel, opticalPreview = false }: {
@@ -87,8 +121,11 @@ export function WorkspaceFrame({ children, queue, context, proof, previewLabel, 
 export function WorkspaceShell() {
   const [inbox, setInbox] = useState<InboxResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedWorkspace, setSelectedWorkspace] = useState<OpportunityWorkspaceResponse | null>(null);
+  const [selectedWorkspaceError, setSelectedWorkspaceError] = useState<ApiError | null>(null);
   const location = useLocation();
   const inboxReadRoute = /^\/inbox(?:\/|$)/.test(location.pathname) ? '/inbox' : location.pathname;
+  const selectedOpportunityPath = /^\/inbox\/([^/]+)\/?$/.exec(location.pathname)?.[1] ?? null;
   useEffect(() => {
     const controller = new AbortController();
     setInbox(null); setError(null);
@@ -99,6 +136,19 @@ export function WorkspaceShell() {
     });
     return () => controller.abort();
   }, [inboxReadRoute]);
+  useEffect(() => {
+    const controller = new AbortController();
+    setSelectedWorkspace(null); setSelectedWorkspaceError(null);
+    if (!selectedOpportunityPath) return () => controller.abort();
+    apiRequest<OpportunityWorkspaceResponse>(`/opportunities/${selectedOpportunityPath}/workspace`, { signal: controller.signal }).then(value => {
+      if (controller.signal.aborted) return;
+      if (!value || typeof value !== 'object' || !('decision' in value)) throw new ApiError('INTERNAL_ERROR');
+      setSelectedWorkspace(value);
+    }).catch(fetchError => {
+      if (!controller.signal.aborted) setSelectedWorkspaceError(fetchError instanceof ApiError ? fetchError : new ApiError('LOCAL_DISCONNECTED'));
+    });
+    return () => controller.abort();
+  }, [selectedOpportunityPath]);
   const modes = [...new Set(inbox?.items.flatMap(item => item.mode ? [item.mode] : []) ?? [])];
   const qaLabel = import.meta.env.DEV && new URLSearchParams(location.search).get('qa') === 'synthetic-fixture'
     ? 'LOCAL API QA · SYNTHETIC FIXTURE DATA · NO LIVE DATA' : undefined;
@@ -107,8 +157,12 @@ export function WorkspaceShell() {
     queue={<OpportunityInbox inbox={inbox} error={error} />}
     context={<>
       <section className="rail-section"><h3>Local controller</h3><p className="connection-state" role="status">{error ?? (inbox ? 'Local controller connected' : 'Connecting to local controller…')}</p><p className="quiet">A local connection does not indicate LIVE research.</p></section>
-      <section className="rail-section"><h3>Selected run</h3><p>No run selected</p><dl className="context-facts"><div><dt>Research mode</dt><dd>{modes.length ? modes.join(' · ') : 'Unavailable'}</dd></div><div><dt>Source context</dt><dd>Unavailable</dd></div></dl>{modes.length > 0 && <p className="quiet">Recorded research modes in your shortlist.</p>}<Link className="inline-link" to="/activity">View activity <span aria-hidden="true">↗</span></Link></section>
+      {selectedWorkspace ? <>
+        <section className="rail-section"><h3>Current decision</h3><p>{selectedWorkspace.decision.recommendation ?? 'UNKNOWN'} · {stateText(selectedWorkspace.presentation_state)}</p><dl className="context-facts"><div><dt>Freshness</dt><dd>{selectedWorkspace.freshness}</dd></div><div><dt>Primary blocker</dt><dd>{selectedWorkspace.decision.primary_blocker ? stateText(selectedWorkspace.decision.primary_blocker) : 'None recorded'}</dd></div></dl></section>
+        <section className="rail-section"><h3>Selected run</h3><p>{selectedWorkspace.run_state ? stateText(selectedWorkspace.run_state) : 'No current run'}</p><dl className="context-facts"><div><dt>Research mode</dt><dd>{selectedWorkspace.mode ?? 'Unavailable'}</dd></div><div><dt>Critical coverage</dt><dd>{selectedWorkspace.coverage.length} recorded</dd></div></dl>{selectedWorkspace.last_refresh_failed_at && <p className="quiet state-stale">Refresh failed at <time dateTime={selectedWorkspace.last_refresh_failed_at}>{selectedWorkspace.last_refresh_failed_at}</time></p>}<Link className="inline-link" to="/activity">View activity <span aria-hidden="true">↗</span></Link></section>
+      </> : <section className="rail-section"><h3>Selected run</h3><p>{selectedWorkspaceError ? 'Selected workspace unavailable' : selectedOpportunityPath ? 'Loading selected run' : 'No run selected'}</p><dl className="context-facts"><div><dt>Research mode</dt><dd>{modes.length ? modes.join(' · ') : 'Unavailable'}</dd></div><div><dt>Source context</dt><dd>Unavailable</dd></div></dl>{modes.length > 0 && <p className="quiet">Recorded research modes in your shortlist.</p>}<Link className="inline-link" to="/activity">View activity <span aria-hidden="true">↗</span></Link></section>}
     </>}
-    proof={<><span className="section-index">Why & proof</span><p>No decision selected.<br /><span className="quiet">Evidence context is unavailable.</span></p></>}
-  ><Outlet context={{ inbox, error } satisfies WorkspaceContext} /></WorkspaceFrame>;
+    evidenceContent={selectedWorkspace ? selectedProofDetails(selectedWorkspace) : undefined}
+    proof={selectedWorkspace ? selectedProof(selectedWorkspace) : <><span className="section-index">Why & proof</span><p>{selectedWorkspaceError ? 'Selected decision context is unavailable.' : selectedOpportunityPath ? 'Loading selected decision context.' : 'No decision selected.'}<br /><span className="quiet">Evidence context is unavailable.</span></p></>}
+  ><Outlet context={{ inbox, error, selectedWorkspace, selectedWorkspaceError, selectedWorkspaceLoading: Boolean(selectedOpportunityPath && !selectedWorkspace && !selectedWorkspaceError) } satisfies WorkspaceContext} /></WorkspaceFrame>;
 }

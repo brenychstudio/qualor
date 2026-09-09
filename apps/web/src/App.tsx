@@ -5,20 +5,26 @@ import type { PortfolioView as Portfolio } from './generated/domain';
 import { WorkspaceShell, useWorkspace } from './layout/WorkspaceShell';
 import { PortfolioView } from './features/portfolio/PortfolioView';
 import { DecisionTrace } from './layout/DecisionTrace';
+import { DecisionCanvas } from './features/decision/DecisionCanvas';
 
 function InboxFoundation() {
-  const { inbox, error } = useWorkspace();
+  const { inbox, error, selectedWorkspace, selectedWorkspaceError, selectedWorkspaceLoading } = useWorkspace();
   const { opportunityId } = useParams();
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [portfolioError, setPortfolioError] = useState(false);
   useEffect(() => {
+    if (opportunityId) return;
     const controller = new AbortController();
     apiRequest<Portfolio>('/portfolio', { signal: controller.signal }).then(value => {
       if (!controller.signal.aborted) setPortfolio(value);
     }).catch(() => { if (!controller.signal.aborted) setPortfolioError(true); });
     return () => controller.abort();
-  }, []);
-  if (opportunityId) return <UnavailableView title="Decision view not yet available" description="This workspace foundation does not yet display individual opportunity decisions." />;
+  }, [opportunityId]);
+  if (opportunityId) {
+    if (selectedWorkspace?.opportunity_id === opportunityId) return <DecisionCanvas workspace={selectedWorkspace} />;
+    if (selectedWorkspaceError) return <UnavailableView title={selectedWorkspaceError.code === 'NOT_FOUND' ? 'Opportunity unavailable' : 'Decision workspace unavailable'} description={selectedWorkspaceError.message} />;
+    if (selectedWorkspaceLoading || !selectedWorkspace) return <section className="structural-state" aria-live="polite"><span className="eyebrow">Selected opportunity</span><h1>Opening decision</h1><p>Reading the saved decision workspace…</p></section>;
+  }
   const profilePresent = portfolio ? !!portfolio.founder : inbox?.profile_present;
   return <section className="empty-decision" aria-labelledby="welcome-title">
     <div className="decision-context"><span className="section-index">Inbox</span><span className="quiet">{error ? 'Connection unavailable' : !inbox ? 'Loading saved state' : 'No selection'}</span></div>
