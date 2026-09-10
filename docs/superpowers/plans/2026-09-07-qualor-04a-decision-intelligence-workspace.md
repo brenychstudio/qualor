@@ -7,7 +7,7 @@
 
 **Goal:** Build the persistent, functional, final-grade QUALOR Decision Intelligence Workspace: Inbox → Decision → Why/Proof → Activity → human approval → Draft Pack.
 
-**Architecture:** Preserve the existing deterministic QUALOR core and live agent pipeline. Add a transactional SQLite persistence boundary and read-oriented API layer, then build the approved React three-zone workspace on top. Approval and Draft Pack remain version-bound, bounded and non-submitting.
+**Architecture:** Preserve the existing deterministic QUALOR core and live agent pipeline. Add a transactional SQLite persistence boundary and read-oriented API layer, then build the approved React workspace on top. Owner-approved change record `QUALOR-04A-A1_2-CANONICAL-RULING-01B` (`docs/decisions/0004-a1-2-four-zone-workspace-body.md`) supersedes the three-zone wording this plan was originally written against: the accepted wide-body layout at 1280 px and above is four zones — Opportunity Inbox, Decision Canvas, Why & Proof / Evidence Plane, Intelligence Rail. Approval and Draft Pack remain version-bound, bounded and non-submitting.
 
 **Tech Stack:** Python 3.12, FastAPI, Pydantic v2, SQLite, React, TypeScript, Vite, Tailwind v4, existing generated QUALOR schemas/types.
 
@@ -272,7 +272,7 @@ Mutating routes require all three checks: loopback client, configured allowed `O
 - [ ] Run `uv run pytest tests/test_api_health.py tests/test_fixture_adapters.py tests/test_workspace_api.py tests/workspace -q`, `uv run ruff check .`, and both schema/type check modes.
 - [ ] Commit as `feat: expose protected workspace read API`, including the Python, tests, schemas, and generated types.
 
-## Task 7: React routing, test harness, tokens, and three-zone shell
+## Task 7: React routing, test harness, tokens, and workspace shell
 
 **Prize-first value:** clarity, usability, and a premium foundation that 04B can refine without restructuring.
 
@@ -300,13 +300,13 @@ Mutating routes require all three checks: loopback client, configured allowed `O
 - Consumes: generated workspace types and JSON responses under `/api/v1`.
 - Produces: stable routes `/inbox`, `/inbox/:opportunityId`, `/portfolio`, `/activity`, `/draft-packs/:packId`; `WorkspaceShell`; a functional version-aware Portfolio surface; typed `apiRequest<T>`; semantic design tokens; and `npm run test:run`.
 
-Add pinned `react-router-dom`. Add pinned Vitest, jsdom, `@testing-library/react`, `@testing-library/user-event`, and `@testing-library/jest-dom` development dependencies. The shell owns minimal Inbox/Portfolio/Activity navigation and three semantic regions. At wide widths it renders supporting inbox, dominant canvas, and supporting rail; at narrower widths the rail becomes a user-invoked panel and the content order remains Decision → Why/Proof → Activity. Do not add a component kit or animation dependency.
+Add pinned `react-router-dom`. Add pinned Vitest, jsdom, `@testing-library/react`, `@testing-library/user-event`, and `@testing-library/jest-dom` development dependencies. The shell owns minimal Inbox/Portfolio/Activity navigation and the accepted body zones. This task was originally planned as three semantic regions; the A1.2 Spatial Precision pass separated proof from telemetry, and the accepted contract recorded in `QUALOR-04A-A1_2-CANONICAL-RULING-01B` is four semantic regions. At 1280 px and above the shell renders supporting inbox, dominant canvas, supporting Why & Proof plane, and supporting Intelligence Rail; at narrower widths the rail becomes a user-invoked panel and the content order remains Decision → Why/Proof → Activity. Do not add a component kit or animation dependency.
 
 The Portfolio route reads the persisted founder and project versions and supports the bounded canonical profile/project fields needed by existing deterministic evaluation. Saving uses the protected version-aware API and reports a version conflict rather than overwriting newer state. This is a restrained profile workspace, not a new CRM or settings product.
 
 Tokens must name semantic roles for warm graphite workspace, tonal surfaces, divider, text hierarchy, proof paper/ink, citation, focus, recommendation personalities, spacing, and reduced motion. Recommendation meaning must also appear in text. Avoid pure black, neon gradients, excessive translucent panels, card grids, and generic Tailwind starter composition.
 
-- [ ] Write RED shell tests that assert landmark order, selected navigation, 320 px content availability, desktop three-zone classes, keyboard-visible navigation, and reduced-motion class behavior. Write Portfolio tests for loading persisted versions, saving canonical fields with an action token, validation errors, and stale-version conflict. Confirm `npm --prefix apps/web run test:run -- WorkspaceShell PortfolioView` fails before the harness exists.
+- [ ] Write RED shell tests that assert landmark order, selected navigation, 320 px content availability, the desktop body-zone classes accepted in `QUALOR-04A-A1_2-CANONICAL-RULING-01B`, keyboard-visible navigation, and reduced-motion class behavior. Write Portfolio tests for loading persisted versions, saving canonical fields with an action token, validation errors, and stale-version conflict. Confirm `npm --prefix apps/web run test:run -- WorkspaceShell PortfolioView` fails before the harness exists.
 - [ ] Implement the minimum foundation by installing only the listed pinned dependencies and creating the test setup, router, API client, tokens, Portfolio view, and shell with semantic HTML.
 - [ ] Run the focused shell test and confirm PASS.
 - [ ] Refactor layout/token names so components consume semantic roles instead of raw color values.
@@ -559,7 +559,7 @@ Run state and decision state remain separate. A `PARTIAL` run can contain verifi
 - Consumes: the completed workspace component surfaces and browser accessibility media/query APIs.
 - Produces: keyboard-complete navigation, visible focus, semantic heading order, focus restoration, Escape behavior, reduced-motion variants, non-color-only status communication, contrast tokens, and readable layouts from 320 through 1440 px.
 
-At 1280 px and above, retain the three-zone composition. Between 1024 and 1279 px, keep the canvas dominant and let Activity open as a panel. Below 1024 px, preserve the same content and action semantics in one readable sequence. Do not create a mobile-only information architecture or remove evidence/approval meaning.
+At 1280 px and above, retain the accepted four-zone composition — inbox, canvas, Why & Proof plane, Intelligence Rail. Between 768 and 1279 px, keep the canvas dominant, keep the inbox as a persistent column, move the Why & Proof plane below the canvas, and let Activity open as a user-invoked panel. Below 768 px, preserve the same content and action semantics in one readable sequence. Do not create a mobile-only information architecture or remove evidence/approval meaning.
 
 - [ ] Write RED accessibility tests for landmarks/headings, complete Tab order, inbox roving focus, sheet focus trap/return, Escape, action names, status text independent of color, reduced-motion behavior, and 320/768/1024/1440 layout contracts. Add an automated contrast-token assertion for required text/background pairs.
 - [ ] Run `npm --prefix apps/web run test:run -- accessibility` and confirm the incomplete baseline fails.
@@ -633,7 +633,7 @@ Generated schemas/types travel with their source-contract commit. If one task re
 
 QUALOR-04A must already look intentional, restrained, editorial, and final-grade in structure. Review every UI task against these rejection criteria: generic admin dashboard, Tailwind starter look, badge soup, heavy glassmorphism, neon/cyberpunk AI styling, arbitrary widgets, chat-first activity, or disposable MVP CSS. Reject any of these during task review.
 
-QUALOR-04B owns exact art-direction refinement, final typography/color tuning, motion choreography, micro-interactions, responsive refinement, and cinematic demo transitions. It must build on the route structure, three-zone composition, progressive disclosure, tokens, accessibility semantics, and product-state contracts delivered here. It must not rewrite 04A information architecture.
+QUALOR-04B owns exact art-direction refinement, final typography/color tuning, motion choreography, micro-interactions, responsive refinement, and cinematic demo transitions. It must build on the route structure, the accepted four-zone wide-body composition, progressive disclosure, tokens, accessibility semantics, and product-state contracts delivered here. It must not rewrite 04A information architecture.
 
 Every proposed UI feature must improve at least one of clarity, trust, decision comprehension, evidence comprehension, demo impact, or usability. Defer it when it improves none.
 

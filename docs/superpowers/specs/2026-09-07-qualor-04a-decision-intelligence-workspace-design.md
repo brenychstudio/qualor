@@ -45,17 +45,22 @@ UI language must identify whether a statement is a recommendation, a determinist
 
 ## 3. Desktop-first composition
 
-QUALOR V1 is desktop-first because the primary work and judge-demo environments require dense comparison, evidence reading, and visible agent activity. At wide desktop sizes, the workspace uses three zones:
+QUALOR V1 is desktop-first because the primary work and judge-demo environments require dense comparison, evidence reading, and visible agent activity. Owner-approved change record `QUALOR-04A-A1_2-CANONICAL-RULING-01B` (`docs/decisions/0004-a1-2-four-zone-workspace-body.md`) supersedes the earlier three-zone wording: at 1280 px and above the workspace body is four persistent zones, in this order.
 
-| Zone | Role | Visual weight | Indicative width |
+| Zone | Role | Visual weight | Material |
 | --- | --- | --- | --- |
-| Left: Opportunity Inbox | Quiet priority queue and selection | Supporting | 260–320 px |
-| Center: Decision Canvas | Recommendation, core facts, action | Dominant | Flexible, at least 560 px |
-| Right: Live Intelligence / Evidence Rail | Contextual activity and source status | Supporting | 280–340 px |
+| 1. Opportunity Inbox | Selection and priority queue | Supporting | Dark workspace |
+| 2. Decision Canvas | Dominant deterministic judgment: recommendation, core facts, action | Dominant | Dark workspace |
+| 3. Why & Proof / Evidence Plane | Causal explanation and source-grounded proof: citations, uncertainty, conflicts | Supporting | Warm light proof |
+| 4. Intelligence Rail | Persisted operational telemetry, run activity, and runtime state (Activity) | Supporting | Dark workspace |
+
+Zones 3 and 4 are separate because they hold separate product authority and separate material roles. The Evidence Plane owns source-grounded proof; the Intelligence Rail owns run telemetry. Neither owns deterministic decision policy. This is a decision workspace composition, not a generic four-column dashboard: the Decision Canvas remains visually dominant, the other three zones remain supporting, and the Evidence Plane presents proof subordinately until `Why this decision →` invokes the full Evidence Sheet.
+
+Header and top navigation are not body zones.
 
 The top navigation is minimal: **Inbox**, **Portfolio**, and **Activity**. Product identity, current workspace context, and one restrained account/control area may share this bar. A conventional oversized SaaS sidebar is prohibited.
 
-Between approximately 1024 and 1279 px, the Decision Canvas remains dominant while the intelligence rail may collapse into a user-invoked contextual panel. Below desktop width, the same content becomes a readable single-column sequence: inbox selection, decision, why/proof, activity, and action. Mobile receives no separate workflow, navigation model, or feature set in QUALOR-04A.
+Below 1280 px, the Decision Canvas remains dominant while supporting proof and activity surfaces collapse or become contextual. Between 768 and 1279 px the Opportunity Inbox remains a persistent column beside the Decision Canvas, the Why & Proof plane moves below the canvas in the same column, and the Intelligence Rail becomes a user-invoked contextual panel rather than a persistent zone. Below 768 px the same content becomes a readable single-column sequence: inbox selection, decision, why/proof, activity, and action. Mobile receives no separate workflow, navigation model, or feature set in QUALOR-04A.
 
 Responsive changes may alter placement, but they must preserve state, evidence links, action meaning, and the `Decision → Why → Proof` order.
 
@@ -618,7 +623,7 @@ QUALOR-04B builds directly on the 04A structure with:
 - demo-specific cinematic transitions;
 - final judge-facing composition and finish.
 
-QUALOR-04B may tune presentation and interaction quality. It may not require rewriting the three-zone architecture, `Decision → Why → Proof`, recommendation hierarchy, evidence model, approval boundary, application-pack structure, or responsive content order.
+QUALOR-04B may tune presentation and interaction quality. It may not require rewriting the four-zone wide-body architecture, `Decision → Why → Proof`, recommendation hierarchy, evidence model, approval boundary, application-pack structure, or responsive content order.
 
 ## 20. Explicitly deferred scope
 
@@ -644,6 +649,7 @@ The implemented experience conforms to this spec only when all of the following 
 - Product archetype is Decision Intelligence Workspace.
 - Desktop is the primary composition and mobile remains a responsive expression of the same flow.
 - Dark workspace and light proof/document materiality retain their functional meaning.
+- At 1280 px and above the workspace body carries four zones in order: Opportunity Inbox, Decision Canvas, Why & Proof / Evidence Plane, and Intelligence Rail, with evidence and telemetry authority kept distinct.
 - Opportunity Inbox is a priority list rather than a card grid.
 - Decision Canvas is dominant and recommendation is more prominent than strategy score.
 - Only Best Project, Eligibility, Effort, and Deadline appear as first-level core facts.
