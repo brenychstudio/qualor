@@ -24,6 +24,7 @@ try {
     Invoke-Gate 'Canonical domain schema drift' { uv run --locked python -m qualor.schemas.export --check }
     Invoke-Gate 'Offline doctor' { uv run --locked qualor doctor }
     Invoke-Gate 'Frontend domain type drift' { node apps/web/scripts/generate-domain.mjs --check }
+    Invoke-Gate 'Frontend unit tests' { npm --prefix apps/web run test:run }
     Invoke-Gate 'Frontend typecheck and build' { npm --prefix apps/web run build }
     Write-Output 'GATE=Canonical and tracked secret-pattern sanity check'
     @'

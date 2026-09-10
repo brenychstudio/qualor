@@ -145,6 +145,129 @@ def decide_fixture_file(fixture_path: Path) -> None:
         typer.echo(f"{key}={value}")
 
 
+def _rebased_observations(payload: dict, now) -> dict:
+    """Slide a scenario fixture onto the current clock, preserving every interval.
+
+    A fixture describes a situation, not a moment in history. Left at its authored instants
+    its evidence eventually reads as stale and the scenario stops being the one it was
+    written to express. Every recorded instant moves by the same delta, so ages, ordering
+    and the distance to the deadline are exactly as authored.
+
+    Only observation instants move. No eligibility, decision, approval or drafting value is
+    touched: those remain the deterministic engines' to produce.
+    """
+    from datetime import datetime as _datetime
+
+    def parse(value: str) -> "_datetime":
+        return _datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+    delta = now - parse(payload["evaluated_at"])
+
+    def shift(value: str) -> str:
+        return (parse(value) + delta).isoformat().replace("+00:00", "Z")
+
+    def move(record: dict, *fields: str) -> None:
+        for field in fields:
+            if record.get(field):
+                record[field] = shift(record[field])
+
+    payload = json.loads(json.dumps(payload))
+    payload["evaluated_at"] = shift(payload["evaluated_at"])
+    move(payload["founder"], "created_at", "updated_at")
+    for entry in payload.get("projects", []):
+        move(entry["project"], "created_at", "updated_at")
+    opportunity = payload["opportunity"]
+    move(opportunity, "created_at", "updated_at")
+    if opportunity.get("deadlines"):
+        opportunity["deadlines"] = [shift(value) for value in opportunity["deadlines"]]
+    for record in payload.get("evidence", []):
+        move(record, "created_at", "updated_at", "retrieved_at")
+    return payload
+
+
+@app.command("seed-workspace-fixture")
+def seed_workspace_fixture(fixture_path: Path) -> None:
+    """Persist one owned FIXTURE file through the production workspace services.
+
+    Development tooling for acceptance runs, not a product execution path. It reads a single
+    explicit local file, never a URL, and it supplies inputs only: the deterministic engines
+    produce the decision, and approval and drafting keep their own authority.
+    """
+    from datetime import UTC, datetime
+
+    from qualor.persistence import Database
+    from qualor.workspace import WorkspaceStore
+    from qualor.workspace.models import RunEventPayload, RunRecord
+    from qualor.workspace.versioning import opportunity_semantic_digest
+
+    settings = Settings()
+    if settings.qualor_env != "development":
+        typer.echo("SEED_REQUIRES_DEVELOPMENT_ENVIRONMENT", err=True)
+        raise typer.Exit(2)
+    now = datetime.now(UTC)
+    try:
+        # An explicit local file only. A URL is not a path this command will read.
+        text = Path(fixture_path).read_text(encoding="utf-8")
+        payload = _rebased_observations(json.loads(text), now)
+        # DecisionFixture pins mode to FIXTURE, so a LIVE claim fails validation here.
+        fixture = DecisionFixture.model_validate(payload)
+    except (OSError, ValueError, KeyError, TypeError):
+        typer.echo("INVALID_FIXTURE", err=True)
+        raise typer.Exit(2) from None
+
+    result = decide_fixture(fixture)
+    decision = result.selected_decision
+    database = Database(settings.database_path)
+    database.path.parent.mkdir(parents=True, exist_ok=True)
+    with database.transaction() as connection:
+        store = WorkspaceStore(connection)
+        store.profiles.put_founder(fixture.founder)
+        for entry in fixture.projects:
+            store.projects.put_project(entry.project)
+        store.opportunities.put_opportunity_version(
+            fixture.opportunity, content_hash=opportunity_semantic_digest(fixture.opportunity)
+        )
+        for evidence in fixture.evidence:
+            store.evidence.put_evidence(
+                evidence, fixture.opportunity.id, fixture.opportunity.version
+            )
+        if decision is not None:
+            store.decisions.put_decision(decision, founder_profile_id=fixture.founder.id)
+        store.runs.create_run(
+            RunRecord(
+                schema_version="1",
+                id=f"seed-{fixture.opportunity.id}",
+                version=1,
+                created_at=now,
+                updated_at=now,
+                provenance="DOCUMENTED",
+                mode="FIXTURE",
+                state="COMPLETED",
+                opportunity_id=fixture.opportunity.id,
+                opportunity_version=fixture.opportunity.version,
+                decision_id=decision.id if decision else None,
+                decision_version=decision.version if decision else None,
+                started_at=now,
+                completed_at=now,
+                termination_reason="SUFFICIENT_CRITICAL_EVIDENCE",
+            )
+        )
+        for event in ("OPPORTUNITY_DISCOVERED", "EVIDENCE_RECORDED", "DECISION_UPDATED"):
+            store.runs.append_run_event(
+                f"seed-{fixture.opportunity.id}",
+                event_type=event,
+                payload=RunEventPayload(count=1),
+                mode="FIXTURE",
+                occurred_at=now,
+            )
+    typer.echo("MODE=FIXTURE")
+    typer.echo(f"OBSERVED_AT={fixture.evaluated_at.isoformat()}")
+    typer.echo(f"OPPORTUNITY={fixture.opportunity.id}")
+    typer.echo(f"EVIDENCE_RECORDS={len(fixture.evidence)}")
+    typer.echo(f"ELIGIBILITY={decision.eligibility_gate.state.value if decision else 'UNKNOWN'}")
+    typer.echo(f"RECOMMENDATION={result.recommendation.value}")
+
+
 @app.command("search-live")
 def search_live(
     query: str,

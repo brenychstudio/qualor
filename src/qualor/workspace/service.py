@@ -349,6 +349,11 @@ class WorkspaceService:
             approvals, approvals_total = store.approvals.page_for_opportunity(
                 opportunity_id, self.approvals.actor_id, limit, approval_offset
             )
+            # Count proof from the same repository the evidence surface reads, so the two
+            # can never disagree about whether admitted evidence exists.
+            _, evidence_total = store.evidence.page_for_opportunity(
+                opportunity_id, opportunity.version, 1, 0
+            )
             # Product state must not depend on where the caller happens to be paging, so
             # governance always reads from the first page rather than the requested one.
             governing_records = (
@@ -395,7 +400,7 @@ class WorkspaceService:
                 coverage=snapshot.decision.eligibility_gate.critical_coverage
                 if snapshot
                 else (),
-                evidence_count=len(aggregate.current.evidence),
+                evidence_count=evidence_total,
                 canvas=canvas,
                 approval=governing,
             ),

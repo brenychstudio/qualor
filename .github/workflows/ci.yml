@@ -29,3 +29,40 @@ jobs:
       - name: Verify bootstrap without AWS
         shell: pwsh
         run: ./scripts/verify.ps1
+
+  browser-acceptance:
+    name: Browser judge flow
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v10.0.1
+        with:
+          version: '0.12.5'
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install Python environment
+        run: uv sync --locked
+      - name: Install frontend from lockfile
+        run: npm --prefix apps/web ci
+      - name: Install Chromium for Playwright
+        run: npx --prefix apps/web playwright install --with-deps chromium
+      # Owned FIXTURE data over a temporary database. No AWS credentials are configured
+      # for this job, so a paid or live provider call cannot succeed here.
+      - name: Browser judge flow
+        run: npm --prefix apps/web run test:e2e
+        env:
+          CI: 'true'
+          QUALOR_ENV: development
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7

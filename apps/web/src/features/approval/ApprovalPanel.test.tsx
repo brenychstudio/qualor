@@ -42,7 +42,8 @@ function approval(changes: Partial<ApprovalView> = {}): ApprovalView {
     action: 'GENERATE_DRAFT_PACK',
     state: 'PENDING_APPROVAL',
     expires_at: '2026-09-10T12:00:00Z',
-    actionable: true,
+    // A pending approval is never consumable yet; the server reports exactly this pair.
+    actionable: false,
     reason: 'PENDING',
     approved_snapshot: approvalRequest(),
     draft_job: null,

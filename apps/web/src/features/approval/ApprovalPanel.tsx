@@ -68,7 +68,10 @@ export function ApprovalPanel({ workspace, recommendation, onClose }: {
 
   const readOnly = !!session && (session.read_only || !session.action_token);
   const state = approval?.state ?? 'NOT_REVIEWED';
-  const confirmable = !!approval && approval.state === 'PENDING_APPROVAL' && approval.actionable && !readOnly;
+  // `actionable` reports whether an approval may be consumed, which a pending one never is
+  // until it is confirmed. Confirmation is gated on the pending state and a writable session;
+  // the server still validates the confirmation itself and explains any refusal.
+  const confirmable = !!approval && approval.state === 'PENDING_APPROVAL' && !readOnly;
 
   return <section
     ref={region}
