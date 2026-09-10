@@ -1085,6 +1085,46 @@ export type Version15 = number;
  * @maxItems 100
  */
 export type Items2 = InboxItem[];
+export type ApprovalAvailable = boolean;
+export type CoverageComplete = boolean;
+export type DraftPackAvailable = boolean;
+export type EvidenceAvailable = boolean;
+export type PackId1 = string | null;
+/**
+ * The single presentation action a product state offers.
+ *
+ * An action names what the person should do next. It is not permission to execute: whether
+ * an action can actually run is answered separately by the server's own action capability.
+ */
+export type ProductAction =
+  | "CREATE_PROFILE"
+  | "ADJUST_SEARCH"
+  | "REVIEW_AVAILABLE_EVIDENCE"
+  | "RESOLVE_UNKNOWNS"
+  | "REFRESH_EVIDENCE"
+  | "RECONNECT_PROVIDER"
+  | "REVIEW_APPROVAL"
+  | "REVIEW_CHANGES"
+  | "OPEN_APPLICATION_PACK";
+export type Reason3 = string | null;
+export type RecommendationVisible = boolean;
+/**
+ * The degraded or terminal conditions the product must state out loud.
+ *
+ * A healthy workspace has no product state at all; `derive_product_state` returns `None`
+ * so the default view never accumulates permanent warning surfaces.
+ */
+export type ProductState =
+  | "EMPTY_PROFILE"
+  | "NO_RESULTS"
+  | "DISCONNECTED_LIVE_PROVIDER"
+  | "BUDGET_STOPPED"
+  | "STALE_EVIDENCE"
+  | "PARTIAL_SOURCE_FAILURE"
+  | "UNKNOWN_ELIGIBILITY"
+  | "REVOKED_APPROVAL"
+  | "PENDING_APPROVAL"
+  | "FINISHED_PACK";
 export type ProfilePresent = boolean;
 /**
  * @maxItems 100
@@ -2196,7 +2236,26 @@ export interface InboxItem {
 export interface InboxResponse {
   items: Items2;
   page: PageInfo;
+  product_state?: ProductStateView | null;
   profile_present: ProfilePresent;
+}
+/**
+ * Server-owned presentation and allowed-action policy for the current situation.
+ *
+ * `state` is None when nothing is degraded, so the healthy workspace renders no state
+ * surface at all. The availability flags are authoritative: the client presents them and
+ * never recombines the underlying facts into a permission of its own.
+ */
+export interface ProductStateView {
+  approval_available: ApprovalAvailable;
+  coverage_complete: CoverageComplete;
+  draft_pack_available: DraftPackAvailable;
+  evidence_available: EvidenceAvailable;
+  pack_id?: PackId1;
+  primary_action: ProductAction | null;
+  reason: Reason3;
+  recommendation_visible: RecommendationVisible;
+  state: ProductState | null;
 }
 export interface OpportunityWorkspaceResponse {
   approvals: Approvals;
@@ -2210,6 +2269,7 @@ export interface OpportunityWorkspaceResponse {
   opportunity_id: OpportunityId7;
   organizer: Organizer2;
   presentation_state: InboxPresentationState;
+  product_state: ProductStateView;
   program_name: ProgramName2;
   rewards: Rewards2;
   run_ids: RunIds;

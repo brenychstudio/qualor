@@ -116,11 +116,16 @@ def test_empty_workspace_and_product_openapi(tmp_path):
     assert not database.path.exists(), "constructing app must not create a database"
     with client_for(app) as client:
         empty_page = {"offset": 0, "limit": 50, "total": 0, "has_more": False}
-        assert client.get("/api/v1/inbox").json() == {
-            "items": [],
-            "profile_present": False,
-            "page": empty_page,
-        }
+        inbox = client.get("/api/v1/inbox").json()
+        assert inbox["items"] == []
+        assert inbox["profile_present"] is False
+        assert inbox["page"] == empty_page
+        # A workspace with no founder cannot evaluate anything at all.
+        assert inbox["product_state"]["state"] == "EMPTY_PROFILE"
+        assert inbox["product_state"]["primary_action"] == "CREATE_PROFILE"
+        assert inbox["product_state"]["evidence_available"] is False
+        assert inbox["product_state"]["approval_available"] is False
+        assert inbox["product_state"]["recommendation_visible"] is False
         assert client.get("/api/v1/portfolio").json() == {"founder": None, "projects": []}
         assert client.get("/api/v1/runs").json() == {
             "runs": [],
@@ -540,11 +545,13 @@ def test_no_results_is_distinct_from_empty_profile(tmp_path):
     with database.transaction() as connection:
         WorkspaceStore(connection).profiles.put_founder(fixture.founder)
     with client_for(make_app(database)) as client:
-        assert client.get("/api/v1/inbox").json() == {
-            "items": [],
-            "profile_present": True,
-            "page": {"offset": 0, "limit": 50, "total": 0, "has_more": False},
-        }
+        inbox = client.get("/api/v1/inbox").json()
+        assert inbox["items"] == []
+        assert inbox["profile_present"] is True
+        assert inbox["page"] == {"offset": 0, "limit": 50, "total": 0, "has_more": False}
+        # A founder exists, so the empty inbox is a discovery result, not a missing profile.
+        assert inbox["product_state"]["state"] == "NO_RESULTS"
+        assert inbox["product_state"]["primary_action"] == "ADJUST_SEARCH"
 
 
 @pytest.mark.parametrize("origin", ["*", "https://evil.example", "null", "http://localhost/path"])

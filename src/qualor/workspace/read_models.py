@@ -30,6 +30,7 @@ from .models import (
     RunState,
     ShortText,
 )
+from .product_state import ProductAction, ProductState
 
 
 class ProductError(Contract):
@@ -185,10 +186,30 @@ class InboxItem(Contract):
     human_action_available: StrictBool
 
 
+class ProductStateView(Contract):
+    """Server-owned presentation and allowed-action policy for the current situation.
+
+    `state` is None when nothing is degraded, so the healthy workspace renders no state
+    surface at all. The availability flags are authoritative: the client presents them and
+    never recombines the underlying facts into a permission of its own.
+    """
+
+    state: ProductState | None
+    primary_action: ProductAction | None
+    reason: ShortText | None
+    evidence_available: StrictBool
+    approval_available: StrictBool
+    draft_pack_available: StrictBool
+    coverage_complete: StrictBool
+    recommendation_visible: StrictBool
+    pack_id: NonEmpty | None = None
+
+
 class InboxResponse(Contract):
     items: Annotated[tuple[InboxItem, ...], Field(max_length=100)]
     profile_present: StrictBool
     page: PageInfo
+    product_state: ProductStateView | None = None
 
 
 class DraftJobView(Contract):
@@ -234,6 +255,7 @@ class OpportunityWorkspaceResponse(Contract):
     approvals: Annotated[tuple[ApprovalView, ...], Field(max_length=100)]
     runs_page: PageInfo
     approvals_page: PageInfo
+    product_state: ProductStateView
 
 
 class TechnicalProvenanceView(Contract):

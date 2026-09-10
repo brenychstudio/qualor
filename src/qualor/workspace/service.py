@@ -10,6 +10,11 @@ from .approval import ApprovalDenied, ApprovalService
 from .drafting import DraftingService
 from .lifecycle import WorkspaceLifecycle, proof_freshness
 from .models import ApprovalBindings, ApprovalReason
+from .product_state import (
+    ProductStateInputs,
+    derive_product_state,
+    select_governing_approval,
+)
 from .read_models import (
     ActionCapability,
     ActivityResponse,
@@ -30,6 +35,7 @@ from .read_models import (
     OpportunityWorkspaceResponse,
     PageInfo,
     PortfolioView,
+    ProductStateView,
     ProjectFitWhyView,
     ProjectSummary,
     RewardDeadlineWhyView,
@@ -316,10 +322,14 @@ class WorkspaceService:
         ranked = tuple(
             item.model_copy(update={"priority_rank": rank}) for rank, (_, item) in enumerate(items)
         )
+        profile_present = self.portfolio().founder is not None
         return InboxResponse(
             items=ranked[offset : offset + limit],
-            profile_present=self.portfolio().founder is not None,
+            profile_present=profile_present,
             page=page_info(len(ranked), limit, offset),
+            product_state=self._product_state(
+                profile_present=profile_present, result_count=len(ranked)
+            ),
         )
 
     def workspace(
@@ -339,6 +349,24 @@ class WorkspaceService:
             approvals, approvals_total = store.approvals.page_for_opportunity(
                 opportunity_id, self.approvals.actor_id, limit, approval_offset
             )
+            # Product state must not depend on where the caller happens to be paging, so
+            # governance always reads from the first page rather than the requested one.
+            governing_records = (
+                approvals
+                if approval_offset == 0
+                else store.approvals.page_for_opportunity(
+                    opportunity_id, self.approvals.actor_id, limit, 0
+                )[0]
+            )
+        approval_views = tuple(self.approval(approval.id) for approval in approvals)
+        governing_views = (
+            approval_views
+            if governing_records is approvals
+            else tuple(self.approval(record.id) for record in governing_records)
+        )
+        governing = select_governing_approval(
+            tuple((str(view.state), str(view.reason), view.pack_id) for view in governing_views)
+        )
         return OpportunityWorkspaceResponse(
             opportunity_id=opportunity.id,
             version=opportunity.version,
@@ -354,9 +382,70 @@ class WorkspaceService:
             rewards=opportunity.rewards,
             coverage=snapshot.decision.eligibility_gate.critical_coverage if snapshot else (),
             run_ids=tuple(run.id for run in runs),
-            approvals=tuple(self.approval(approval.id) for approval in approvals),
+            approvals=approval_views,
             runs_page=page_info(runs_total, limit, run_offset),
             approvals_page=page_info(approvals_total, limit, approval_offset),
+            product_state=self._product_state(
+                profile_present=self.portfolio().founder is not None,
+                # A selected opportunity is by definition a result, so NO_RESULTS, which is
+                # a workspace-wide condition, can never govern this per-decision view.
+                result_count=1,
+                run=run,
+                freshness=aggregate.freshness,
+                coverage=snapshot.decision.eligibility_gate.critical_coverage
+                if snapshot
+                else (),
+                evidence_count=len(aggregate.current.evidence),
+                canvas=canvas,
+                approval=governing,
+            ),
+        )
+
+    def _product_state(
+        self,
+        *,
+        profile_present,
+        result_count,
+        run=None,
+        freshness="UNKNOWN",
+        coverage=(),
+        evidence_count=0,
+        canvas=None,
+        approval=None,
+    ) -> ProductStateView:
+        """Hand the recorded facts to the policy. No safety decision is taken here."""
+        action = canvas.primary_action if canvas else None
+        result = derive_product_state(
+            ProductStateInputs(
+                profile_present=profile_present,
+                result_count=result_count,
+                run_state=str(run.state) if run else None,
+                provider_state=str(run.provider_state) if run and run.provider_state else None,
+                termination_reason=run.termination_reason if run else None,
+                freshness=str(freshness),
+                coverage_states=tuple(str(entry.state) for entry in coverage),
+                evidence_count=evidence_count,
+                eligibility=str(canvas.eligibility) if canvas and canvas.eligibility else None,
+                recommendation=str(canvas.recommendation)
+                if canvas and canvas.recommendation
+                else None,
+                approval_state=approval[0] if approval else None,
+                approval_reason=approval[1] if approval else None,
+                pack_id=approval[2] if approval else None,
+                action_available=bool(action.available) if action else False,
+                action_reason=str(action.reason) if action else "NOT_FOUND",
+            )
+        )
+        return ProductStateView(
+            state=result.state,
+            primary_action=result.primary_action,
+            reason=result.reason,
+            evidence_available=result.evidence_available,
+            approval_available=result.approval_available,
+            draft_pack_available=result.draft_pack_available,
+            coverage_complete=result.coverage_complete,
+            recommendation_visible=result.recommendation_visible,
+            pack_id=result.pack_id,
         )
 
     def evidence(

@@ -33,6 +33,11 @@ function workspace(changes: Partial<OpportunityWorkspaceResponse> = {}): Opportu
     runs_page: page,
     approvals: [],
     approvals_page: page,
+    product_state: {
+      state: null, primary_action: null, reason: null,
+      evidence_available: true, approval_available: true, draft_pack_available: false,
+      coverage_complete: true, recommendation_visible: true, pack_id: null,
+    },
     decision: {
       decision_id: 'decision-1',
       decision_version: 2,

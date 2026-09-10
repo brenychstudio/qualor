@@ -921,6 +921,123 @@
       "title": "PolicyVersions",
       "type": "object"
     },
+    "ProductAction": {
+      "description": "The single presentation action a product state offers.\n\nAn action names what the person should do next. It is not permission to execute: whether\nan action can actually run is answered separately by the server's own action capability.",
+      "enum": [
+        "CREATE_PROFILE",
+        "ADJUST_SEARCH",
+        "REVIEW_AVAILABLE_EVIDENCE",
+        "RESOLVE_UNKNOWNS",
+        "REFRESH_EVIDENCE",
+        "RECONNECT_PROVIDER",
+        "REVIEW_APPROVAL",
+        "REVIEW_CHANGES",
+        "OPEN_APPLICATION_PACK"
+      ],
+      "title": "ProductAction",
+      "type": "string"
+    },
+    "ProductState": {
+      "description": "The degraded or terminal conditions the product must state out loud.\n\nA healthy workspace has no product state at all; `derive_product_state` returns `None`\nso the default view never accumulates permanent warning surfaces.",
+      "enum": [
+        "EMPTY_PROFILE",
+        "NO_RESULTS",
+        "DISCONNECTED_LIVE_PROVIDER",
+        "BUDGET_STOPPED",
+        "STALE_EVIDENCE",
+        "PARTIAL_SOURCE_FAILURE",
+        "UNKNOWN_ELIGIBILITY",
+        "REVOKED_APPROVAL",
+        "PENDING_APPROVAL",
+        "FINISHED_PACK"
+      ],
+      "title": "ProductState",
+      "type": "string"
+    },
+    "ProductStateView": {
+      "additionalProperties": false,
+      "description": "Server-owned presentation and allowed-action policy for the current situation.\n\n`state` is None when nothing is degraded, so the healthy workspace renders no state\nsurface at all. The availability flags are authoritative: the client presents them and\nnever recombines the underlying facts into a permission of its own.",
+      "properties": {
+        "approval_available": {
+          "title": "Approval Available",
+          "type": "boolean"
+        },
+        "coverage_complete": {
+          "title": "Coverage Complete",
+          "type": "boolean"
+        },
+        "draft_pack_available": {
+          "title": "Draft Pack Available",
+          "type": "boolean"
+        },
+        "evidence_available": {
+          "title": "Evidence Available",
+          "type": "boolean"
+        },
+        "pack_id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pack Id"
+        },
+        "primary_action": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProductAction"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Reason"
+        },
+        "recommendation_visible": {
+          "title": "Recommendation Visible",
+          "type": "boolean"
+        },
+        "state": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProductState"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "state",
+        "primary_action",
+        "reason",
+        "evidence_available",
+        "approval_available",
+        "draft_pack_available",
+        "coverage_complete",
+        "recommendation_visible"
+      ],
+      "title": "ProductStateView",
+      "type": "object"
+    },
     "ProjectSummary": {
       "additionalProperties": false,
       "properties": {
@@ -1372,6 +1489,9 @@
     "presentation_state": {
       "$ref": "#/$defs/InboxPresentationState"
     },
+    "product_state": {
+      "$ref": "#/$defs/ProductStateView"
+    },
     "program_name": {
       "minLength": 1,
       "title": "Program Name",
@@ -1430,7 +1550,8 @@
     "run_ids",
     "approvals",
     "runs_page",
-    "approvals_page"
+    "approvals_page",
+    "product_state"
   ],
   "title": "OpportunityWorkspaceResponse",
   "type": "object"

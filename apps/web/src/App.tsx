@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { apiRequest } from './api/client';
-import type { OpportunityWorkspaceResponse, PortfolioView as Portfolio } from './generated/domain';
+import type { OpportunityWorkspaceResponse, PortfolioView as Portfolio, Recommendation } from './generated/domain';
 import { WorkspaceShell, useWorkspace } from './layout/WorkspaceShell';
 import { PortfolioView } from './features/portfolio/PortfolioView';
 import { DecisionTrace } from './layout/DecisionTrace';
@@ -9,7 +9,7 @@ import { DecisionCanvas } from './features/decision/DecisionCanvas';
 import { ActivityHistory } from './features/activity/ActivityHistory';
 import { ApprovalPanel } from './features/approval/ApprovalPanel';
 import { ApplicationPack } from './features/draft-pack/ApplicationPack';
-import type { Recommendation } from './generated/domain';
+import { ProductStateSurface } from './features/states/ProductStateSurface';
 
 function InboxFoundation() {
   const { inbox, error, selectedWorkspace, selectedWorkspaceError, selectedWorkspaceLoading } = useWorkspace();
@@ -41,6 +41,7 @@ function InboxFoundation() {
       <div><dt>Projects</dt><dd>{portfolio?.projects ? `${portfolio.projects.length} ${portfolio.projects.length === 1 ? 'project' : 'projects'}` : '—'}</dd></div>
       <div><dt>Qualification</dt><dd>{portfolio ? portfolio.founder && portfolio.projects.length ? 'No evaluation' : 'Locked' : 'Unavailable'}</dd></div>
     </dl>
+    <ProductStateSurface productState={inbox?.product_state ?? null} />
     {portfolioError && <p className="quiet" role="status">Portfolio context unavailable</p>}
     <div className="stage-action"><Link className="primary-action" to="/portfolio">{profilePresent === false ? 'Complete profile' : 'Review portfolio'}<span aria-hidden="true">↗</span></Link><p className="quiet">Unknown facts remain UNKNOWN.</p></div>
     <DecisionTrace />
@@ -58,6 +59,7 @@ function SelectedDecision({ workspace }: { workspace: OpportunityWorkspaceRespon
     canvas.current?.querySelector<HTMLButtonElement>('button[data-primary-action]')?.focus();
   }
   return <div ref={canvas}>
+    <ProductStateSurface productState={workspace.product_state} />
     <DecisionCanvas
       workspace={workspace}
       approvalOpen={intent !== null}
