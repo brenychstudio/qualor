@@ -32,6 +32,16 @@ test('default priority follows server ranks even when decision and IDs disagree,
   expect(rows().every(row => !row.hasAttribute('aria-current'))).toBe(true);
 });
 
+test('rank orders the queue but never surfaces as a visible score', () => {
+  // 04B sharpens the selected row. Rank stays the server's ordering key, never a number the judge can read.
+  mount([item('a', 7), item('b', 42)]);
+  expect(order()).toEqual(['Program a', 'Program b']);
+  for (const row of rows()) {
+    expect(row.textContent).not.toMatch(/\b(?:7|42)\b/);
+    expect(row.textContent).not.toMatch(/rank|score|priority\s*\d/i);
+  }
+});
+
 test('deadline sort uses reliable earliest future, unknown/unreliable, then past with server-rank ties', async () => {
   mount([
     item('past-earlier', 4, { deadline: { timezone_status: 'UTC', values: ['2026-09-01T00:00:00Z'] } }),

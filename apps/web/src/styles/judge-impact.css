@@ -1,0 +1,84 @@
+/* QUALOR-04B judge impact layer.
+ *
+ * Presentation only. Every rule is scoped with :not(.workspace--optical-preview) so the frozen
+ * A1.2 D02 optical frame inherits none of it, and confined to the 1280px+ judge viewport so the
+ * narrower projections keep the geometry Task 15 accepted.
+ *
+ * The five-second read this layer serves: selected opportunity, recommendation, reason, action.
+ */
+
+@media (min-width: 1280px) {
+  .workspace:not(.workspace--optical-preview) {
+    /* Capped so the longest recommendation, PREPARE, still fits the 169px content box of the
+       accepted rectangular surface. Measured, not estimated: 44px overflowed it at 188px. */
+    --judge-hero: clamp(32px, 2.7vw, 39px);
+    --judge-context: clamp(24px, 2.05vw, 32px);
+    --judge-reason: 13px;
+  }
+
+  /* The recommendation answers the opportunity, so it has to outrank the title that asks it.
+     Before this layer the opportunity heading rendered larger than the hero at 1440. */
+  .workspace:not(.workspace--optical-preview) .recommendation-surface h1 {
+    font-size: var(--judge-hero);
+    letter-spacing: -.045em;
+    margin: 12px 0 0;
+  }
+
+  .workspace:not(.workspace--optical-preview) .recommendation-rule {
+    width: 32px;
+    margin-top: 14px;
+    margin-bottom: 14px;
+  }
+
+  /* The reason is the second thing read in the five-second budget; caption size buried it. */
+  .workspace:not(.workspace--optical-preview) .recommendation-surface > p {
+    font-size: var(--judge-reason);
+    line-height: 1.6;
+    color: #d3e5f0;
+  }
+
+  /* Context still leads by position, no longer by size. */
+  .workspace:not(.workspace--optical-preview) .opportunity-heading h2 {
+    font-size: var(--judge-context);
+  }
+
+  /* The four recorded facts support the decision rather than rivalling it. The :not() is
+     load-bearing: without it this selector outranks `.signal-lane dd .signal-state` and
+     inflates the project name and eligibility state to 16px, which clips the longest
+     recorded project name inside its lane. */
+  .workspace:not(.workspace--optical-preview) .signal-lane dd strong:not(.signal-state) {
+    font-size: 16px;
+  }
+
+  /* The next human action is unmistakable while staying a control, never a success badge. */
+  .workspace:not(.workspace--optical-preview) .primary-action {
+    font-size: 14px;
+    letter-spacing: .01em;
+    padding: 13px 0;
+    gap: 22px;
+    border-bottom-color: var(--text-secondary);
+  }
+
+  /* The queue recedes through restraint, not through dimmer text: lowering the opacity of
+     unselected rows would drop #93AEC1 on #071018 from 8.3:1 to about 3.9:1 and fail AA.
+     The selected row gains presence instead, and the canvas hero above does the rest. */
+  .workspace:not(.workspace--optical-preview) .opportunity-row--selected strong {
+    font-size: 14px;
+  }
+
+  .workspace:not(.workspace--optical-preview) .opportunity-row--selected .queue-decision-axis b {
+    font-size: 13px;
+  }
+
+  /* The canvas resolves for the selection it answers. This is interface presentation of an
+     already-persisted decision, not a depiction of QUALOR computing one: it runs once on
+     mount, carries no progress semantics, and never repeats. */
+  .workspace:not(.workspace--optical-preview) .decision-composition {
+    animation: judge-decision-resolve 420ms var(--motion-easing) both;
+  }
+}
+
+@keyframes judge-decision-resolve {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}

@@ -135,6 +135,26 @@ test('unknown Strategy stays unresolved and never becomes zero or probability la
   expect(strategy).not.toHaveTextContent(/win probability|chance/i);
 });
 
+test('a known Strategy score keeps its prioritization boundary and never reads as a probability', () => {
+  // 04B raises Strategy's visual prominence, so the boundary copy has to travel with the number.
+  render(<DecisionCanvas workspace={workspace()} />);
+  const strategy = screen.getByRole('group', { name: 'Strategy priority' });
+  expect(strategy).toHaveTextContent('prioritization');
+  expect(strategy).not.toHaveTextContent(/probability|chance|likelihood|odds|% chance|win rate/i);
+  expect(screen.getByText('Strategy is prioritization, not probability of winning.')).toBeVisible();
+});
+
+test('the recommendation surface keeps recommendation, then reason, then strategy', () => {
+  // The judge reads the hero first. 04B strengthens that order visually; this pins it semantically.
+  render(<DecisionCanvas workspace={workspace()} />);
+  const surface = screen.getByRole('region', { name: 'Recommendation' });
+  const hero = within(surface).getByRole('heading', { level: 1 });
+  const reason = within(surface).getByText('The recorded rules and project facts support this decision.');
+  const strategy = within(surface).getByRole('group', { name: 'Strategy priority' });
+  expect(hero.compareDocumentPosition(reason) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(reason.compareDocumentPosition(strategy) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
 test('unresolved project and typed effort truth never receive synthetic substitutes', () => {
   render(<DecisionCanvas workspace={workspace({
     program_name: 'Production-only record',
