@@ -138,17 +138,30 @@ test('the whole approved story ends at a prepared pack, never at a submission', 
   await expect(reloaded).toContainText('DRAFT_FOR_HUMAN_REVIEW');
 });
 
-test('the wide workspace body keeps its canonical three zones', async ({ page }) => {
+test('the wide workspace body keeps its canonical four zones', async ({ page }) => {
   await page.getByRole('link', { name: /AWS Agents for Humans/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'APPLY' })).toBeVisible();
 
+  // ADR 0004: at 1280px and above the body is inbox, canvas, proof and rail. Proof and
+  // telemetry are separate authorities, so the Evidence Plane holds its own zone and is
+  // never folded back into the Intelligence Rail.
   await expect(page.getByRole('complementary', { name: 'Opportunity inbox' })).toBeVisible();
   await expect(page.getByRole('main')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Why & proof' })).toBeVisible();
   await expect(page.getByRole('complementary', { name: 'Workspace context' })).toBeVisible();
 
-  // The workspace body is the grid; the header is navigation, not a zone.
-  const columns = await page.locator('.workspace-grid > *').count();
-  expect(columns).toBeGreaterThanOrEqual(3);
+  // The workspace body is the grid; the header is navigation, not a zone. Asserting the
+  // computed area projection rather than a child count means a regression to
+  // `queue canvas rail` fails here instead of passing quietly.
+  const areas = await page
+    .locator('.workspace-grid')
+    .evaluate(element => getComputedStyle(element).gridTemplateAreas);
+  expect(areas.replace(/"/g, ' ').replace(/\s+/g, ' ').trim()).toBe('queue canvas proof rail');
+
+  // Each zone is a direct child of the body grid, so proof sits beside the rail, not inside it.
+  for (const zone of ['Opportunity inbox', 'Why & proof', 'Workspace context']) {
+    await expect(page.locator(`.workspace-grid > [aria-label="${zone}"]`)).toBeVisible();
+  }
 });
 
 test('the browser never receives an action token it could leak', async ({ page }) => {
