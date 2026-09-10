@@ -56,6 +56,8 @@ export const clockText = (value: string) => value.slice(11, 16);
 export interface PresentedEvent {
   key: string;
   time: string;
+  /** Full recorded instant, so assistive technology is not limited to a clock reading. */
+  instant: string;
   phase: string | null;
   label: string;
   detail: string | null;
@@ -74,6 +76,7 @@ export function presentEvent(event: RunEventView): PresentedEvent {
   return {
     key: `${event.run_id}:${event.sequence}`,
     time: clockText(event.occurred_at),
+    instant: event.occurred_at,
     phase: event.phase ? PHASE_COPY[event.phase] : null,
     label,
     detail: observations.length ? observations.join(' · ') : null,

@@ -32,7 +32,7 @@ export function ActivityTimeline({ activity, label }: { activity: ActivityRespon
   if (activity.events.length === 0) return null;
   return <ol className="event-axis" aria-label={label}>
     {activity.events.map(presentEvent).map(event => <li key={event.key}>
-      <time dateTime={event.time}>{event.time}</time>
+      <time dateTime={event.instant}>{event.time}</time>
       <span>{event.phase ? `${event.phase} · ` : ''}{event.label}{event.detail ? ` · ${event.detail}` : ''}</span>
     </li>)}
   </ol>;

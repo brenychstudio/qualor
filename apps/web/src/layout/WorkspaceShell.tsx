@@ -4,6 +4,8 @@ import { Link, NavLink, Outlet, useLocation, useOutletContext } from 'react-rout
 import { apiRequest, ApiError } from '../api/client';
 import type { InboxResponse, OpportunityWorkspaceResponse } from '../generated/domain';
 import { OpportunityInbox } from '../features/inbox/OpportunityInbox';
+import { useFocusReturn } from '../a11y/useFocusReturn';
+import { useReducedMotion } from '../a11y/useReducedMotion';
 import { EvidenceSheet } from '../features/evidence/EvidenceSheet';
 import { IntelligenceRail } from '../features/activity/IntelligenceRail';
 
@@ -36,9 +38,8 @@ export function WorkspaceFrame({ children, queue, context, proof, previewLabel, 
   const [narrow, setNarrow] = useState(window.innerWidth < 768);
   const proofButton = useRef<HTMLButtonElement>(null);
   const proofPlane = useRef<HTMLElement>(null);
-  const proofWasOpen = useRef(false);
   const [contextOpen, setContextOpen] = useState(false);
-  const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const reducedMotion = useReducedMotion();
   const contextButton = useRef<HTMLButtonElement>(null);
   const contextPanel = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -46,10 +47,9 @@ export function WorkspaceFrame({ children, queue, context, proof, previewLabel, 
     window.addEventListener('resize', resize);
     return () => window.removeEventListener('resize', resize);
   }, []);
-  useEffect(() => {
-    if (proofOpen) { proofWasOpen.current = true; proofPlane.current?.focus(); }
-    else if (proofWasOpen.current) { proofWasOpen.current = false; proofButton.current?.focus(); }
-  }, [proofOpen]);
+  useFocusReturn(proofOpen, proofButton);
+  useFocusReturn(contextOpen, contextButton);
+  useEffect(() => { if (proofOpen) proofPlane.current?.focus(); }, [proofOpen]);
   useEffect(() => {
     if (!proofOpen || !narrow) return;
     const previousOverflow = document.body.style.overflow;
@@ -62,13 +62,7 @@ export function WorkspaceFrame({ children, queue, context, proof, previewLabel, 
       contextPanel.current?.scrollIntoView?.({ block: 'start', behavior: 'instant' });
     }
   }, [contextOpen]);
-  useEffect(() => {
-    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const update = () => setReducedMotion(media.matches);
-    media.addEventListener('change', update);
-    return () => media.removeEventListener('change', update);
-  }, []);
-  function closeContext() { setContextOpen(false); contextButton.current?.focus(); }
+  function closeContext() { setContextOpen(false); }
   function closeProof() { setProofOpen(false); }
   return <div className={`workspace${opticalPreview ? ' workspace--optical-preview' : ''}${reducedMotion ? ' reduce-motion' : ''}${proofOpen ? ' proof-is-open' : ''}`} onKeyDown={event => {
     if (event.key === 'Escape' && proofOpen) closeProof();
