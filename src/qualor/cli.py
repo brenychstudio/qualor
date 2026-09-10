@@ -145,15 +145,38 @@ def decide_fixture_file(fixture_path: Path) -> None:
         typer.echo(f"{key}={value}")
 
 
+# Field names the fixture contract declares temporal. Read from the typed model rather than
+# guessed from string shape, so a text operand that merely looks like a date is never moved.
+_INSTANT_KEYS = frozenset(
+    {
+        "created_at",
+        "updated_at",
+        "evaluated_at",
+        "retrieved_at",
+        "verified_at",
+        "facts_verified_at",
+        "last_refresh_failed_at",
+    }
+)
+# Scenario dates that the contract types as date-or-instant.
+_SCENARIO_DATE_KEYS = frozenset({"deadlines", "expiry", "submission_dates"})
+# Asserted facts whose wrapped `value` is temporal.
+_TEMPORAL_FACT_KEYS = frozenset({"incorporation_date"})
+# Discriminated scalar operands that carry time.
+_TEMPORAL_OPERAND_KINDS = frozenset({"instant", "date"})
+
+
 def _rebased_observations(payload: dict, now) -> dict:
     """Slide a scenario fixture onto the current clock, preserving every interval.
 
     A fixture describes a situation, not a moment in history. Left at its authored instants
-    its evidence eventually reads as stale and the scenario stops being the one it was
-    written to express. Every recorded instant moves by the same delta, so ages, ordering
-    and the distance to the deadline are exactly as authored.
+    the scenario decays: its evidence reads as stale and its evaluation eventually falls
+    outside the very eligibility window it was authored inside, so the deterministic verdict
+    changes with the calendar. One delta moves every temporal fact the scenario owns, at any
+    nesting depth, so ages, ordering, the distance to the deadline and each rule window are
+    exactly as authored.
 
-    Only observation instants move. No eligibility, decision, approval or drafting value is
+    Only temporal facts move. No eligibility, decision, approval or drafting value is
     touched: those remain the deterministic engines' to produce.
     """
     from datetime import datetime as _datetime
@@ -163,26 +186,34 @@ def _rebased_observations(payload: dict, now) -> dict:
 
     delta = now - parse(payload["evaluated_at"])
 
-    def shift(value: str) -> str:
-        return (parse(value) + delta).isoformat().replace("+00:00", "Z")
+    def shift(value):
+        """Move one temporal value, keeping the precision it was authored with."""
+        if not isinstance(value, str) or not value:
+            return value
+        moved = parse(value) + delta
+        # A calendar date stays a calendar date; an instant stays an instant.
+        return moved.date().isoformat() if len(value) == 10 else (
+            moved.isoformat().replace("+00:00", "Z")
+        )
 
-    def move(record: dict, *fields: str) -> None:
-        for field in fields:
-            if record.get(field):
-                record[field] = shift(record[field])
+    def shift_each(value):
+        return [shift(item) for item in value] if isinstance(value, list) else shift(value)
 
-    payload = json.loads(json.dumps(payload))
-    payload["evaluated_at"] = shift(payload["evaluated_at"])
-    move(payload["founder"], "created_at", "updated_at")
-    for entry in payload.get("projects", []):
-        move(entry["project"], "created_at", "updated_at")
-    opportunity = payload["opportunity"]
-    move(opportunity, "created_at", "updated_at")
-    if opportunity.get("deadlines"):
-        opportunity["deadlines"] = [shift(value) for value in opportunity["deadlines"]]
-    for record in payload.get("evidence", []):
-        move(record, "created_at", "updated_at", "retrieved_at")
-    return payload
+    def rebase(node, key=None):
+        if isinstance(node, dict):
+            temporal_operand = node.get("kind") in _TEMPORAL_OPERAND_KINDS
+            rebased = {}
+            for name, value in node.items():
+                temporal = name in _INSTANT_KEYS or name in _SCENARIO_DATE_KEYS or (
+                    name == "value" and (temporal_operand or key in _TEMPORAL_FACT_KEYS)
+                )
+                rebased[name] = shift_each(value) if temporal else rebase(value, name)
+            return rebased
+        if isinstance(node, list):
+            return [rebase(item, key) for item in node]
+        return node
+
+    return rebase(json.loads(json.dumps(payload)))
 
 
 @app.command("seed-workspace-fixture")
