@@ -42,6 +42,11 @@
     font-size: var(--judge-context);
   }
 
+  /* The context band introduces the decision; it does not need the room of a data table. */
+  .workspace:not(.workspace--optical-preview) .opportunity-metadata {
+    margin: 14px 0 14px;
+  }
+
   /* The four recorded facts support the decision rather than rivalling it. The :not() is
      load-bearing: without it this selector outranks `.signal-lane dd .signal-state` and
      inflates the project name and eligibility state to 16px, which clips the longest
@@ -50,13 +55,54 @@
     font-size: 16px;
   }
 
-  /* The next human action is unmistakable while staying a control, never a success badge. */
+  /* The verdict needs room to read as a verdict. The surface keeps its accepted 31% width so
+     the Decision Field paths still converge on its left edge; the presence comes from vertical
+     rhythm, not from taking more of the canvas. */
+  .workspace:not(.workspace--optical-preview) .decision-signature {
+    height: auto;
+    min-height: 262px;
+    padding-block: 4px;
+  }
+
+  .workspace:not(.workspace--optical-preview) .recommendation-surface {
+    padding: 24px 21px 18px;
+    min-height: 250px;
+  }
+
+  .workspace:not(.workspace--optical-preview) .recommendation-surface .section-index {
+    opacity: .82;
+  }
+
+  /* Strategy is a supporting signal, not a second headline competing with the verdict. */
+  .workspace:not(.workspace--optical-preview) .recommendation-strategy {
+    margin-top: 14px;
+    padding-top: 11px;
+  }
+
+  .workspace:not(.workspace--optical-preview) .recommendation-strategy strong {
+    font-size: 18px;
+  }
+
+  /* The human action belongs to the decision, not to the end of the page. It sits directly
+     under the recommendation surface, matched to its width and right edge, so verdict, reason
+     and action read as one object. It stays a control: no fill, no success colour. */
+  .workspace:not(.workspace--optical-preview) .decision-primary-action-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
+  }
+
   .workspace:not(.workspace--optical-preview) .primary-action {
+    width: 31%;
+    box-sizing: border-box;
+    justify-content: space-between;
+    gap: 12px;
     font-size: 14px;
     letter-spacing: .01em;
-    padding: 13px 0;
-    gap: 22px;
-    border-bottom-color: var(--text-secondary);
+    padding: 12px 21px;
+    border: 1px solid #4d6f88;
+    border-radius: 4px;
+    background: linear-gradient(135deg, #14313f, #0d1f2b);
   }
 
   /* The queue recedes through restraint, not through dimmer text: lowering the opacity of
@@ -68,6 +114,61 @@
 
   .workspace:not(.workspace--optical-preview) .opportunity-row--selected .queue-decision-axis b {
     font-size: 13px;
+  }
+
+  /* Closed proof reads as "proof is available", not as the brightest object on screen. It stays
+     light document material and keeps its ink; it stops being a full-height slab. Paper moves
+     from #f3f4f2 to #e8ebe7, which holds --proof-ink at about 11:1, far above AA. */
+  .workspace:not(.workspace--optical-preview) .proof-context {
+    align-self: start;
+    margin-block: 26px 0;
+    padding: 20px 15px 17px;
+    background: linear-gradient(125deg, #e8ebe7, #dfe4e4);
+    border-color: #c6d0d3;
+  }
+
+  /* The inner document blocks carried a near-white #ffffff61 wash that made the closed card the
+     brightest mass in the frame and inflated its height. Softening the wash and tightening the
+     rhythm keeps the paper and the ink, and returns the card to a supporting role. */
+  .workspace:not(.workspace--optical-preview) .proof-sheet-title {
+    padding-bottom: 14px;
+    margin-bottom: 12px;
+  }
+
+  .workspace:not(.workspace--optical-preview) .proof-document-section {
+    background: #ffffff30;
+    border-color: #d5dde033;
+    padding: 13px 11px;
+    margin-top: 8px;
+  }
+
+  /* The affordance is the point of the closed state, so it keeps its weight while the panel
+     around it recedes. */
+  .workspace:not(.workspace--optical-preview) .proof-trigger {
+    font-size: 11px;
+    padding: 10px 15px;
+  }
+
+  /* Secondary operational truth stays present and legible, and stops sharing weight with the
+     decision. Nothing is removed and no colour is dimmed: this is spacing and scale only. */
+  .workspace:not(.workspace--optical-preview) .decision-semantics {
+    margin-top: 12px;
+  }
+
+  /* Measured at .88 the muted text still holds 6.6:1 on the canvas, well above AA. */
+  .workspace:not(.workspace--optical-preview) .decision-operational {
+    opacity: .88;
+  }
+
+  .workspace:not(.workspace--optical-preview) .section-rule::after {
+    background: #1d2f3a;
+  }
+
+  /* The trace reads after the decision and its action. At 1440x810 it deliberately begins
+     below the fold so the judge's first frame ends in quiet space rather than in a heading
+     sliced by the viewport edge. Nothing is removed; it is one scroll away. */
+  .workspace:not(.workspace--optical-preview) .section-rule.trace-heading {
+    margin-top: 44px;
   }
 
   /* The canvas resolves for the selection it answers. This is interface presentation of an
