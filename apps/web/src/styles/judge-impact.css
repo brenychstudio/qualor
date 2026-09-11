@@ -149,6 +149,25 @@
     padding: 10px 15px;
   }
 
+  /* The closed card repeated the canvas reason word for word at almost the same weight, so the
+     judge read the same sentence twice and learned nothing new about the proof. The Decision
+     Canvas owns the reason; here it drops to a supporting echo at 7.4:1, well above AA, with
+     every word still present. The blocker, freshness and the affordance — the parts that
+     actually answer "what proof exists and why open it" — now lead the card.
+
+     The closed state genuinely has no proof counts to show: claims and cited sources arrive
+     with EvidenceSheetView, which is only fetched when the plane opens. Reframing what is
+     already there is the honest option; inventing a proof summary is not. */
+  .workspace:not(.workspace--optical-preview) .proof-document-section--summary p {
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--proof-citation);
+  }
+
+  .workspace:not(.workspace--optical-preview) .proof-document-section--summary .proof-provenance {
+    opacity: .85;
+  }
+
   /* Secondary operational truth stays present and legible, and stops sharing weight with the
      decision. Nothing is removed and no colour is dimmed: this is spacing and scale only. */
   .workspace:not(.workspace--optical-preview) .decision-semantics {
@@ -182,4 +201,104 @@
 @keyframes judge-decision-resolve {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
+}
+
+/* ------------------------------------------------------------------------------------------
+ * Task 2 — the decision-to-proof signature transition.
+ *
+ * The argument this composition makes: the dark workspace steps back and a document takes
+ * authority. The exact source words are the object with the most presence on screen, because
+ * source-grounded proof is what separates QUALOR from a plausible-sounding answer.
+ * ---------------------------------------------------------------------------------------- */
+
+@media (min-width: 1280px) {
+  /* The plane used to open at max(350px, 31%), which at 1440 cut the Decision Field in half
+     and covered the APPLY hero, so the judge saw a sliced canvas. Aligning its left edge to
+     the inbox/canvas divider — the same 17.5fr the body grid gives the queue — replaces the
+     canvas cleanly and leaves the selected opportunity standing as context. */
+  .workspace:not(.workspace--optical-preview) .evidence-plane {
+    left: 17.5%;
+    padding: 24px clamp(40px, 4vw, 72px) 56px;
+    background: linear-gradient(112deg, #f1f0ec, #eceee9 46%, #e7eae6);
+    box-shadow: -16px 0 0 #cfd2cb, -58px 0 78px #00000059;
+  }
+
+  /* One reading measure turns a wide light panel into a page. It also closes the gulf that
+     pushed each claim's state to the far right, away from the rule it belongs to. */
+  .workspace:not(.workspace--optical-preview) .evidence-plane-heading,
+  .workspace:not(.workspace--optical-preview) .evidence-plane > h2,
+  .workspace:not(.workspace--optical-preview) .evidence-plane > .evidence-mode,
+  .workspace:not(.workspace--optical-preview) .evidence-sheet {
+    max-width: 820px;
+  }
+
+  .workspace:not(.workspace--optical-preview) .evidence-plane > h2 {
+    margin-top: 16px;
+  }
+
+  .workspace:not(.workspace--optical-preview) .proof-introduction {
+    margin-top: 14px;
+    font-size: 13px;
+    line-height: 1.75;
+  }
+
+  /* Density: the authored rhythm showed roughly one claim per screen, so a judge scrolling
+     for five seconds saw almost no evidence. Tightening it puts claim, excerpt and citation
+     in the same frame without touching a single word. */
+  .workspace:not(.workspace--optical-preview) .proof-claim-heading {
+    margin-top: 18px;
+    padding-top: 12px;
+  }
+
+  .workspace:not(.workspace--optical-preview) .proof-claim-heading strong {
+    font-size: 17px;
+    letter-spacing: .02em;
+  }
+
+  .workspace:not(.workspace--optical-preview) .proof-boundary {
+    margin-top: 10px;
+    font-size: 11px;
+  }
+
+  .workspace:not(.workspace--optical-preview) .proof-metadata {
+    gap: 10px 30px;
+    padding: 11px 0;
+  }
+
+  /* The exact source words. Editorial serif against the sans interpretation above it, with a
+     rule marking where QUALOR stops speaking and the source starts. This is the one element
+     in the whole product that must not look generated. */
+  .workspace:not(.workspace--optical-preview) .evidence-citation .proof-excerpt {
+    font-family: var(--font-editorial);
+    font-size: 22px;
+    line-height: 1.52;
+    margin: 14px 0 14px;
+    padding: 2px 0 2px 22px;
+    border-left: 2px solid #98a79b;
+    color: var(--proof-ink);
+    max-width: 620px;
+  }
+
+  /* The citation is judge-critical, so it reads as a destination rather than a footnote, and
+     sits with the source identity instead of below a block of metadata. */
+  .workspace:not(.workspace--optical-preview) .proof-source-url {
+    font-size: 11px;
+    margin-top: 12px;
+  }
+
+  .workspace:not(.workspace--optical-preview) .proof-citation-link {
+    margin-top: 9px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #24485f;
+    text-decoration-thickness: 1px;
+  }
+
+  .workspace:not(.workspace--optical-preview) .evidence-provenance {
+    margin-top: 14px;
+  }
+
+  .workspace:not(.workspace--optical-preview) .evidence-section {
+    margin-top: 4px;
+  }
 }

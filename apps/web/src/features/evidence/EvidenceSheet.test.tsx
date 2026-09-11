@@ -265,6 +265,25 @@ test('points View original at the preserved official citation with safe link att
   expect(link.getAttribute('rel')?.split(/\s+/)).toEqual(expect.arrayContaining(['noopener', 'noreferrer']));
 });
 
+test('keeps the citation with its excerpt and out of the collapsed provenance disclosure', async () => {
+  // 04B re-ranks citation prominence. The judge-critical link must stay beside the quotation
+  // it belongs to, never demoted into Level-3 audit detail, and the quotation stays bound to
+  // the same source it cites.
+  const view = renderSheet(sheet());
+  const link = await screen.findByRole('link', { name: /view original/i });
+  const disclosure = screen.getByRole('button', { name: /technical provenance/i });
+  const detailId = disclosure.getAttribute('aria-controls')!;
+  expect(link.closest(`#${CSS.escape(detailId)}`)).toBeNull();
+  expect(link.closest('.evidence-provenance')).toBeNull();
+
+  const citation = link.closest('figure');
+  expect(citation).not.toBeNull();
+  const excerpt = view.container.querySelector('blockquote')!;
+  expect(citation!.contains(excerpt)).toBe(true);
+  expect(link.getAttribute('href')).toMatch(/^https:\/\//);
+  expect(excerpt.getAttribute('cite')).toBe(link.getAttribute('href'));
+});
+
 test('hides technical identifiers until the technical provenance disclosure is opened', async () => {
   renderSheet(sheet({
     proofs: [proof({ technical_provenance: { source_id: 'source-official', policy_version: 1, extraction_state: 'REVIEWED' } })],
