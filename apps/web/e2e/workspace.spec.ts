@@ -45,6 +45,70 @@ test('fixture work is labelled FIXTURE and never presented as live research', as
   await expect(operational).toContainText('FIXTURE');
   await expect(operational).not.toContainText('LIVE');
   await expect(page.locator('body')).not.toContainText(/Bedrock|AgentCore/i);
+
+  // Refining the rail must not let recorded fixture history read as live work. The rail states
+  // the recorded mode and the run's own outcome, and claims no retrieval it did not perform.
+  const rail = page.getByRole('region', { name: 'Intelligence' });
+  await expect(rail).toContainText('FIXTURE');
+  await expect(rail).toContainText('COMPLETED');
+  await expect(rail).not.toContainText(/\bLIVE\b/);
+  await expect(rail).not.toContainText(/searching|in progress|running now|live research/i);
+});
+
+test('the Intelligence Rail reads as the operational trail behind this decision', async ({ page }) => {
+  await page.getByRole('link', { name: /AWS Agents for Humans/ }).click();
+  const rail = page.getByRole('region', { name: 'Intelligence' });
+
+  // Exactly the three observations the server persisted, in the recorded sequence. The seeded
+  // run stamps all three with one instant, so the order has to come from the sequence.
+  const recorded = await page.request.get('/api/v1/runs').then(response => response.json());
+  const rows = rail.getByRole('list', { name: /recorded activity/i }).getByRole('listitem');
+  await expect(rows).toHaveCount(recorded.events.length);
+  // Read from each event's own persisted sequence, which restarts per run, rather than from its
+  // position in the response.
+  await expect(rows.locator('.event-order')).toHaveText(
+    recorded.events.map((event: { sequence: number }) => String(event.sequence).padStart(2, '0')));
+  await expect(rows.locator('.event-title')).toHaveText(
+    ['Opportunity discovered', 'Evidence recorded', 'Decision updated']);
+  // Only the recorded decision update is marked as the decision outcome.
+  await expect(rail.locator('li[data-outcome="true"]')).toHaveCount(1);
+  await expect(rail.locator('li[data-outcome="true"] .event-title')).toHaveText('Decision updated');
+
+  // The run's own counters, scoped to the run and matching what the server recorded. Nothing is
+  // borrowed from the evidence sheet to make the rail look busier than the run actually was.
+  const metrics = rail.getByRole('group', { name: /recorded in this run/i });
+  await expect(metrics.locator('dd')).toHaveText(['0', '0', '0', '0']);
+  expect(recorded.runs.at(-1)).toMatchObject({
+    search_calls: 0, fetched_documents: 0, official_source_count: 0, verified_claim_count: 0,
+  });
+  await expect(metrics).toContainText(/no retrieval or verification call is recorded/i);
+
+  // The recorded stop reason reads as copy; the canonical code stays available, not displayed.
+  const termination = rail.locator('.run-termination');
+  await expect(termination).toHaveText(/critical evidence/i);
+  await expect(rail).not.toContainText('SUFFICIENT_CRITICAL_EVIDENCE');
+  await expect(termination).toHaveAttribute('title', 'SUFFICIENT_CRITICAL_EVIDENCE');
+});
+
+test.describe('reduced-motion rail', () => {
+  test.use({ reducedMotion: 'reduce' });
+  test('the recorded trail is complete and in order without any motion', async ({ page }) => {
+    await page.getByRole('link', { name: /AWS Agents for Humans/ }).click();
+    const rail = page.getByRole('region', { name: 'Intelligence' });
+    const rows = rail.getByRole('list', { name: /recorded activity/i }).getByRole('listitem');
+    await expect(rows.locator('.event-title')).toHaveText(
+      ['Opportunity discovered', 'Evidence recorded', 'Decision updated']);
+    // The entry keyframes start at opacity 0 and fill both, so a row frozen invisible would
+    // still satisfy a visibility check. The painted state is asserted directly instead.
+    const painted = await rows.evaluateAll(items => items.map(item => ({
+      opacity: getComputedStyle(item).opacity,
+      animations: item.getAnimations().length,
+    })));
+    expect(painted).toEqual([
+      { opacity: '1', animations: 0 }, { opacity: '1', animations: 0 }, { opacity: '1', animations: 0 },
+    ]);
+    await expect(rail).toContainText(/no retrieval or verification call is recorded/i);
+  });
 });
 
 test('Why this decision opens source-grounded proof and returns to the dark workspace', async ({ page }) => {
@@ -477,13 +541,12 @@ test.describe('reduced motion', () => {
   });
 });
 
-/* Horizontal scroll area the CLOSED workspace already produces, measured at each width. The
-   1440 pixel is the fr-track grid rounding its scroll area up; the 22 at 1280 is a long recorded
-   state token overflowing the narrowed Intelligence Rail as an inline run, which is why no
-   element's own box exceeds the viewport there. Both belong to the frozen closed composition,
-   and neither is the evidence reader's to change. Pinned as maxima so this fails on a
-   regression while a genuine fix to either is free to lower them. */
-const FROZEN_CLOSED_OVERFLOW: Record<number, number> = { 1440: 1, 1280: 22, 1024: 0, 768: 0, 320: 0 };
+/* Horizontal scroll area the CLOSED workspace produces, measured at each width. It used to be
+   1px at 1440 and 22px at 1280, both from `SUFFICIENT_CRITICAL_EVIDENCE` — one unbreakable token
+   overflowing the narrowed Intelligence Rail as an inline run, which is why no element's own box
+   ever exceeded the viewport. Presenting that reason as copy removed it at every width, so the
+   maxima are now zero and any return of the defect fails here. */
+const FROZEN_CLOSED_OVERFLOW: Record<number, number> = { 1440: 0, 1280: 0, 1024: 0, 768: 0, 320: 0 };
 
 test('the reader stays inside every supported width without horizontal overflow', async ({ page }) => {
   for (const width of [1440, 1280, 1024, 768, 320]) {

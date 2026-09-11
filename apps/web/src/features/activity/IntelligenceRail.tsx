@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ApiError, apiRequest } from '../../api/client';
 import type { ActivityResponse } from '../../generated/domain';
-import { latestRun, presentEvent, presentRun } from './activity-presenter';
+import { latestRun, presentEvents, presentRun } from './activity-presenter';
 
 /** Structured operational telemetry read from persisted run history. Never a chat. */
 export function useActivity() {
@@ -30,10 +30,15 @@ export function useActivity() {
 /** Renders nothing when no event was recorded; callers own the honest empty copy. */
 export function ActivityTimeline({ activity, label }: { activity: ActivityResponse; label: string }) {
   if (activity.events.length === 0) return null;
+  // Two children per row, because the wide history renders `.event-axis` as a two-column grid.
+  // The recorded position leads, since a seeded run stamps every observation with one instant.
   return <ol className="event-axis" aria-label={label}>
-    {activity.events.map(presentEvent).map(event => <li key={event.key}>
-      <time dateTime={event.instant}>{event.time}</time>
-      <span>{event.phase ? `${event.phase} · ` : ''}{event.label}{event.detail ? ` · ${event.detail}` : ''}</span>
+    {presentEvents(activity.events).map(event => <li key={event.key} data-outcome={event.outcome ? 'true' : undefined}>
+      <span className="event-stamp"><span className="event-order">{event.order}</span><time dateTime={event.instant}>{event.time}</time></span>
+      <span className="event-record">
+        <b className="event-title">{event.label}</b>
+        {(event.phase || event.detail) && <span className="event-meta">{[event.phase, event.detail].filter(Boolean).join(' · ')}</span>}
+      </span>
     </li>)}
   </ol>;
 }
@@ -52,17 +57,28 @@ export function IntelligenceRail() {
   return <section className="rail-section fixture-events" aria-label="Intelligence">
     <h3>Activity</h3>
     {current ? <>
-      <p className="runtime-mode"><span className="workspace-label">{current.mode}</span>{current.disconnected && <span className="state-stale"> DISCONNECTED</span>}</p>
-      <dl className="context-facts">
-        <div><dt>Official sources</dt><dd>{current.officialSources}</dd></div>
-        <div><dt>Verified claims</dt><dd>{current.verifiedClaims}</dd></div>
-        <div><dt>Recorded state</dt><dd>{current.state}</dd></div>
-      </dl>
-      <p className="quiet">{current.usage}{current.reservedCost ? ` · ${current.reservedCost} reserved` : ''}</p>
-      {current.terminationReason && <p className="quiet">{current.terminationReason}</p>}
+      <p className="runtime-mode"><span className="workspace-label">{current.mode}</span><b className="run-state">{current.state}</b>{current.disconnected && <span className="state-stale"> DISCONNECTED</span>}</p>
+      {current.terminationCopy && <p className="quiet run-termination" title={current.terminationReason ?? undefined}>{current.terminationCopy}</p>}
     </> : null}
     {activity.events.length === 0
       ? <p className="quiet">No recorded activity.</p>
       : <ActivityTimeline activity={activity} label="Recorded activity" />}
+    {/* These four counters are this run's own retrieval work, not the evidence base behind the
+        decision: the server derives them from what the run fetched and validated. They are
+        scoped explicitly so a recorded fixture run reads as having done no retrieval, rather
+        than as a decision with no evidence. Nothing here is borrowed from the evidence sheet. */}
+    {current ? <div className="run-metrics" role="group" aria-labelledby="run-metrics-scope">
+      <p className="section-index" id="run-metrics-scope">Recorded in this run</p>
+      <dl className="context-facts">
+        <div><dt>Search calls</dt><dd>{current.searchCalls}</dd></div>
+        <div><dt>Documents fetched</dt><dd>{current.fetchedDocuments}</dd></div>
+        <div><dt>Official sources</dt><dd>{current.officialSources}</dd></div>
+        <div><dt>Claims verified</dt><dd>{current.verifiedClaims}</dd></div>
+      </dl>
+      {current.noRecordedCalls && <p className="quiet">No retrieval or verification call is recorded for this run.</p>}
+      {/* Budget can be reserved by a run that then records no call at all — a live provider that
+          disconnects is exactly that. Committed spend is reported either way. */}
+      {current.reservedCost && <p className="quiet run-spend">{current.reservedCost} reserved</p>}
+    </div> : null}
   </section>;
 }

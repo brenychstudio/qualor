@@ -481,6 +481,145 @@
   to { opacity: 1; transform: none; }
 }
 
+/* ------------------------------------------------------------------------------------------
+ * Task 3 — truthful intelligence presence.
+ *
+ * The autonomous work already happened and is already persisted as RunRecord and RunEvent. It
+ * read as a flat list of codes, so a judge could miss that discovery, evidence and the decision
+ * were distinct recorded steps — and `SUFFICIENT_CRITICAL_EVIDENCE`, one unbreakable token,
+ * overflowed the 187px zone and pushed the page's scroll area past the viewport at 1280.
+ *
+ * Nothing here adds an event, a count, or a state. It gives the recorded ones a hierarchy: the
+ * run's identity first, then what it recorded in order, then the counters that belong to it.
+ * ---------------------------------------------------------------------------------------- */
+
+/* The run's own outcome sits with its mode, so mode and state are read as one fact. */
+.workspace:not(.workspace--optical-preview) .run-state {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .06em;
+  color: var(--text-secondary);
+}
+
+/* Any recorded code that reaches the rail wraps inside the zone instead of overflowing it,
+   whatever the runtime records next. The readable copy in front of it is the presenter's. */
+.workspace:not(.workspace--optical-preview) .run-termination {
+  margin-top: 9px;
+  overflow-wrap: anywhere;
+}
+
+/* Recorded position leads the row: a seeded run stamps every observation with one instant, so
+   the clock alone cannot show the order the server actually recorded. */
+.workspace:not(.workspace--optical-preview) .event-stamp {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.workspace:not(.workspace--optical-preview) .event-order {
+  color: var(--text-muted);
+  font-size: 9px;
+  letter-spacing: .08em;
+  font-variant-numeric: tabular-nums;
+}
+
+.workspace:not(.workspace--optical-preview) .event-record {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.workspace:not(.workspace--optical-preview) .event-title {
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+/* Counts and phase support the observation; they stop competing with it for the first read. */
+.workspace:not(.workspace--optical-preview) .event-meta {
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.workspace:not(.workspace--optical-preview) .run-metrics {
+  margin-top: 26px;
+  padding-top: 17px;
+  border-top: 1px solid var(--divider);
+}
+
+/* Four counters stacked one per row made the quietest part of the rail its tallest, which reads
+   as emphasis the numbers have not earned. Paired, they stay a readable telemetry block under
+   the observations they belong to. */
+/* `.rail-section p` outranks `.section-index`, so without this the scope label renders at 12px:
+   larger than the facts it introduces, which is the opposite of the hierarchy intended. */
+.workspace:not(.workspace--optical-preview) .run-metrics .section-index {
+  font-size: 10px;
+}
+
+.workspace:not(.workspace--optical-preview) .run-metrics .context-facts {
+  margin-top: 13px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px 12px;
+}
+
+.workspace:not(.workspace--optical-preview) .run-metrics .context-facts > div + div {
+  margin-top: 0;
+}
+
+/* Paired columns are about 61px at 1280. `dd` already wraps anywhere in base.css; `dt` did
+   not, and it is the longer of the two. */
+.workspace:not(.workspace--optical-preview) .run-metrics .context-facts dt {
+  overflow-wrap: anywhere;
+}
+
+.workspace:not(.workspace--optical-preview) .run-metrics .quiet {
+  margin-top: 13px;
+}
+
+@media (min-width: 1280px) {
+  /* In the rail the recorded position and its clock read as one line above the observation. */
+  .workspace:not(.workspace--optical-preview) .fixture-events .event-stamp {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 9px;
+  }
+
+  .workspace:not(.workspace--optical-preview) .fixture-events .event-axis {
+    gap: 20px;
+  }
+
+  /* The one event the decision came from. The marker is the persisted DECISION_UPDATED fact,
+     not an inference about what caused what, and it is emphasis only: no extra copy, no
+     implied ongoing work. */
+  .workspace:not(.workspace--optical-preview) .fixture-events .event-axis > li[data-outcome]::before {
+    background: var(--focus);
+    border-color: var(--focus);
+    box-shadow: 0 0 6px #8ed8ff59;
+  }
+
+  .workspace:not(.workspace--optical-preview) .fixture-events .event-axis > li[data-outcome] .event-title {
+    color: var(--citation);
+  }
+}
+
+/* A newly rendered observation resolves once, from the render that first shows it. Deliberately
+   outside the breakpoint: inside it, crossing 1279-1280 re-applies the declaration and replays
+   the fade, which is a resize, not a new observation. No timer behind it and no loop — a
+   complete run looks complete, because it is. */
+.workspace:not(.workspace--optical-preview) .fixture-events .event-axis > li {
+  animation: judge-event-enter 260ms var(--motion-easing) both;
+}
+
+@keyframes judge-event-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* Proof-open context recession.
  *
  * Deliberately outside the 1280px block: the bounded reader leaves the Intelligence Rail on
