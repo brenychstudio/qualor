@@ -756,3 +756,204 @@ test('the Intelligence Rail finishes inside its own panel rather than at the win
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
   }
 });
+
+/* --------------------------------------------------------------------------------------------
+ * Responsive integrity.
+ *
+ * Two invariants, both measured rather than eyeballed. A recorded value must stay inside the
+ * lane that owns it and out of the corridor its connector runs in — at 768 and 1024 the value
+ * column was 65px wide, so the recorded project name wrapped to four lines and broke out of its
+ * own 62px lane. And the Intelligence Rail's first screen must end on something deliberate: a
+ * section that begins crisply and is then cut by the panel edge reads as broken, whatever the
+ * content underneath is doing.
+ * ------------------------------------------------------------------------------------------ */
+
+/** Lane regions, the connector corridor beside each lane, and whether either escapes the other.
+ *  Corridor points come from the rendered path through the SVG's screen CTM: at 768 the painted
+ *  connector is the mobile bracket, whose return leg runs far to the left of the lane stack, so
+ *  a single leftmost-x would be a corridor that does not exist. */
+async function laneIntegrity(page: Page) {
+  return page.evaluate(() => {
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    const visible = (el: Element | null) => el && getComputedStyle(el).display !== 'none' ? el as SVGSVGElement : null;
+    const svg = visible(document.querySelector('.decision-convergence'))
+      ?? visible(document.querySelector('.mobile-convergence'));
+    const ctm = svg?.getScreenCTM() ?? null;
+    const stroke = svg ? parseFloat(getComputedStyle(svg).strokeWidth) || 1 : 0;
+    const samples: { x: number; y: number }[] = [];
+    if (ctm && svg) {
+      for (const path of svg.querySelectorAll('path')) {
+        const total = path.getTotalLength();
+        for (let i = 0; i <= 60; i++) {
+          const p = path.getPointAtLength((total * i) / 60).matrixTransform(ctm);
+          samples.push({ x: p.x, y: p.y });
+        }
+      }
+    }
+    return [...document.querySelectorAll('.signal-lane')].map(lane => {
+      const laneBox = lane.getBoundingClientRect();
+      const value = lane.querySelector('dd strong')!;
+      const valueBox = value.getBoundingClientRect();
+      const range = document.createRange();
+      range.selectNodeContents(value);
+      const lines = new Set([...range.getClientRects()].map(line => Math.round(line.top))).size;
+      const beside = samples.filter(s => s.y >= valueBox.top - 1 && s.y <= valueBox.bottom + 1).map(s => s.x);
+      const corridorLeft = beside.length ? Math.min(...beside) - stroke / 2 : null;
+      return {
+        label: lane.querySelector('dt')?.textContent ?? '',
+        lines,
+        // How far the value's painted box escapes the lane that owns it.
+        escapesTop: r2(laneBox.top - valueBox.top),
+        escapesBottom: r2(valueBox.bottom - laneBox.bottom),
+        escapesRight: r2(valueBox.right - laneBox.right),
+        corridorLeft: corridorLeft === null ? null : r2(corridorLeft),
+        valueToCorridor: corridorLeft === null ? null : r2(corridorLeft - valueBox.right),
+        // Any sampled connector point painted inside the value's own box.
+        pathInsideValue: samples.filter(s =>
+          s.x >= valueBox.left - stroke && s.x <= valueBox.right + stroke
+          && s.y >= valueBox.top - stroke && s.y <= valueBox.bottom + stroke).length,
+      };
+    });
+  });
+}
+
+async function selectW01(page: Page, width: number) {
+  await page.setViewportSize({ width, height: 810 });
+  await page.goto('/inbox');
+  await page.getByRole('link', { name: /AWS Agents for Humans/ }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'APPLY' })).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+}
+
+test('a recorded value stays inside its lane and out of the connector corridor at every width', async ({ page }) => {
+  // 901 is the narrowest lane in the 768-1279 band, not 768: below 901 the signature stacks and
+  // the lanes go nearly full width. 320 is outside this fix but monitored, so a value that grew
+  // long enough to break out of the narrow lane fails here instead of being discovered visually.
+  for (const width of [1440, 1280, 1024, 901, 768, 320]) {
+    await selectW01(page, width);
+    const lanes = await laneIntegrity(page);
+    expect(lanes, `lane count at ${width}`).toHaveLength(4);
+    expect(lanes.some(lane => lane.corridorLeft !== null), `connector sampled beside a lane at ${width}`).toBe(true);
+    for (const lane of lanes) {
+      // The value is painted inside the lane that owns it. At 768 and 1024 the longest recorded
+      // project name wrapped to four lines and its box ran past the lane's bottom edge.
+      expect(lane.escapesTop, `${lane.label} escapes lane top at ${width}`).toBeLessThanOrEqual(0);
+      expect(lane.escapesBottom, `${lane.label} escapes lane bottom at ${width}`).toBeLessThanOrEqual(0);
+      expect(lane.escapesRight, `${lane.label} escapes lane right at ${width}`).toBeLessThanOrEqual(0);
+      // The lane reserves the corridor with its own right padding, so this holds whatever the
+      // value says; what it guards is that the reservation is still there and still clears the
+      // connector the SVG actually paints beside this lane.
+      if (lane.corridorLeft !== null) {
+        expect(lane.valueToCorridor, `${lane.label} value to corridor at ${width}`).toBeGreaterThan(0);
+      }
+      expect(lane.pathInsideValue, `${lane.label} path inside value at ${width}`).toBe(0);
+    }
+  }
+});
+
+test('the accepted wide Decision Field geometry is unchanged by the medium correction', async ({ page }) => {
+  // 1440 and 1280 are regression anchors: the medium fix must not reach them.
+  for (const [width, expected] of [[1440, { lane: 320.63, value: 83 }], [1280, { lane: 282.23, value: 83 }]] as const) {
+    await selectW01(page, width);
+    const measured = await page.evaluate(() => {
+      const r2 = (n: number) => Math.round(n * 100) / 100;
+      const lanes = [...document.querySelectorAll('.signal-lane')];
+      const boxes = lanes.map(lane => lane.getBoundingClientRect());
+      const columns = getComputedStyle(lanes[0]).gridTemplateColumns.split(' ').map(parseFloat);
+      const rect = (selector: string) => {
+        const box = document.querySelector(selector)!.getBoundingClientRect();
+        return { x: r2(box.x), y: r2(box.y), w: r2(box.width) };
+      };
+      const svg = document.querySelector('.decision-convergence') as SVGSVGElement;
+      const ctm = svg.getScreenCTM()!;
+      const first = svg.querySelectorAll('path')[0];
+      return {
+        laneWidth: r2(boxes[0].width),
+        valueColumn: r2(columns.at(-1)!),
+        gaps: boxes.slice(1).map((box, index) => r2(box.top - boxes[index].bottom)),
+        recommendation: rect('.recommendation-surface'),
+        connectorEnd: r2(first.getPointAtLength(first.getTotalLength()).matrixTransform(ctm).x),
+      };
+    });
+    // Pinned measurements, deliberately: this is a freeze anchor for a band the medium rule
+    // must not reach, so a change to the canvas padding or the body track ratios should fail
+    // here and be re-accepted rather than pass unnoticed.
+    expect(measured.laneWidth, `lane width at ${width}`).toBeCloseTo(expected.lane, 0);
+    expect(measured.valueColumn, `value column at ${width}`).toBeCloseTo(expected.value, 0);
+    for (const gap of measured.gaps) expect(gap, `signal gap at ${width}`).toBeCloseTo(10, 1);
+    // The recommendation still starts where the connectors end, so the medium correction did
+    // not move the hero. Its right edge is the canvas edge by construction, so that is not
+    // worth asserting; where it begins is.
+    expect(measured.recommendation.x, `recommendation left at ${width}`)
+      .toBeGreaterThanOrEqual(measured.connectorEnd - 2);
+  }
+});
+
+
+/* Where the panel's edge falls relative to a section boundary is a function of the window's
+ * height and of how much text the rail wraps at that width, so no spacing value can place it —
+ * measured, a section boundary lands past the fade at 1280 and 1440 x 810 and at 1366 x 768 but
+ * not at 1440 x 900, and at 1440 x 700 the Activity section is taller than the panel and must be
+ * cut. What the layer does guarantee, and what the owner actually reported, is that no line of
+ * recorded text is ever guillotined: the fade is deeper than any line the rail renders, so a
+ * line can only cross the panel edge from inside the fade. That is asserted across the whole
+ * size matrix rather than at the width it was tuned for. */
+const RAIL_SIZES = [
+  [1920, 810], [1600, 810], [1440, 810], [1366, 768], [1280, 810],
+  [1440, 1080], [1440, 900], [1440, 700], [1280, 660],
+] as const;
+
+test('no recorded line is ever cut while it is still crisply painted', async ({ page }) => {
+  for (const [width, height] of RAIL_SIZES) {
+    await page.setViewportSize({ width, height });
+    await page.goto('/inbox');
+    await page.getByRole('link', { name: /AWS Agents for Humans/ }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'APPLY' })).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+
+    const rail = page.getByRole('complementary', { name: 'Workspace context' });
+    const fold = await rail.evaluate(element => {
+      const panel = element.getBoundingClientRect();
+      const fadeLength = Number(/calc\(100% - (\d+)px\)/.exec(getComputedStyle(element).maskImage || '')?.[1] ?? 0);
+      const foldStart = panel.bottom - fadeLength;
+      const cut: { text: string; top: number }[] = [];
+      let tallestLine = 0;
+      // Real line boxes, from a Range over each text node: getClientRects() on a block element
+      // returns its border box, which would report a wrapped paragraph as one very tall "line".
+      for (const node of element.querySelectorAll('h3, p, dt, dd, b, span, a, time')) {
+        if (!node.textContent?.trim() || node.children.length) continue;
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        for (const line of range.getClientRects()) {
+          if (line.height === 0) continue;
+          tallestLine = Math.max(tallestLine, line.height);
+          // Crossing the panel edge while still above the point the fade begins.
+          if (line.top < panel.bottom - 0.5 && line.bottom > panel.bottom + 0.5 && line.top < foldStart - 0.5) {
+            cut.push({ text: node.textContent.trim().slice(0, 40), top: Math.round(line.top) });
+          }
+        }
+      }
+      return { fadeLength, scrollTop: element.scrollTop, tallestLine: Math.round(tallestLine), cut };
+    });
+
+    expect(fold.scrollTop, `rail starts at the top at ${width}x${height}`).toBe(0);
+    // The guarantee rests on the fade outreaching a line, so that relation is asserted too.
+    expect(fold.fadeLength, `fade clears the tallest line at ${width}x${height}`)
+      .toBeGreaterThan(fold.tallestLine);
+    expect(fold.cut, `crisply cut lines at ${width}x${height}`).toEqual([]);
+  }
+});
+
+test('no supported width scrolls the document sideways', async ({ page }) => {
+  for (const width of [1440, 1280, 1024, 901, 768, 320]) {
+    await page.setViewportSize({ width, height: 810 });
+    await page.goto('/inbox');
+    await page.getByRole('link', { name: /AWS Agents for Humans/ }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'APPLY' })).toBeVisible();
+    // clientWidth, not innerWidth: innerWidth includes a classic scrollbar and would hide a
+    // real overflow of up to its width.
+    const overflow = await page.evaluate(() =>
+      document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow, `horizontal overflow at ${width}`).toBeLessThanOrEqual(0);
+  }
+});

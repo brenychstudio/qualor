@@ -1,8 +1,9 @@
 /* QUALOR-04B judge impact layer.
  *
  * Presentation only. Every rule is scoped with :not(.workspace--optical-preview) so the frozen
- * A1.2 D02 optical frame inherits none of it, and confined to the 1280px+ judge viewport so the
- * narrower projections keep the geometry Task 15 accepted.
+ * A1.2 D02 optical frame inherits none of it. Almost all of it is confined to the 1280px+ judge
+ * viewport so the narrower projections keep the geometry Task 15 accepted; the one exception is
+ * the 768-1279 signal-lane correction near the end of this file, which is bounded to that band.
  *
  * The five-second read this layer serves: selected opportunity, recommendation, reason, action.
  */
@@ -697,12 +698,15 @@
     scrollbar-color: #35576b transparent;
     /* The panel holds more recorded context than an 810px window can show at any sensible
        density, so its last pixels fade rather than guillotining a line of text against the
-       edge — which is what made the footer read as accidentally cut. The bottom padding is
-       deeper than the fade, so scrolled to the end the fade falls on deliberate space and the
-       final line stays fully painted. Nothing is removed from the document or the a11y tree. */
-    padding-bottom: 44px;
-    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 34px), transparent);
-    mask-image: linear-gradient(to bottom, #000 calc(100% - 34px), transparent);
+       edge — which is what made the footer read as accidentally cut. The fade is deeper than
+       any line the rail renders, which is the part that is actually guaranteed: a line can only
+       cross the panel edge if its top is within one line-height of it, so it is always already
+       inside the fade, at every width and every window height. The bottom padding is deeper
+       still, so scrolled to the end the fade falls on deliberate space and the final recorded
+       line stays fully painted. Nothing is removed from the document or the a11y tree. */
+    padding-bottom: 56px;
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 44px), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 44px), transparent);
   }
 
   /* A development preview label pushes the whole body down by 29px; base.css compensates the
@@ -734,6 +738,58 @@
   .workspace:not(.workspace--optical-preview) .run-metrics .context-facts dd {
     margin-top: 0;
     font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ------------------------------------------------------------------------------------------
+ * Responsive integrity — the medium signal lane, and the rail's first fold.
+ *
+ * Measured at HEAD before anything changed, and the measurement corrected the diagnosis.
+ *
+ *   The medium defect is NOT a horizontal collision with the connector corridor: at 1024 the
+ *   value clears it by 22.51px and at 768 by 11.22px, and no sampled connector point falls
+ *   inside any value box at either width. The defect is that `.signal-lane`'s third column is
+ *   a fixed 65px at 768-1279 while the second takes everything left over — 208px at 1024 and
+ *   321px at 768. The longest recorded project name is forced into 65px, breaks mid-word, wraps
+ *   to four lines, and a four-line 12px block is 57.6px inside a lane whose content box is 50px:
+ *   it escapes its own lane's border box by 1.56px and reads as text spilling into the causal
+ *   geometry. The label column had the room the value needed all along.
+ *
+ *   The rail defect is that the panel's fixed height falls inside the second section, so at rest
+ *   the Local Controller section begins 37.86px (1440) of crisply painted content before the
+ *   fade starts, and at 1440 the line "Local controller connected" straddles the panel edge.
+ *   What is painted crisply has to be whole sections; anything partial has to be visibly
+ *   continuing rather than cut.
+ * ---------------------------------------------------------------------------------------- */
+
+@media (min-width: 768px) and (max-width: 1279px) {
+  /* Three regions the layout knows about: icon, then label, then value — with the connector
+     corridor kept by the lane's own right padding, which the measurement confirms the connector
+     starts at. Sharing the free space between label and value instead of starving one of them
+     is what keeps a long recorded name inside its lane: it is proportional, so it holds for a
+     longer name and for a narrower canvas rather than being fitted to today's string. */
+  .workspace:not(.workspace--optical-preview) .signal-lane {
+    grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  /* A wrapped value stays one readable block rather than four fragments, and never breaks
+     mid-word now that the column is wide enough to hold the words. */
+  .workspace:not(.workspace--optical-preview) .signal-lane dd .signal-state {
+    line-height: 1.35;
+    overflow-wrap: break-word;
+  }
+}
+
+@media (min-width: 1280px) {
+  /* Separation between recorded sections, raised from 28px. Where the panel's edge falls
+     relative to a section boundary is a function of the window's height and of how much text
+     the rail wraps at that width, so no spacing value can place it: measured after this change,
+     the section after Activity starts past the fade at 1280 and 1440 x 810 and at 1366 x 768,
+     but not at 1440 x 900, and at 1440 x 700 the Activity section is itself taller than the
+     panel. What the layer guarantees is the fade above; this is a rhythm choice that reads as
+     deliberate separation in its own right and lands the acceptance viewport on a boundary. */
+  .workspace:not(.workspace--optical-preview) .workspace-rail .rail-section + .rail-section {
+    margin-top: 64px;
   }
 }
 
