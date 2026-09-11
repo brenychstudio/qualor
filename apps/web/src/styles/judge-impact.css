@@ -204,63 +204,211 @@
 }
 
 /* ------------------------------------------------------------------------------------------
- * Task 2 — the decision-to-proof signature transition.
+ * Task 2 — the integrated evidence reader.
  *
  * The argument this composition makes: the dark workspace steps back and a document takes
  * authority. The exact source words are the object with the most presence on screen, because
  * source-grounded proof is what separates QUALOR from a plausible-sounding answer.
+ *
+ * This layer supersedes the earlier proof-position and edge treatment rather than competing
+ * with it, because that treatment had three measured defects at 1440x810 that no element-bound
+ * assertion could see:
+ *
+ *   1. The plane was `position: fixed` against the initial containing block and restated the
+ *      body grid as `left: 17.5%; right: 13%`. It was never anchored to the grid it claimed.
+ *   2. Its depth came from `box-shadow: -16px 0 0 #cfd2cb, 10px 0 0 #cfd2cb`. Zero-blur opaque
+ *      offsets paint outside the border box and outside the element's own `overflow`, so they
+ *      laid solid paper bars 16px into the Inbox and 10px into the Rail while `boundingBox()`
+ *      still read a perfectly bounded element.
+ *   3. Insetting the band to `top: 106px; bottom: 22px` left the closed central view showing
+ *      around it: 24px of the canvas topline, a 22px cap of the closed Decision Context card,
+ *      and 11px of the Decision Trace heading below.
+ *
+ * The correction is one mode rather than three adjustments. A production host takes the real
+ * Decision + Why/Proof grid span and fills it, one element clips every inner paint, and the
+ * warm document sits inside that clip on balanced gutters.
  * ---------------------------------------------------------------------------------------- */
 
+/* Citation order, at every width: the exact words, then the source and the way to open it, then
+   the remaining recorded metadata. The attribution block carries the source identity, so it
+   reads as one object with the quotation above it instead of as a second metadata table. */
+.workspace:not(.workspace--optical-preview) .proof-attribution {
+  border-block: 0;
+  border-top: 1px solid var(--document-rule);
+  padding-bottom: 0;
+}
+
+.workspace:not(.workspace--optical-preview) .evidence-citation .proof-source-url {
+  margin-top: 11px;
+}
+
+/* Below the judge viewport the reader keeps the narrow and mid projections Task 15 accepted:
+   the host generates no box at all and the plane stays exactly where base.css places it. */
+.workspace:not(.workspace--optical-preview) .evidence-host {
+  display: contents;
+}
+
 @media (min-width: 1280px) {
-  /* The plane is bounded to the canonical Decision + Why/Proof span, so proof replaces the
-     content it belongs to and nothing else. The numbers are the body grid's own track
-     contract at >=1280px, measured rather than chosen: the four tracks resolve to
-     0-17.5% inbox, 17.5-67.5% canvas, 67.5-87% proof, 87-100% rail. Opening at 17.5% and
-     stopping at 87% therefore lands exactly on the inbox/decision and proof/intelligence
-     boundaries, which keeps the Intelligence Rail visible and the four-zone reading intact.
+  .workspace:not(.workspace--optical-preview) {
+    /* The body grid's own track contract, restated for the host so the reader can be placed by
+       grid span instead of by viewport percentages. base.css keeps the authoritative copy for
+       `.workspace-grid`; the browser test asserts the two resolve to the same computed tracks,
+       so a change to either that leaves the other behind fails rather than quietly misaligns. */
+    --judge-body-tracks: minmax(0, 17.5fr) minmax(0, 50fr) minmax(0, 19.5fr) minmax(0, 13fr);
+    /* The one vertical constant, mirroring the header height base.css already fixes at 58px
+       (and the 29px development label it already accounts for as 87px). CSS cannot read that
+       height here; the browser test pins the reader's top edge to the header's bottom edge. */
+    --judge-reader-top: 58px;
+    /* Design reference: a 24px desktop gutter that gives way at narrower judge widths. */
+    --judge-reader-gutter: clamp(16px, 1.7vw, 24px);
+    --judge-reader-inset: clamp(24px, 2.6vw, 44px);
+  }
 
-     Before this, the plane ran `right: 0` to the viewport edge: it buried the rail and had no
-     right boundary at all, so proof read as a clipped web page rather than a bounded evidence
-     object. Both edges are now material, and the bottom inset finishes the object instead of
-     letting it bleed off-screen. Long evidence scrolls inside it, as it already did. */
-  .workspace:not(.workspace--optical-preview) .evidence-plane {
-    left: 17.5%;
-    right: 13%;
-    bottom: 22px;
-    padding: 24px clamp(36px, 3.6vw, 64px) 44px;
-    background: linear-gradient(112deg, #f1f0ec, #eceee9 46%, #e7eae6);
-    box-shadow: -16px 0 0 #cfd2cb, -58px 0 78px #00000059, 10px 0 0 #cfd2cb, 40px 0 54px #0000003d;
+  .workspace:not(.workspace--optical-preview) .evidence-host {
+    position: fixed;
+    inset: var(--judge-reader-top) 0 0;
+    display: grid;
+    grid-template-columns: var(--judge-body-tracks);
+    grid-template-rows: minmax(0, 1fr);
+    z-index: 20;
+    /* The host spans the full body so it can use the body's own tracks. Only the reader inside
+       it receives pointer events, so the Inbox and the Rail stay as reachable as before. */
+    pointer-events: none;
+  }
+
+  /* A development preview label pushes the whole body down; the reader follows its own header. */
+  .workspace:not(.workspace--optical-preview) .design-preview-label ~ .evidence-host {
+    --judge-reader-top: 87px;
+  }
+
+  .workspace:not(.workspace--optical-preview) .evidence-host > .evidence-plane {
+    position: static;
+    /* The canonical Decision + Why/Proof span, read from the grid instead of recomputed. */
+    grid-column: 2 / 4;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    /* The single clipping boundary. Paper, border, depth and the entry translation are all
+       contained by it for the whole course of the transition, not only once it settles. */
+    overflow: hidden;
+    pointer-events: auto;
+    padding: 0;
+    background: linear-gradient(150deg, #0a1a25, #081722 62%, #061320);
+    border-inline: 1px solid var(--divider);
+    color: var(--text-primary);
+    color-scheme: dark;
+    /* Replaces the opaque edge bars. Depth now comes from the inset document, inside the clip. */
+    box-shadow: none;
+    animation: judge-reader-enter 260ms var(--motion-easing) both;
+  }
+
+  /* A. The integrated context strip. It does not scroll, it names the decision the document
+     belongs to, and it holds the one existing Close proof control. */
+  .workspace:not(.workspace--optical-preview) .evidence-host .evidence-plane-heading {
+    flex: none;
+    align-items: flex-start;
+    /* Lands the strip's leading edge on the document's own text column: the paper's gutter and
+       inset while the document is narrower than its measure, and the measure's margin once it
+       is not. Both branches resolve against the same containing block the document uses. The
+       trailing edge is approximate, since a classic scrollbar takes width from the document. */
+    padding: 15px max(calc(var(--judge-reader-gutter) + var(--judge-reader-inset) + 1px), calc((100% - 820px) / 2)) 14px;
+    border-bottom: 1px solid #162c3a;
+  }
+
+  .workspace:not(.workspace--optical-preview) .evidence-plane-context {
+    min-width: 0;
+  }
+
+  /* Measured on this gradient's lightest stop #0a1a25: --text-muted 7.6:1, --text-secondary
+     10.7:1, --text-primary 15.8:1. The strip reads without reclaiming any of the contrast the
+     previous fix restored to the context behind it. */
+  .workspace:not(.workspace--optical-preview) .evidence-host .evidence-plane-heading .section-index {
+    color: var(--text-muted);
+    font-size: 9px;
+  }
+
+  .workspace:not(.workspace--optical-preview) .evidence-host .evidence-plane-heading .text-button {
+    color: var(--text-secondary);
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .workspace:not(.workspace--optical-preview) .evidence-host .evidence-plane-heading :focus-visible {
+    outline-color: var(--focus);
+  }
+
+  .workspace:not(.workspace--optical-preview) .evidence-plane-subject {
+    display: flex;
+    align-items: baseline;
+    gap: 13px;
+    margin-top: 5px;
+    min-width: 0;
+  }
+
+  .workspace:not(.workspace--optical-preview) .evidence-plane-subject strong {
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: -.012em;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .workspace:not(.workspace--optical-preview) .evidence-plane-subject span {
+    flex: none;
+    font-size: 9px;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-left: 1px solid var(--divider);
+    padding-left: 13px;
+  }
+
+  /* B. The inset warm document: one scroll region, balanced gutters, contained depth. */
+  .workspace:not(.workspace--optical-preview) .evidence-document {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: var(--judge-reader-gutter);
+    /* One reading measure turns a wide light panel into a page, and closes the gulf that pushed
+       each claim's state to the far right, away from the rule it belongs to. It is carried by
+       the paper's own gutters rather than by centring a fixed-width column inside them, so the
+       text column holds its left edge when a scrollbar appears. 820px is a maximum: below the
+       crossover the gutters take over and the measure gives way instead of forcing a width. */
+    padding-block: 24px 40px;
+    padding-inline: max(var(--judge-reader-inset), calc((100% - 820px) / 2 - var(--judge-reader-gutter) - 1px));
+    overflow-y: auto;
     overscroll-behavior: contain;
+    background: linear-gradient(112deg, #f1f0ec, #eceee9 46%, #e7eae6);
+    color: var(--proof-ink);
+    color-scheme: light;
+    border: 1px solid #ccd1c9;
+    border-radius: 6px;
+    box-shadow: 0 1px 0 #ffffff8c inset, 0 16px 34px -24px #000000a6;
+    /* A document this long has to show that it scrolls, on paper this pale. */
+    scrollbar-color: #94a094 #dde1d9;
+    animation: judge-reader-document 320ms var(--motion-easing) both;
   }
 
-  /* One reading measure turns a wide light panel into a page, and closes the gulf that pushed
-     each claim's state to the far right, away from the rule it belongs to. Inside the bounded
-     plane it is centred, so the document sits on balanced margins rather than hugging the left
-     edge of a much wider sheet. */
-  .workspace:not(.workspace--optical-preview) .evidence-plane-heading,
-  .workspace:not(.workspace--optical-preview) .evidence-plane > h2,
-  .workspace:not(.workspace--optical-preview) .evidence-plane > .evidence-mode,
-  .workspace:not(.workspace--optical-preview) .evidence-sheet {
-    max-width: 820px;
-    margin-inline: auto;
-  }
-
-  .workspace:not(.workspace--optical-preview) .evidence-plane > h2 {
-    margin-top: 16px;
+  /* C. Reading order and pacing. The strip already carries the subject, so the document opens
+     directly on its question; the space recovered here is spacing, never text size or proof. */
+  .workspace:not(.workspace--optical-preview) .evidence-document > h2 {
+    margin-top: 0;
   }
 
   .workspace:not(.workspace--optical-preview) .proof-introduction {
-    margin-top: 14px;
+    margin-top: 12px;
     font-size: 13px;
-    line-height: 1.75;
+    line-height: 1.7;
   }
 
   /* Density: the authored rhythm showed roughly one claim per screen, so a judge scrolling
      for five seconds saw almost no evidence. Tightening it puts claim, excerpt and citation
      in the same frame without touching a single word. */
   .workspace:not(.workspace--optical-preview) .proof-claim-heading {
-    margin-top: 18px;
-    padding-top: 12px;
+    margin-top: 14px;
+    padding-top: 11px;
   }
 
   .workspace:not(.workspace--optical-preview) .proof-claim-heading strong {
@@ -269,13 +417,19 @@
   }
 
   .workspace:not(.workspace--optical-preview) .proof-boundary {
-    margin-top: 10px;
+    margin-top: 8px;
     font-size: 11px;
   }
 
   .workspace:not(.workspace--optical-preview) .proof-metadata {
-    gap: 10px 30px;
+    gap: 9px 30px;
     padding: 11px 0;
+  }
+
+  /* Longhand would lose to the `.proof-metadata` shorthand above at equal specificity, which
+     is what put an 11px floor back under the attribution and split it from its own URL. */
+  .workspace:not(.workspace--optical-preview) .proof-attribution {
+    padding: 13px 0 0;
   }
 
   /* The exact source words. Editorial serif against the sans interpretation above it, with a
@@ -285,7 +439,7 @@
     font-family: var(--font-editorial);
     font-size: 22px;
     line-height: 1.52;
-    margin: 14px 0 14px;
+    margin: 13px 0 13px;
     padding: 2px 0 2px 22px;
     border-left: 2px solid #98a79b;
     color: var(--proof-ink);
@@ -296,11 +450,10 @@
      sits with the source identity instead of below a block of metadata. */
   .workspace:not(.workspace--optical-preview) .proof-source-url {
     font-size: 11px;
-    margin-top: 12px;
   }
 
   .workspace:not(.workspace--optical-preview) .proof-citation-link {
-    margin-top: 9px;
+    margin-top: 10px;
     font-size: 13px;
     font-weight: 500;
     color: #24485f;
@@ -308,19 +461,36 @@
   }
 
   .workspace:not(.workspace--optical-preview) .evidence-provenance {
-    margin-top: 14px;
+    margin-top: 13px;
   }
 
   .workspace:not(.workspace--optical-preview) .evidence-section {
-    margin-top: 4px;
+    margin-top: 2px;
   }
+}
+
+/* The reader arrives by taking authority, not by sliding in from the Rail: the shell resolves
+   in place and only the document, already inside the shell's clip, carries the movement. */
+@keyframes judge-reader-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes judge-reader-document {
+  from { opacity: 0; transform: translateY(9px); }
+  to { opacity: 1; transform: none; }
 }
 
 /* Proof-open context recession.
  *
- * Deliberately outside the 1280px block: the bounded plane leaves the Intelligence Rail and
- * parts of the canvas on screen, and text that is intentionally shown has to be readable at
- * every width, not only at the judge viewport.
+ * Deliberately outside the 1280px block: the bounded reader leaves the Intelligence Rail on
+ * screen at the judge viewport and a strip of canvas beside it in the 768-1279 projection, and
+ * text that is intentionally shown has to be readable at every width.
+ *
+ * The canvas half of this rule is unobservable at 1280 and above, where the reader now covers
+ * the Decision and Why/Proof span completely. It is kept because the narrower projection does
+ * still show canvas, and because a recession that changes with width would be harder to reason
+ * about than one derived from the worst case.
  *
  * The value is derived, not chosen. Compositing a colour at opacity a over backdrop P gives
  * a*T + (1-a)*P, while a transparent container leaves the backdrop itself unchanged — so the

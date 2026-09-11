@@ -17,17 +17,21 @@ const interpretation: Record<EvidenceClaimView['state'], string> = {
 function EvidenceCitation({ proof }: { proof: EvidenceProofView }) {
   return <figure className="evidence-citation">
     <blockquote className="proof-excerpt" cite={proof.original_url}>{proof.excerpt}</blockquote>
+    {/* The source that said it, and the way to open it, follow the words immediately. The rest
+        of the recorded metadata keeps its place afterwards; nothing is dropped for the order. */}
     <figcaption>
-      <dl className="proof-metadata">
+      <dl className="proof-metadata proof-attribution">
         <div><dt>Source</dt><dd>{proof.domain}</dd></div>
-        <div><dt>Source type</dt><dd>{stateText(proof.source_type)}</dd></div>
-        <div><dt>Evidence category</dt><dd>{stateText(proof.category)}</dd></div>
         <div><dt>Freshness at retrieval</dt><dd>{proof.freshness}</dd></div>
       </dl>
       <p className="proof-source-url">{proof.original_url}</p>
       <a className="proof-citation-link" href={proof.original_url} target="_blank" rel="noopener noreferrer external">
         View original <span aria-hidden="true">↗</span>
       </a>
+      <dl className="proof-metadata">
+        <div><dt>Source type</dt><dd>{stateText(proof.source_type)}</dd></div>
+        <div><dt>Evidence category</dt><dd>{stateText(proof.category)}</dd></div>
+      </dl>
       <TechnicalProvenance proof={proof} />
     </figcaption>
   </figure>;

@@ -31,8 +31,10 @@ function selectedProof(workspace: OpportunityWorkspaceResponse) {
 }
 
 // Shared presentation frame; the isolated design proof supplies read-only content.
-export function WorkspaceFrame({ children, queue, context, proof, previewLabel, evidenceContent, previewNav, qaLabel, opticalPreview = false }: {
-  children: ReactNode; queue: ReactNode; context: ReactNode; proof: ReactNode; previewLabel?: string; evidenceContent?: ReactNode; previewNav?: ReactNode; qaLabel?: string; opticalPreview?: boolean;
+export function WorkspaceFrame({ children, queue, context, proof, previewLabel, evidenceContent, previewNav, qaLabel, proofSubject, opticalPreview = false }: {
+  children: ReactNode; queue: ReactNode; context: ReactNode; proof: ReactNode; previewLabel?: string; evidenceContent?: ReactNode; previewNav?: ReactNode; qaLabel?: string;
+  // Already-typed workspace facts the caller holds. The reader never fetches for its own strip.
+  proofSubject?: { title: string; mode: string | null }; opticalPreview?: boolean;
 }) {
   const [proofOpen, setProofOpen] = useState(false);
   const [narrow, setNarrow] = useState(window.innerWidth < 768);
@@ -78,23 +80,37 @@ export function WorkspaceFrame({ children, queue, context, proof, previewLabel, 
     </header>
     <div className="workspace-grid workspace-grid--four-zone" inert={proofOpen && narrow}>
       <aside className="workspace-queue" aria-label="Opportunity inbox">{queue}</aside>
-      <main id="decision" className="workspace-canvas" tabIndex={-1}>
+      {/* The reader covers the Decision and Why/Proof zones completely at every width it opens
+          at, so leaving their controls focusable would put keyboard focus and the screen reader
+          on things nobody can see. The Inbox and Intelligence stay operable: this is a bounded
+          evidence mode, not a modal over the whole workspace, and the narrow full-screen
+          projection keeps its own grid-wide inert above. */}
+      <main id="decision" className="workspace-canvas" tabIndex={-1} inert={proofOpen}>
         <div className="canvas-topline"><span className="eyebrow">Decision workspace</span><button ref={contextButton} className="context-toggle text-button" aria-expanded={contextOpen} aria-controls="workspace-context" onClick={() => setContextOpen(!contextOpen)}>Workspace context</button></div>
         {children}
       </main>
-      <section className={`proof-context${evidenceContent ? ' proof-context--available' : ''}`} aria-label="Why & proof">{proof}{evidenceContent && <button ref={proofButton} className="proof-trigger" aria-expanded={proofOpen} aria-controls="decision-proof" onClick={() => setProofOpen(true)}>Why this decision <span aria-hidden="true">↗</span></button>}</section>
+      <section className={`proof-context${evidenceContent ? ' proof-context--available' : ''}`} aria-label="Why & proof" inert={proofOpen}>{proof}{evidenceContent && <button ref={proofButton} className="proof-trigger" aria-expanded={proofOpen} aria-controls="decision-proof" onClick={() => setProofOpen(true)}>Why this decision <span aria-hidden="true">↗</span></button>}</section>
       <aside ref={contextPanel} tabIndex={-1} id="workspace-context" className={`workspace-rail${contextOpen ? ' workspace-rail--open' : ''}`} aria-label="Workspace context">
         <div className="zone-heading"><h2>Intelligence</h2><button className="context-close text-button" onClick={closeContext}>Close</button></div>
         {context}
       </aside>
     </div>
-    {proofOpen && <section id="decision-proof" ref={proofPlane} tabIndex={-1} className="evidence-plane" aria-label="Decision proof" onKeyDown={event => {
+    {/* One integrated evidence reader: a production positioning host carrying a non-scrolling
+        context strip over a single warm document. The open/close state, the trigger reference
+        and the focus lifecycle above are unchanged; this is presentation grouping only. */}
+    {proofOpen && <div className="evidence-host"><section id="decision-proof" ref={proofPlane} tabIndex={-1} className="evidence-plane" aria-label="Decision proof" onKeyDown={event => {
       if (!narrow || event.key !== 'Tab') return;
       const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]'));
       const first = controls[0]; const last = controls.at(-1);
       if (event.shiftKey && (document.activeElement === first || document.activeElement === event.currentTarget)) { event.preventDefault(); last?.focus(); }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
-    }}><div className="evidence-plane-heading"><span className="section-index">Decision / documentary proof</span><button className="text-button" onClick={closeProof}>Close proof ↙</button></div><h2>Why this decision</h2>{previewLabel && <p className="evidence-mode">{previewLabel}</p>}{evidenceContent}</section>}
+    }}>
+      <div className="evidence-plane-heading">
+        <div className="evidence-plane-context"><span className="section-index">Decision / documentary proof</span>{proofSubject && <p className="evidence-plane-subject"><strong>{proofSubject.title}</strong><span>{proofSubject.mode ?? 'No current run mode'}</span></p>}</div>
+        <button className="text-button" onClick={closeProof}>Close proof ↙</button>
+      </div>
+      <div className="evidence-document"><h2>Why this decision</h2>{previewLabel && <p className="evidence-mode">{previewLabel}</p>}{evidenceContent}</div>
+    </section></div>}
   </div>;
 }
 
@@ -144,6 +160,7 @@ export function WorkspaceShell() {
       </> : <section className="rail-section"><h3>Selected run</h3><p>{selectedWorkspaceError ? 'Selected workspace unavailable' : selectedOpportunityPath ? 'Loading selected run' : 'No run selected'}</p><dl className="context-facts"><div><dt>Research mode</dt><dd>{modes.length ? modes.join(' · ') : 'Unavailable'}</dd></div><div><dt>Source context</dt><dd>Unavailable</dd></div></dl>{modes.length > 0 && <p className="quiet">Recorded research modes in your shortlist.</p>}<Link className="inline-link" to="/activity">View activity <span aria-hidden="true">↗</span></Link></section>}
     </>}
     evidenceContent={selectedWorkspace ? <EvidenceSheet opportunityId={selectedWorkspace.opportunity_id} /> : undefined}
+    proofSubject={selectedWorkspace ? { title: selectedWorkspace.program_name, mode: selectedWorkspace.mode } : undefined}
     proof={selectedWorkspace ? selectedProof(selectedWorkspace) : <><span className="section-index">Why & proof</span><p>{selectedWorkspaceError ? 'Selected decision context is unavailable.' : selectedOpportunityPath ? 'Loading selected decision context.' : 'No decision selected.'}<br /><span className="quiet">Evidence context is unavailable.</span></p></>}
   ><Outlet context={{ inbox, error, selectedWorkspace, selectedWorkspaceError, selectedWorkspaceLoading: Boolean(selectedOpportunityPath && !selectedWorkspace && !selectedWorkspaceError) } satisfies WorkspaceContext} /></WorkspaceFrame>;
 }

@@ -286,6 +286,36 @@ test('keeps the citation with its excerpt and out of the collapsed provenance di
   expect(excerpt.getAttribute('cite')).toBe(link.getAttribute('href'));
 });
 
+/* Document reading order inside one citation: the exact source words, then the source that said
+   them and the way to open it, and only then the remaining recorded metadata. Nothing is
+   dropped to achieve the order. */
+test('reads as quotation, then its source and View original, then the remaining metadata', async () => {
+  const view = renderSheet(sheet());
+  const link = await screen.findByRole('link', { name: /view original/i });
+  const figure = link.closest('figure')!;
+  const excerpt = view.container.querySelector('blockquote')!;
+  const before = (first: Element, second: Element) =>
+    Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+  const source = within(figure).getByText('official-domain.example');
+  const url = figure.querySelector('.proof-source-url')!;
+  const category = within(figure).getByText('ENTRANT TYPE');
+
+  expect(before(excerpt, source)).toBe(true);
+  expect(before(source, url)).toBe(true);
+  expect(before(url, link)).toBe(true);
+  expect(before(link, category)).toBe(true);
+  expect(before(link, within(figure).getByRole('button', { name: /technical provenance/i }))).toBe(true);
+
+  // Every recorded fact the citation carried before the re-ordering is still present.
+  for (const label of ['Source', 'Source type', 'Evidence category', 'Freshness at retrieval']) {
+    expect(within(figure).getByText(label)).toBeVisible();
+  }
+  expect(url).toHaveTextContent('https://official-domain.example/rules#entrant');
+  expect(within(figure).getByText('OFFICIAL RULES')).toBeVisible();
+  expect(within(figure).getByText('FRESH')).toBeVisible();
+});
+
 test('hides technical identifiers until the technical provenance disclosure is opened', async () => {
   renderSheet(sheet({
     proofs: [proof({ technical_provenance: { source_id: 'source-official', policy_version: 1, extraction_state: 'REVIEWED' } })],

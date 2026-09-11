@@ -187,6 +187,49 @@ test('expands proof material, focuses it and restores the exact trigger on Escap
   expect(trigger).toHaveFocus();
 });
 
+/* The open proof is one integrated reader: a non-scrolling context strip over a single warm
+   document. The structure is asserted here because it is what the CSS composition depends on —
+   a stylesheet cannot group the close control out of the scroll region on its own. */
+test('groups the open proof into a context strip and one document region', async () => {
+  render(<MemoryRouter><WorkspaceFrame queue={null} context={null} proof={null}
+    proofSubject={{ title: 'Recorded programme', mode: 'FIXTURE' }}
+    evidenceContent={<p>Actual source material</p>}><h1>PREPARE</h1></WorkspaceFrame></MemoryRouter>);
+  await userEvent.click(screen.getByRole('button', { name: /why this decision/i }));
+  const plane = screen.getByRole('region', { name: 'Decision proof' });
+  const strip = plane.querySelector<HTMLElement>('.evidence-plane-heading')!;
+  const document_ = plane.querySelector<HTMLElement>('.evidence-document')!;
+  expect(strip).not.toBeNull();
+  expect(document_).not.toBeNull();
+
+  // Exactly one close control, its accessible name unchanged, kept out of the scroll region.
+  const close = within(plane).getByRole('button', { name: /close proof/i });
+  expect(within(plane).getAllByRole('button', { name: /close proof/i })).toHaveLength(1);
+  expect(strip.contains(close)).toBe(true);
+  expect(document_.contains(close)).toBe(false);
+  expect(document_.contains(strip)).toBe(false);
+
+  // The document carries the reading order and starts at Why this decision.
+  const heading = within(plane).getByRole('heading', { level: 2, name: 'Why this decision' });
+  expect(document_.contains(heading)).toBe(true);
+  expect(within(document_).getByText('Actual source material')).toBeVisible();
+
+  // The strip states the already-selected opportunity and its recorded mode, and nothing else:
+  // no proof count, no recommendation, nothing that would need a second read to produce.
+  // Asserting the exact rendered leaves catches an invented value wherever it is added.
+  expect([...strip.querySelectorAll('*')].filter(node => !node.children.length).map(node => node.textContent))
+    .toEqual(['Decision / documentary proof', 'Recorded programme', 'FIXTURE', 'Close proof ↙']);
+});
+
+test('keeps the existing truthful proof context when no selected subject is available', async () => {
+  render(<MemoryRouter><WorkspaceFrame queue={null} context={null} proof={null}
+    evidenceContent={<p>Actual source material</p>}><h1>PREPARE</h1></WorkspaceFrame></MemoryRouter>);
+  await userEvent.click(screen.getByRole('button', { name: /why this decision/i }));
+  const strip = screen.getByRole('region', { name: 'Decision proof' }).querySelector<HTMLElement>('.evidence-plane-heading')!;
+  expect(strip).toHaveTextContent('Decision / documentary proof');
+  expect(within(strip).getByRole('button', { name: /close proof/i })).toBeVisible();
+  expect(strip.querySelector('.evidence-plane-subject')).toBeNull();
+});
+
 test('keeps keyboard navigation inside full-screen proof until it closes', async () => {
   vi.stubGlobal('innerWidth', 390);
   render(<MemoryRouter><WorkspaceFrame queue={null} context={null} proof={null} evidenceContent={<a href="https://example.org">Proof source</a>}><h1>PREPARE</h1></WorkspaceFrame></MemoryRouter>);
