@@ -67,19 +67,33 @@ recorded SHA-256. That frame is rendered by `dev/DecisionPreview.tsx` and
 `dev/decision-optical.css`, and it imports the same `index.css` and the same
 `WorkspaceFrame` as the product.
 
-The insulation is partial and must be understood before any style change:
+**No shared stylesheet is a safe layer by default.** An earlier revision of this section
+claimed that `propagation.css` guards every rule with `:not(.workspace--optical-preview)` and
+that propagation-layer changes therefore cannot reach the frozen frame. That was measured
+wrongly and is false. `propagation.css` holds a mixture: of its 150 rules only 56 carry the
+guard and 94 do not, and 69 of the unguarded ones are workspace and decision selectors the
+frozen frame actually renders — `.recommendation-surface`, `.opportunity-metadata`,
+`.signal-lane dd strong`, `.signal-lanes`, `.opportunity-heading h2`, `.workspace-grid` and
+`.decision-primary-action-row` among them.
 
-- `propagation.css` guards every rule with `:not(.workspace--optical-preview)`, so
-  propagation-layer changes do **not** reach the frozen frame;
-- `base.css` and `tokens.css` carry **no** such guard, so a change there — and any change to
-  `WorkspaceFrame` — **does** reach the frozen frame and invalidates the recorded hash.
+The correct rule is therefore:
+
+- `base.css`, `tokens.css`, `propagation.css`, `WorkspaceFrame` and every other shared
+  presentation layer **may** carry optical-frame blast radius. Whether a given change does
+  depends on the concrete selector's rendered reach, never on which file it lives in;
+- `judge-impact.css` is the one deliberate 04B isolation mechanism, and it isolates only
+  because every workspace-affecting rule in it explicitly excludes
+  `.workspace--optical-preview` — not because of where the file sits in the cascade;
+- **blast radius is determined from actual rendered selector reach, and is proved
+  empirically, never inferred from a stylesheet name.**
 
 Consequently the implementation plan must state, for each change, whether it alters the
-frozen D02 frame. Where it does, the recorded frame and its hash must be re-captured and
-re-accepted by the owner as part of that task; a silently stale recorded hash is a
-truthfulness defect, not a cosmetic one. Preferring the guarded `propagation.css` layer for
-workspace-only refinement is the cheapest way to avoid this, and 04B should do so wherever
-the refinement genuinely belongs to the live workspace rather than to the shared frame.
+frozen D02 frame, and must prove that claim by re-capturing the recorded 1440 × 810 frame and
+comparing its SHA-256 and region metrics. Where a change does alter the frame, the recorded
+frame and hash must be re-captured and re-accepted by the owner as part of that task; a
+silently stale recorded hash is a truthfulness defect, not a cosmetic one. A task must never
+reclassify itself from blast radius `NO` to `YES` silently, and must never re-baseline the
+frozen frame on its own authority.
 
 ## 2. Goal
 

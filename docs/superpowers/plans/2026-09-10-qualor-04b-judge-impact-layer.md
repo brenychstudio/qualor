@@ -38,11 +38,18 @@ in that tree and every task depends on them.
 - `WorkspaceFrame` renders the root element as
   `workspace [workspace--optical-preview] [reduce-motion] [proof-is-open]`. The
   `workspace--optical-preview` class is present **only** for the frozen frame.
-- `propagation.css` already uses `.workspace:not(.workspace--optical-preview)` as its guard.
-  Of its 70 rule lines, 61 carry that guard; the 9 that do not are Portfolio-only
-  (`.portfolio-*`, `.profile-*`, `.dossier-*`) and lie outside the frozen decision frame.
-- `base.css` and `tokens.css` carry **no** optical-preview guard. Any rule there reaches the
-  frozen frame.
+- `propagation.css` uses `.workspace:not(.workspace--optical-preview)` on *some* of its rules
+  only. An earlier revision of this plan claimed 61 of 70 rules were guarded with the 9
+  exceptions Portfolio-only; that was measured wrongly and is false. The real counts are 56
+  guarded and 94 unguarded out of 150, and 69 of the unguarded rules are workspace and
+  decision selectors the frozen frame renders, including `.recommendation-surface`,
+  `.opportunity-metadata`, `.signal-lanes`, `.signal-lane dd strong`, `.opportunity-heading h2`,
+  `.workspace-grid` and `.decision-primary-action-row`.
+- `base.css` and `tokens.css` carry no optical-preview guard either.
+- **No shared stylesheet is safe by default.** `base.css`, `tokens.css`, `propagation.css`,
+  `WorkspaceFrame` and every other shared presentation layer may carry optical-frame blast
+  radius. Whether a change does is decided by the concrete selector's rendered reach and
+  proved empirically against the recorded frame — never inferred from the file it lives in.
 - The frozen D02 frame is `opticalPreview = calibrationFrame && selected === 0 && !view` in
   `dev/DecisionPreview.tsx`, i.e. the **decision** view of scenario 0 at 1440 × 810. Its
   SHA-256 is recorded in
@@ -82,8 +89,10 @@ WHERE_04B_RULES_LIVE=apps/web/src/styles/judge-impact.css
 
 Task 1 creates `apps/web/src/styles/judge-impact.css` and appends one import to
 `apps/web/src/index.css` after `propagation.css`. Every workspace-affecting rule in it is
-prefixed `.workspace:not(.workspace--optical-preview)`, copying the guard convention
-`propagation.css` already proves.
+prefixed `.workspace:not(.workspace--optical-preview)`. That prefix, applied without
+exception, is what isolates the layer — not its position in the cascade and not any property
+of the files around it. `propagation.css` uses the same selector form on part of its own
+content, but it is a partial application there and proves nothing about isolation.
 
 Why a dedicated layer rather than the alternatives:
 
@@ -91,8 +100,9 @@ Why a dedicated layer rather than the alternatives:
   edit there would be `OPTICAL_FRAME_BLAST_RADIUS=YES`.
 - **Not `tokens.css`** — same reach, and the spec forbids broad token redesign.
 - **Not `propagation.css`** — it carries its own recorded meaning ("A1.2 field / anchor /
-  plane propagation"). Mixing 04B judge polish into it would blur two separate accepted
-  records and make either one hard to revert alone.
+  plane propagation"), and most of its rules are unguarded against the frozen frame. Mixing
+  04B judge polish into it would blur two separate accepted records, make either one hard to
+  revert alone, and land the new rules in a file with real blast radius.
 - **A dedicated layer** keeps 04B diffable, revertable per task, and
   `OPTICAL_FRAME_BLAST_RADIUS=NO` by construction, while sitting last in the cascade so it
   can refine without `!important`.
@@ -105,8 +115,11 @@ explicitly rather than assume it.
 
 ## Optical frame safety protocol
 
-Every task below declares `OPTICAL_FRAME_BLAST_RADIUS`. All five are planned as `NO` by
-construction.
+Every task below declares `OPTICAL_FRAME_BLAST_RADIUS`. All five are planned as `NO` in one
+precise sense only: each one's rules are scoped away from `.workspace--optical-preview`, and
+each one proves that empirically against the recorded frame. "By construction" is a statement
+about how the rules are written, never a licence to skip the check — a task that does not
+re-capture and compare the frame has not established its classification.
 
 A task **must not** silently change its classification. If an executor concludes that the
 approved judge impact genuinely cannot be achieved inside the scoped layer — because it
