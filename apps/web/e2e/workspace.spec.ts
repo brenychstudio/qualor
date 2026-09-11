@@ -66,6 +66,24 @@ test('Why this decision opens source-grounded proof and returns to the dark work
   // An exact excerpt is quoted rather than paraphrased.
   await expect(plane.locator('blockquote').first()).not.toBeEmpty();
 
+  // Proof is bounded to the Decision + Why/Proof span it belongs to. It replaces the decision
+  // content and stops at the proof/intelligence boundary, so the judge keeps the surrounding
+  // four-zone context: the selected opportunity on one side, recorded activity on the other.
+  const rail = page.getByRole('complementary', { name: 'Workspace context' });
+  const queue = page.getByRole('complementary', { name: 'Opportunity inbox' });
+  await expect(rail).toBeVisible();
+  await expect(queue).toBeVisible();
+  // Settled geometry only: the entry animation translates the plane, so measuring before it
+  // finishes reads a position the judge never sees.
+  await plane.evaluate(element => Promise.all(element.getAnimations().map(a => a.finished.catch(() => {}))));
+  const [planeBox, railBox, queueBox, width] = await Promise.all([
+    plane.boundingBox(), rail.boundingBox(), queue.boundingBox(),
+    page.evaluate(() => window.innerWidth),
+  ]);
+  expect(planeBox!.x + planeBox!.width).toBeLessThanOrEqual(railBox!.x + 1);
+  expect(planeBox!.x + planeBox!.width).toBeLessThan(width);
+  expect(planeBox!.x).toBeGreaterThanOrEqual(queueBox!.x + queueBox!.width - 1);
+
   await page.keyboard.press('Escape');
   await expect(plane).toHaveCount(0);
   await expect(trigger).toBeFocused();

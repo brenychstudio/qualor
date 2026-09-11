@@ -212,24 +212,37 @@
  * ---------------------------------------------------------------------------------------- */
 
 @media (min-width: 1280px) {
-  /* The plane used to open at max(350px, 31%), which at 1440 cut the Decision Field in half
-     and covered the APPLY hero, so the judge saw a sliced canvas. Aligning its left edge to
-     the inbox/canvas divider — the same 17.5fr the body grid gives the queue — replaces the
-     canvas cleanly and leaves the selected opportunity standing as context. */
+  /* The plane is bounded to the canonical Decision + Why/Proof span, so proof replaces the
+     content it belongs to and nothing else. The numbers are the body grid's own track
+     contract at >=1280px, measured rather than chosen: the four tracks resolve to
+     0-17.5% inbox, 17.5-67.5% canvas, 67.5-87% proof, 87-100% rail. Opening at 17.5% and
+     stopping at 87% therefore lands exactly on the inbox/decision and proof/intelligence
+     boundaries, which keeps the Intelligence Rail visible and the four-zone reading intact.
+
+     Before this, the plane ran `right: 0` to the viewport edge: it buried the rail and had no
+     right boundary at all, so proof read as a clipped web page rather than a bounded evidence
+     object. Both edges are now material, and the bottom inset finishes the object instead of
+     letting it bleed off-screen. Long evidence scrolls inside it, as it already did. */
   .workspace:not(.workspace--optical-preview) .evidence-plane {
     left: 17.5%;
-    padding: 24px clamp(40px, 4vw, 72px) 56px;
+    right: 13%;
+    bottom: 22px;
+    padding: 24px clamp(36px, 3.6vw, 64px) 44px;
     background: linear-gradient(112deg, #f1f0ec, #eceee9 46%, #e7eae6);
-    box-shadow: -16px 0 0 #cfd2cb, -58px 0 78px #00000059;
+    box-shadow: -16px 0 0 #cfd2cb, -58px 0 78px #00000059, 10px 0 0 #cfd2cb, 40px 0 54px #0000003d;
+    overscroll-behavior: contain;
   }
 
-  /* One reading measure turns a wide light panel into a page. It also closes the gulf that
-     pushed each claim's state to the far right, away from the rule it belongs to. */
+  /* One reading measure turns a wide light panel into a page, and closes the gulf that pushed
+     each claim's state to the far right, away from the rule it belongs to. Inside the bounded
+     plane it is centred, so the document sits on balanced margins rather than hugging the left
+     edge of a much wider sheet. */
   .workspace:not(.workspace--optical-preview) .evidence-plane-heading,
   .workspace:not(.workspace--optical-preview) .evidence-plane > h2,
   .workspace:not(.workspace--optical-preview) .evidence-plane > .evidence-mode,
   .workspace:not(.workspace--optical-preview) .evidence-sheet {
     max-width: 820px;
+    margin-inline: auto;
   }
 
   .workspace:not(.workspace--optical-preview) .evidence-plane > h2 {
