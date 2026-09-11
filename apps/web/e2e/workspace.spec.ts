@@ -606,3 +606,153 @@ test('the reader stays inside every supported width without horizontal overflow'
     expect(measured.railVisible, `rail visibility at ${width}`).toBe(width >= 1280 || width < 768);
   }
 });
+
+/* --------------------------------------------------------------------------------------------
+ * Wide workspace cohesion.
+ *
+ * Three defects the owner could see and no existing assertion could: the four causal signals
+ * rendered flush against each other, every connector started up to 44px away from the lane tip
+ * it belongs to, and the Intelligence Rail ran past the viewport so its last section was sliced
+ * by the window edge. All three are geometry, so all three are measured here.
+ * ------------------------------------------------------------------------------------------ */
+
+/** The lane's visible shape is a stretched background SVG whose arrow tip sits at 339/340 of the
+ *  lane width and 29.5/60 of its height. That tip, not the box edge, is what a connector meets. */
+async function decisionFieldGeometry(page: Page) {
+  return page.evaluate(() => {
+    const round = (n: number) => Math.round(n * 100) / 100;
+    const lanes = [...document.querySelectorAll('.signal-lane')].map(lane => {
+      const r = lane.getBoundingClientRect();
+      return {
+        label: lane.querySelector('dt')?.textContent ?? '',
+        y: r.y, bottom: r.bottom, height: r.height,
+        tip: { x: r.x + r.width * (339 / 340), y: r.y + r.height * (29.5 / 60) },
+      };
+    });
+    const svg = document.querySelector('.decision-convergence') as SVGSVGElement | null;
+    const ctm = svg?.getScreenCTM() ?? null;
+    const sources = ctm
+      ? [...svg!.querySelectorAll('path')].slice(0, 4).map(path => {
+        const point = path.getPointAtLength(0).matrixTransform(ctm);
+        return { x: point.x, y: point.y };
+      })
+      : [];
+    return {
+      laneHeights: lanes.map(lane => round(lane.height)),
+      gaps: lanes.slice(1).map((lane, index) => round(lane.y - lanes[index].bottom)),
+      attachment: sources.map((source, index) => ({
+        lane: lanes[index].label,
+        dx: round(source.x - lanes[index].tip.x),
+        dy: round(source.y - lanes[index].tip.y),
+        distance: round(Math.hypot(source.x - lanes[index].tip.x, source.y - lanes[index].tip.y)),
+      })),
+      signatureWidth: round(document.querySelector('.decision-signature')!.getBoundingClientRect().width),
+      connectorEnd: (() => {
+        if (!ctm) return { x: 0, y: 0 };
+        const path = svg!.querySelectorAll('path')[0];
+        const point = path.getPointAtLength(path.getTotalLength()).matrixTransform(ctm);
+        return { x: round(point.x), y: round(point.y) };
+      })(),
+      recommendation: (() => {
+        const r = document.querySelector('.recommendation-surface')!.getBoundingClientRect();
+        return { x: round(r.x), width: round(r.width), height: round(r.height) };
+      })(),
+    };
+  });
+}
+
+test('the four causal signals read as a rhythm and every connector meets its lane', async ({ page }) => {
+  for (const width of [1440, 1280]) {
+    await page.setViewportSize({ width, height: 810 });
+    await page.goto('/inbox');
+    await page.getByRole('link', { name: /AWS Agents for Humans/ }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'APPLY' })).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+
+    const field = await decisionFieldGeometry(page);
+
+    // The lane height the connector overlay is derived from. If base.css ever changes it, the
+    // overlay arithmetic has to be revisited rather than silently drifting.
+    expect(field.laneHeights, `lane heights at ${width}`).toEqual([62, 62, 62, 62]);
+
+    // Deliberate separation, not a stack and not four floating cards.
+    expect(field.gaps, `signal gaps at ${width}`).toHaveLength(3);
+    for (const gap of field.gaps) {
+      expect(gap, `signal gap at ${width}`).toBeGreaterThanOrEqual(8);
+      expect(gap, `signal gap at ${width}`).toBeLessThanOrEqual(13);
+    }
+    expect(Math.max(...field.gaps) - Math.min(...field.gaps), `gap evenness at ${width}`).toBeLessThanOrEqual(1);
+
+    // Every connector's first painted point sits on the tip of the lane it continues. The
+    // defect measured up to 44px of vertical drift, worst at the outer lanes.
+    expect(field.attachment, `connector count at ${width}`).toHaveLength(4);
+    for (const anchor of field.attachment) {
+      expect(Math.abs(anchor.dy), `${anchor.lane} connector dy at ${width}`).toBeLessThanOrEqual(2);
+      expect(anchor.distance, `${anchor.lane} connector distance at ${width}`).toBeLessThanOrEqual(2.5);
+    }
+
+    // The lane stack grew inside the existing field rather than pushing the recommendation:
+    // the surface still starts where the connectors end, so the composition kept its footprint.
+    expect(field.recommendation.x, `recommendation left at ${width}`)
+      .toBeGreaterThanOrEqual(field.connectorEnd.x - 2);
+  }
+});
+
+test('the Intelligence Rail finishes inside its own panel rather than at the window edge', async ({ page }) => {
+  for (const width of [1440, 1280]) {
+    await page.setViewportSize({ width, height: 810 });
+    await page.goto('/inbox');
+    await page.getByRole('link', { name: /AWS Agents for Humans/ }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'APPLY' })).toBeVisible();
+
+    const rail = page.getByRole('complementary', { name: 'Workspace context' });
+    const measured = await rail.evaluate(element => {
+      const style = getComputedStyle(element);
+      const box = element.getBoundingClientRect();
+      const sections = [...element.querySelectorAll<HTMLElement>('.rail-section')];
+      const last = sections.at(-1)!;
+      return {
+        overflowY: style.overflowY,
+        // The wheel has to hand back to the document at the panel's end: the page scrolls too.
+        overscroll: style.overscrollBehaviorY,
+        tabIndex: element.tabIndex,
+        scrolls: element.scrollHeight > element.clientHeight + 1,
+        bottom: box.bottom,
+        viewportHeight: window.innerHeight,
+        // Breathing room under the last section inside the panel's own scrollable content. It
+        // has to clear the fade, or the fade lands on the final line instead of on the padding.
+        contentBottomGap: element.scrollHeight - (last.offsetTop + last.offsetHeight),
+        fade: /calc\((?:100% - )?(\d+)px\)/.exec(style.maskImage || '')?.[1] ?? null,
+        sideways: element.scrollWidth - element.clientWidth,
+      };
+    });
+
+    // One intentional rail scroll region: the panel ends at the viewport, not past it. The
+    // mechanism may be `auto` or `scroll`; what matters is that it scrolls and stays inside.
+    expect(measured.overflowY, `rail overflow at ${width}`).toMatch(/^(auto|scroll)$/);
+    expect(measured.scrolls, `rail scrolls at ${width}`).toBe(true);
+    expect(measured.bottom, `rail bottom at ${width}`).toBeLessThanOrEqual(measured.viewportHeight + 1);
+    expect(measured.sideways, `rail sideways overflow at ${width}`).toBeLessThanOrEqual(0);
+    // A pointer-only scroll region is a keyboard dead end, and trapping the wheel at its end
+    // strands a reader whose cursor happens to be over the rail.
+    expect(measured.tabIndex, `rail is keyboard reachable at ${width}`).toBe(0);
+    expect(measured.overscroll, `rail overscroll at ${width}`).toBe('auto');
+    // Deliberate breathing room under the last section, deeper than the fade it has to clear.
+    expect(Number(measured.fade), `rail fade length at ${width}`).toBeGreaterThan(0);
+    expect(measured.contentBottomGap, `rail bottom clearance at ${width}`)
+      .toBeGreaterThanOrEqual(Number(measured.fade));
+
+    // Scrolled to its end the footer is whole, not merely partly on screen: ratio 1, because a
+    // line sliced by the panel edge is exactly the defect and would satisfy the default.
+    await rail.evaluate(element => { element.scrollTop = element.scrollHeight; });
+    await expect(rail.getByRole('link', { name: /view activity/i })).toBeInViewport({ ratio: 1 });
+    // And the section the owner marked is reachable and whole on the way there.
+    await rail.evaluate(element => {
+      element.querySelector('.rail-section:nth-of-type(2)')?.scrollIntoView({ block: 'center' });
+    });
+    await expect(rail.getByText('Local controller connected')).toBeInViewport({ ratio: 1 });
+    await expect(rail.getByText(/A local connection does not indicate LIVE research/i)).toBeInViewport({ ratio: 1 });
+    // The page itself never scrolled sideways to achieve any of this.
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+  }
+});

@@ -620,6 +620,123 @@
   to { opacity: 1; }
 }
 
+/* ------------------------------------------------------------------------------------------
+ * Visual fix 01 — wide workspace cohesion.
+ *
+ * Three defects the owner could see and no element-bound assertion could, all of them geometry.
+ * Measured at HEAD, 1440x810:
+ *
+ *   1. The four causal signals rendered flush: gaps of exactly 0, 0, 0. `.signal-lanes` asks for
+ *      `height: 100%`, but this layer had already given `.decision-signature` an auto height, and
+ *      a percentage against an auto-height parent is indefinite. The lane stack fell back to its
+ *      own content height (248px) inside a 352.66px signature, which left `space-between` with no
+ *      free space to distribute.
+ *   2. Every connector began away from the lane it continues: dy of -42.84, -14.33, +15.36 and
+ *      +43.88, worst at the outer lanes. `.decision-convergence` spans the whole signature with
+ *      `viewBox="0 0 1000 300" preserveAspectRatio="none"`, so its anchors sit at fixed fractions
+ *      of the signature, while the lane centres sit inside that shorter, centred stack. Two
+ *      anchor systems measuring against different boxes.
+ *   3. The Intelligence Rail ran to y=1360 in an 810px window, so the Local Controller section
+ *      was sliced mid-line by the window edge with nothing to show that more existed.
+ *
+ * 1 and 2 are one cause with one correction: give the stack its own rhythm and hang the overlay
+ * on the same box. At 1024, where base.css keeps the signature at a fixed 262px and the
+ * percentage still resolves, the measured gaps are 4.67px and the connectors land within 1.8px —
+ * which is what confirmed the diagnosis rather than a reading of the stylesheet.
+ * ---------------------------------------------------------------------------------------- */
+
+@media (min-width: 1280px) {
+  .workspace:not(.workspace--optical-preview) .decision-signature {
+    /* 62px is the frozen lane height in base.css. The lane rhythm and the connector overlay are
+       both derived from it here, so the two can no longer drift apart; the browser test asserts
+       the rendered lane height still is 62, which is what makes that derivation safe. */
+    --judge-signal-gap: 10px;
+    --judge-signal-stack: calc(4 * 62px + 3 * var(--judge-signal-gap));
+  }
+
+  /* The stack owns its rhythm explicitly instead of inheriting it from a percentage that no
+     longer resolves. 10px is deliberate separation between 62px lanes — the four signals read
+     as four, and still as one system. It also happens to be the gap that fits the authored
+     connector anchors best: they were drawn for the original 262px signature, where the
+     measured worst-case drift is 1.82px, and at this stack the worst lane lands at 1.02px. */
+  .workspace:not(.workspace--optical-preview) .signal-lanes {
+    height: auto;
+    gap: var(--judge-signal-gap);
+  }
+
+  /* Anchored to the lane stack rather than to the signature: same height, same centre, so every
+     viewBox anchor lands on the tip of the lane it belongs to. */
+  .workspace:not(.workspace--optical-preview) .decision-convergence {
+    top: 50%;
+    bottom: auto;
+    height: var(--judge-signal-stack);
+    margin-top: calc(var(--judge-signal-stack) / -2);
+  }
+
+  /* The rail carries more recorded context than an 810px window can show, so something had to
+     give and it was the window edge. It is now one self-contained scrolling panel: it ends where
+     the viewport ends, stays with the reader while the canvas scrolls past it, and finishes on
+     deliberate space instead of on a cut.
+     The page is still a scroller too, so this panel is deliberately left chaining: reaching its
+     end has to hand the wheel back to the document rather than stopping it. Its content is also
+     reachable from the keyboard, which is why the panel itself is a tab stop. */
+  .workspace:not(.workspace--optical-preview) .workspace-rail {
+    align-self: start;
+    /* Pinned to the header height rather than to 0: the header is not itself sticky, so a 0
+       offset would slide the panel up and leave the column 58px short of the window for the
+       rest of the scroll. At 58px the panel never moves and its bottom edge stays on the
+       window edge, which is the whole point of making it a panel. */
+    position: sticky;
+    top: 58px;
+    height: calc(100svh - 58px);
+    overflow-y: auto;
+    /* Reserved rather than overlaid, so the column width is the same whether or not the
+       platform paints a scrollbar over it — including in headless capture. */
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: #35576b transparent;
+    /* The panel holds more recorded context than an 810px window can show at any sensible
+       density, so its last pixels fade rather than guillotining a line of text against the
+       edge — which is what made the footer read as accidentally cut. The bottom padding is
+       deeper than the fade, so scrolled to the end the fade falls on deliberate space and the
+       final line stays fully painted. Nothing is removed from the document or the a11y tree. */
+    padding-bottom: 44px;
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 34px), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 34px), transparent);
+  }
+
+  /* A development preview label pushes the whole body down by 29px; base.css compensates the
+     grid for it and this file already compensates the evidence reader. Without the same
+     compensation the panel is 29px taller than the room it has, which reproduces exactly the
+     overrun this rule exists to remove. */
+  .workspace:not(.workspace--optical-preview) .design-preview-label ~ .workspace-grid .workspace-rail {
+    top: 87px;
+    height: calc(100svh - 87px);
+  }
+
+  /* Four numeric facts read faster as label and value on one line than as stacked pairs, and in
+     a column this narrow the paired form wrapped every label onto two. The height that recovers
+     is what lets the rail's first screen finish on a complete section instead of orphaning a
+     heading against the panel edge. Scoped to the run counters: the other rail sections carry
+     long recorded text that still needs the stacked form. */
+  .workspace:not(.workspace--optical-preview) .run-metrics .context-facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 9px;
+  }
+
+  .workspace:not(.workspace--optical-preview) .run-metrics .context-facts > div {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .workspace:not(.workspace--optical-preview) .run-metrics .context-facts dd {
+    margin-top: 0;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
 /* Proof-open context recession.
  *
  * Deliberately outside the 1280px block: the bounded reader leaves the Intelligence Rail on

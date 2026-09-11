@@ -90,7 +90,12 @@ export function WorkspaceFrame({ children, queue, context, proof, previewLabel, 
         {children}
       </main>
       <section className={`proof-context${evidenceContent ? ' proof-context--available' : ''}`} aria-label="Why & proof" inert={proofOpen}>{proof}{evidenceContent && <button ref={proofButton} className="proof-trigger" aria-expanded={proofOpen} aria-controls="decision-proof" onClick={() => setProofOpen(true)}>Why this decision <span aria-hidden="true">↗</span></button>}</section>
-      <aside ref={contextPanel} tabIndex={-1} id="workspace-context" className={`workspace-rail${contextOpen ? ' workspace-rail--open' : ''}`} aria-label="Workspace context">
+      {/* The rail becomes its own scrolling panel at the judge viewport, and a scrollable region
+          that only a pointer can reach is a keyboard trap in the other direction: the recorded
+          activity between the heading and the one link at the bottom would be unreachable. A
+          tab stop on the panel is the standard answer, and it keeps the programmatic focus the
+          narrow context disclosure already relies on. */}
+      <aside ref={contextPanel} tabIndex={0} id="workspace-context" className={`workspace-rail${contextOpen ? ' workspace-rail--open' : ''}`} aria-label="Workspace context">
         <div className="zone-heading"><h2>Intelligence</h2><button className="context-close text-button" onClick={closeContext}>Close</button></div>
         {context}
       </aside>
