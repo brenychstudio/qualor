@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -341,4 +343,35 @@ test('reports an unavailable evidence read without inventing proof', async () =>
   render(<MemoryRouter><EvidenceSheet opportunityId="selected" /></MemoryRouter>);
   await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/unavailable/i));
   expect(screen.queryByRole('region', { name: 'Eligibility' })).not.toBeInTheDocument();
+});
+
+// --- proof-open context contrast ------------------------------------------------------------
+
+/* The bounded plane deliberately leaves the Intelligence Rail and part of the canvas on screen,
+   so the recession that pushes them back must not push them below AA. This asserts the derived
+   property rather than the literal opacity, so tuning the value stays free and regressing it
+   does not. */
+test('the proof-open recession keeps the still-visible context readable', () => {
+  const layer = readFileSync(resolve(process.cwd(), 'src/styles/judge-impact.css'), 'utf8');
+  const rule = /\.proof-is-open[^{]*\.workspace-rail\s*\{[^}]*opacity:\s*(\.\d+|\d?\.?\d+)/.exec(layer);
+  expect(rule).not.toBeNull();
+  const alpha = Number(rule![1]);
+  expect(alpha).toBeGreaterThan(0);
+  expect(alpha).toBeLessThanOrEqual(1);
+
+  // Lightest point the workspace backdrop can reach: the #06141e linear stop under the
+  // radial's #173f59 at its 0x24 alpha. Worst case for light text.
+  const backdrop = [8, 26, 38];
+  const channel = (v: number) => (v / 255 <= 0.04045 ? v / 255 / 12.92 : ((v / 255 + 0.055) / 1.055) ** 2.4);
+  const luminance = (c: number[]) => 0.2126 * channel(c[0]) + 0.7152 * channel(c[1]) + 0.0722 * channel(c[2]);
+  const ratio = (a: number[], b: number[]) => {
+    const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+  const composite = (fg: number[]) => fg.map((v, i) => Math.round(alpha * v + (1 - alpha) * backdrop[i]));
+
+  // --text-muted is the dimmest token the rail actually renders, at 10-11px normal text.
+  expect(ratio(composite([147, 174, 193]), backdrop)).toBeGreaterThanOrEqual(4.5);
+  // --focus must stay a visible non-text indicator.
+  expect(ratio(composite([142, 216, 255]), backdrop)).toBeGreaterThanOrEqual(3);
 });

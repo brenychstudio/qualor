@@ -315,3 +315,27 @@
     margin-top: 4px;
   }
 }
+
+/* Proof-open context recession.
+ *
+ * Deliberately outside the 1280px block: the bounded plane leaves the Intelligence Rail and
+ * parts of the canvas on screen, and text that is intentionally shown has to be readable at
+ * every width, not only at the judge viewport.
+ *
+ * The value is derived, not chosen. Compositing a colour at opacity a over backdrop P gives
+ * a*T + (1-a)*P, while a transparent container leaves the backdrop itself unchanged — so the
+ * ratio collapses as a falls. The workspace backdrop is
+ * `radial-gradient(ellipse at 60% 48%, #173f5924, transparent 70%), linear-gradient(112deg,
+ * #040d14, #06141e 58%, #030c13)`, whose lightest possible point is the #06141e stop under the
+ * radial at its 0x24 alpha: rgb(8, 26, 38). That is the worst case for light text, and against
+ * it --text-muted #93AEC1 — which the rail really does render at 10-11px — needs a >= 0.713 to
+ * reach 4.5:1. At the previous .38 it measured 2.17:1.
+ *
+ * .72 is the lowest clean value above that minimum: worst text 4.58:1, focus 6.41:1. Proof
+ * dominance is carried by the plane's warm material, bounded geometry, depth and focus
+ * placement, which is where it should come from — not by making the surrounding context
+ * illegible. */
+.workspace:not(.workspace--optical-preview).proof-is-open .workspace-canvas,
+.workspace:not(.workspace--optical-preview).proof-is-open .workspace-rail {
+  opacity: .72;
+}
