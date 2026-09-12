@@ -1285,3 +1285,82 @@ test('a lane holds its own label, and holds it centred', async ({ page }) => {
     }
   }
 });
+
+/* --------------------------------------------------------------------------------------------
+ * The prepared pack is the subject of its own view.
+ *
+ * The pack route renders inside the same four-zone body as the decision workspace, so the
+ * finished document arrived with the workspace's other three zones still around it — including
+ * a Why & proof panel reading "No decision selected. Evidence context is unavailable.", which
+ * is true of the workspace and says nothing about the pack. A payoff document framed by two
+ * dead panels reads as another screen rather than as the thing the approval produced.
+ * ------------------------------------------------------------------------------------------ */
+
+test('the prepared pack is the subject of its own view, not a panel inside the workspace',
+  async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 810 });
+    await page.goto('/inbox');
+    await page.getByRole('link', { name: /AWS Agents for Humans/ }).click();
+    await page.getByRole('button', { name: 'Approve application' }).click();
+    const checkpoint = page.getByRole('region', { name: 'Human approval' });
+    await checkpoint.getByRole('button', { name: /confirm approval/i }).click();
+    await checkpoint.getByRole('link', { name: /open draft pack/i }).click();
+
+    const pack = page.getByRole('article', { name: 'Application pack' });
+    await expect(pack).toBeVisible();
+
+    // Nothing beside the document claims a decision context the pack route does not have.
+    await expect(page.getByText('No decision selected.')).toBeHidden();
+    await expect(page.getByText('Evidence context is unavailable.')).toBeHidden();
+
+    // And the document has the view to itself. Not measured as a share of the body — the pack
+    // keeps a deliberate page measure and does not want the whole width — but structurally:
+    // the body is one column on this route, where the decision workspace is four.
+    const body = await page.evaluate(() => {
+      const canvas = document.querySelector('.workspace-canvas')!.getBoundingClientRect();
+      const grid = document.querySelector('.workspace-grid')!;
+      const gridBox = grid.getBoundingClientRect();
+      const gridStyle = getComputedStyle(grid);
+      // Against the grid's content box, not its border box: the route pads the body to hold
+      // the document's dark stage, and that padding is the composition rather than a shortfall.
+      const track = gridBox.width - parseFloat(gridStyle.paddingLeft) - parseFloat(gridStyle.paddingRight);
+      const visible = (selector: string) => {
+        const element = document.querySelector(selector);
+        return !!element && getComputedStyle(element).display !== 'none';
+      };
+      return {
+        canvasShortfall: Math.round((track - canvas.width) * 100) / 100,
+        queue: visible('.workspace-queue'),
+        proof: visible('.proof-context'),
+        rail: visible('.workspace-rail'),
+      };
+    });
+    expect(body.canvasShortfall, 'canvas spans the body').toBeLessThanOrEqual(1);
+    expect(body.queue, 'queue beside the pack').toBe(false);
+    expect(body.proof, 'proof panel beside the pack').toBe(false);
+    expect(body.rail, 'rail beside the pack').toBe(false);
+  });
+
+/* The payoff has to show the payoff. The finished document opened on a first viewport of pack,
+ * approval and drafting-job UUIDs, bound versions and policy versions, with the first prepared
+ * section below the fold — the trail before the thing it traces. */
+test('the prepared document shows what was prepared in its first viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 810 });
+  await page.goto('/inbox');
+  await page.getByRole('link', { name: /AWS Agents for Humans/ }).click();
+  await page.getByRole('button', { name: 'Approve application' }).click();
+  const checkpoint = page.getByRole('region', { name: 'Human approval' });
+  await checkpoint.getByRole('button', { name: /confirm approval/i }).click();
+  await checkpoint.getByRole('link', { name: /open draft pack/i }).click();
+  const pack = page.getByRole('article', { name: 'Application pack' });
+  await expect(pack).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+
+  // The first prepared section, and some of its recorded content, without scrolling.
+  const heading = pack.getByRole('heading', { name: /01 Submission summary/i });
+  const box = await heading.boundingBox();
+  expect(box, 'submission summary heading is rendered').not.toBeNull();
+  expect(box!.y + box!.height, 'submission summary heading inside the first viewport')
+    .toBeLessThanOrEqual(810);
+  await expect(pack.getByText(/Local draft for human review/i)).toBeInViewport();
+});

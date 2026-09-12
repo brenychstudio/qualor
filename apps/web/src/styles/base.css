@@ -161,7 +161,10 @@ ol.event-axis { list-style: none; padding: 0; margin-bottom: 0; }
 .approval-bindings dt { font-size: 9px; text-transform: uppercase; letter-spacing: .055em; color: var(--text-muted); }
 .approval-bindings dd { margin: 6px 0 0; font-size: 12px; overflow-wrap: anywhere; }
 .approval-bindings dd small { display: block; margin-top: 4px; font-size: 10px; color: var(--text-muted); }
+.approval-lede { margin-top: 16px; font-size: 13px; line-height: 1.65; color: var(--text-primary); }
+.approval-limit { margin-top: 20px; }
 .approval-boundary { margin-top: 14px; font-size: 11px; line-height: 1.7; color: var(--text-muted); }
+.approval-boundary--secondary { margin-top: 8px; }
 .approval-failure { margin-top: 16px; font-size: 12px; line-height: 1.7; color: var(--text-primary); border-left: 2px solid var(--recommendation-prepare); padding-left: 12px; }
 .approval-controls { display: flex; align-items: center; gap: 28px; margin-top: 26px; }
 @media (max-width: 767px) { .approval-bindings { grid-template-columns: minmax(0, 1fr); } }
@@ -220,7 +223,13 @@ ol.event-axis { list-style: none; padding: 0; margin-bottom: 0; }
 .pack-attribution dt { font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: var(--document-muted); }
 .pack-attribution dd { margin: 6px 0 0; font-size: 12px; overflow-wrap: anywhere; }
 .pack-attribution dd small { display: block; margin-top: 3px; font-size: 10px; color: var(--document-muted); }
+.pack-preparation { list-style: none; padding: 0; margin-top: 20px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 0; font-size: 11px; letter-spacing: .04em; color: var(--document-muted); }
+.pack-preparation > li:not(:first-child)::before { content: '·'; padding: 0 10px; color: var(--document-rule); }
 .pack-block { margin-top: 38px; max-width: var(--document-measure); }
+.pack-block-subtitle { font-family: var(--font-editorial); font-size: 15px; letter-spacing: -.01em; }
+.pack-trace { margin-top: 60px; padding-top: 30px; border-top: 1px solid var(--document-rule); max-width: var(--document-measure); }
+.pack-trace .pack-attribution { margin-top: 22px; padding-bottom: 0; border-bottom: 0; }
+.pack-trace .pack-block { margin-top: 30px; }
 .pack-block-title { font-family: var(--font-editorial); font-size: 19px; letter-spacing: -.01em; }
 .pack-block-note { margin-top: 10px; font-size: 12px; line-height: 1.75; color: var(--document-muted); }
 .pack-versions, .pack-missing, .pack-references { list-style: none; padding: 0; margin: 14px 0 0; display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
@@ -230,6 +239,7 @@ ol.event-axis { list-style: none; padding: 0; margin-bottom: 0; }
 .pack-references small { font-size: 10px; color: var(--document-muted); }
 .pack-citation { color: var(--document-citation); text-underline-offset: 3px; }
 .pack-sections { margin-top: 46px; max-width: var(--document-measure); }
+.pack-sections > .pack-section:first-child { padding-top: 0; margin-top: 0; border-top: 0; }
 .pack-section { padding-top: 30px; margin-top: 30px; border-top: 1px solid var(--document-rule); }
 .pack-section-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 22px; }
 .pack-section-heading h2 { font-family: var(--font-editorial); font-size: 22px; letter-spacing: -.015em; }

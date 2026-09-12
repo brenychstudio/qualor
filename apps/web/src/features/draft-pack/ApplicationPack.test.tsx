@@ -261,3 +261,43 @@ test('does not hide a section the server recorded as empty', async () => {
   const deliverables = within(article).getByRole('region', { name: /required deliverables/i });
   expect(within(deliverables).getByText(/no content recorded/i)).toBeVisible();
 });
+
+/* The judge-facing order of the finished document: what QUALOR prepared, then how it can be
+ * traced. Every identifier the pack recorded is still here and still exact — the change is
+ * that a reader meets the application before the audit trail of it. */
+
+test('leads with what was prepared, before how it can be traced', async () => {
+  openPack();
+  const article = await screen.findByRole('article', { name: /application pack/i });
+  const first = within(article).getByRole('heading', { name: /01 Submission summary/i });
+  const traceability = within(article).getByRole('group', { name: /traceability/i });
+  expect(first.compareDocumentPosition(traceability) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  // And the identifiers are not what the document opens with.
+  const packId = within(article).getByText('pack-1');
+  expect(first.compareDocumentPosition(packId) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+test('keeps every recorded identifier, gathered into traceability', async () => {
+  openPack();
+  const article = await screen.findByRole('article', { name: /application pack/i });
+  const trace = within(article).getByRole('group', { name: /traceability/i });
+  for (const value of ['pack-1', 'approval-1', 'job-1', 'founder-1', 'DETERMINISTIC',
+    'DRAFT_FOR_HUMAN_REVIEW', 'FIXTURE']) {
+    expect(within(trace).getByText(value), `${value} in traceability`).toBeVisible();
+  }
+  expect(within(trace).getByText(/2026-09-09T12:45:00Z/)).toBeVisible();
+  // The bound versions the approval was recorded against stay with the rest of the trail.
+  expect(within(trace).getByText(/opportunity version 4/i)).toBeVisible();
+  expect(within(trace).getByText(/decision version 2/i)).toBeVisible();
+});
+
+test('states how the pack was prepared in product language before the document begins', async () => {
+  openPack();
+  const article = await screen.findByRole('article', { name: /application pack/i });
+  const preparation = within(article).getByRole('group', { name: /how this pack was prepared/i });
+  // The same recorded facts, read as language rather than as enum tokens.
+  expect(preparation.textContent ?? '').toMatch(/draft for human review/i);
+  expect(preparation.textContent ?? '').toMatch(/deterministic/i);
+  const first = within(article).getByRole('heading', { name: /01 Submission summary/i });
+  expect(preparation.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});

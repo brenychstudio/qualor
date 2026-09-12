@@ -84,23 +84,36 @@ export function ApprovalPanel({ workspace, recommendation, onClose }: {
       <span className="section-index">{APPROVAL_COPY.heading}</span>
       <strong className="approval-state">{state}</strong>
     </div>
+    {/* What is being authorised leads; the records it is bound to follow it. Read in the other
+        order, a version hash carries the same weight as the decision a person is making. */}
+    <p className="approval-lede">{APPROVAL_COPY.actionSummary}</p>
     <p className="approval-statement">{STATE_COPY[state]}</p>
-    <p className="approval-statement">{APPROVAL_COPY.actionSummary}</p>
 
-    <dl className="approval-bindings">
-      <div><dt>Approved action</dt><dd>{approval?.action ?? snapshot?.action ?? 'GENERATE_DRAFT_PACK'}</dd></div>
-      <div><dt>Actor</dt><dd>{approval?.actor_id ?? snapshot?.founder_profile_id ?? 'Unresolved'}</dd></div>
-      <div><dt>Opportunity</dt><dd>{workspace.program_name}<small>Opportunity version {snapshot?.opportunity_version ?? workspace.version}</small></dd></div>
-      <div><dt>Project</dt><dd>{workspace.decision.best_project?.name ?? 'Unresolved'}<small>Project version {snapshot?.project_version ?? 'unrecorded'}</small></dd></div>
-      <div><dt>Recommendation</dt><dd>{recommendation}</dd></div>
-      <div><dt>Expires</dt><dd>{approval ? <time dateTime={approval.expires_at}>{approval.expires_at}</time> : 'Unrecorded'}</dd></div>
-    </dl>
+    <div className="approval-subject" role="group" aria-label="Approval subject">
+      <dl className="approval-bindings">
+        <div><dt>Opportunity</dt><dd>{workspace.program_name}<small>Opportunity version {snapshot?.opportunity_version ?? workspace.version}</small></dd></div>
+        <div><dt>Project</dt><dd>{workspace.decision.best_project?.name ?? 'Unresolved'}<small>Project version {snapshot?.project_version ?? 'unrecorded'}</small></dd></div>
+        <div><dt>Recommendation</dt><dd>{recommendation}</dd></div>
+      </dl>
+    </div>
 
     {approval && approval.reason !== 'VALID' && approval.reason !== 'PENDING' &&
       <p className="approval-statement approval-reason">{REASON_COPY[approval.reason]}</p>}
 
-    <p className="approval-boundary">{APPROVAL_COPY.boundary}</p>
-    <p className="approval-boundary">{APPROVAL_COPY.notGuaranteed}</p>
+    {/* Stated before the person is asked to confirm, and given its own boundary rather than
+        trailing the panel as fine print: it is the whole reason this checkpoint is safe. */}
+    <div className="approval-limit" role="group" aria-label="What this approval does not do">
+      <p className="approval-boundary">{APPROVAL_COPY.boundary}</p>
+      <p className="approval-boundary approval-boundary--secondary">{APPROVAL_COPY.notGuaranteed}</p>
+    </div>
+
+    <div className="approval-provenance" role="group" aria-label="Approval provenance">
+      <dl className="approval-bindings">
+        <div><dt>Approved action</dt><dd>{approval?.action ?? snapshot?.action ?? 'GENERATE_DRAFT_PACK'}</dd></div>
+        <div><dt>Actor</dt><dd>{approval?.actor_id ?? snapshot?.founder_profile_id ?? 'Unresolved'}</dd></div>
+        <div><dt>Expires</dt><dd>{approval ? <time dateTime={approval.expires_at}>{approval.expires_at}</time> : 'Unrecorded'}</dd></div>
+      </dl>
+    </div>
 
     {failure && <p className="approval-failure" role="alert">{failure}</p>}
     {readOnly && <p className="approval-statement" role="status">{APPROVAL_COPY.readOnly}</p>}

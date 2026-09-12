@@ -997,3 +997,166 @@
 .workspace:not(.workspace--optical-preview).proof-is-open .workspace-rail {
   opacity: .72;
 }
+
+/* ------------------------------------------------------------------------------------------
+ * Task 4 — the human boundary, and the document it produces.
+ *
+ * Two moments, one transition. The approval checkpoint read as another section of the canvas:
+ * a small eyebrow, a flat six-cell grid in which the expiry timestamp carried the same weight
+ * as the decision, and the one sentence that makes the whole thing safe — nothing is submitted
+ * externally — set as trailing fine print. What is being authorised now leads, the records it
+ * is bound to follow it quietly, and the boundary claim is given its own surface above the
+ * confirm control rather than under it.
+ *
+ * The pack then arrives on the same four-zone body as the decision workspace, which left the
+ * finished document holding one column of four with a Why & proof panel beside it reading "No
+ * decision selected" — true of the workspace, and nothing to do with the pack. On that route
+ * the document is the view. `:has()` rather than a class on the shell: the route already says
+ * what it is by rendering the article, and WorkspaceShell is outside this task's surface.
+ * ---------------------------------------------------------------------------------------- */
+
+@media (min-width: 1280px) {
+  /* A surface the workflow stops on, rather than a rule it continues past. The top edge is
+     the only lit one: the canvas above is where the machine was reasoning, and this is the
+     line it does not cross on its own. */
+  .workspace:not(.workspace--optical-preview) .approval-checkpoint {
+    max-width: 700px;
+    margin-top: 40px;
+    padding: 30px 34px 32px;
+    border: 1px solid #243c4a;
+    border-top: 1px solid #7cc0e4;
+    border-radius: 2px;
+    background: linear-gradient(171deg, #102636, #0a1922 62%, #0b1c26);
+  }
+
+  .workspace:not(.workspace--optical-preview) .approval-heading .section-index {
+    font-size: 10px;
+    letter-spacing: .17em;
+    color: #d3e8f5;
+  }
+
+  /* The server's state token stays legible and stops competing with the heading. */
+  .workspace:not(.workspace--optical-preview) .approval-state {
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: .1em;
+    color: #9bb6c6;
+  }
+
+  /* The action, in the product's own editorial voice, at the size of a thing being decided. */
+  .workspace:not(.workspace--optical-preview) .approval-lede {
+    margin-top: 20px;
+    font-family: var(--font-editorial);
+    font-size: 20px;
+    font-weight: 400;
+    line-height: 1.42;
+    letter-spacing: -.015em;
+    color: #eaf4fb;
+  }
+
+  .workspace:not(.workspace--optical-preview) .approval-statement {
+    margin-top: 12px;
+    font-size: 12px;
+  }
+
+  .workspace:not(.workspace--optical-preview) .approval-subject .approval-bindings {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-top: 24px;
+    padding: 18px 0;
+  }
+
+  /* The claim, not the footnote. Given a surface and a lit edge of its own so it is read
+     before the control beneath it, and worded by the server-owned copy either way. */
+  .workspace:not(.workspace--optical-preview) .approval-limit {
+    margin-top: 24px;
+    padding: 16px 18px;
+    border-left: 2px solid #6aa8c8;
+    border-radius: 0 2px 2px 0;
+    background: #0c1c26;
+  }
+
+  .workspace:not(.workspace--optical-preview) .approval-limit .approval-boundary {
+    margin-top: 0;
+    font-size: 12px;
+    line-height: 1.65;
+    color: #c6dcea;
+  }
+
+  .workspace:not(.workspace--optical-preview) .approval-limit .approval-boundary--secondary {
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* Provenance is what the approval is bound to, not what it is: small, quiet, and last. */
+  .workspace:not(.workspace--optical-preview) .approval-provenance .approval-bindings {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-top: 22px;
+    padding: 16px 0 0;
+    border-bottom: 0;
+    gap: 14px 28px;
+  }
+
+  .workspace:not(.workspace--optical-preview) .approval-provenance dd {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .workspace:not(.workspace--optical-preview) .approval-controls {
+    margin-top: 28px;
+  }
+}
+
+/* The pack route is a document. Outside any media query: a finished document framed by two
+   dead panels is the same defect at every width. */
+.workspace:not(.workspace--optical-preview) .workspace-grid:has(.application-pack) {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'canvas';
+  /* The stage. Dark above the paper and down both sides, so the document reads as something
+     QUALOR produced and set down, rather than as a light column spliced into the shell. */
+  padding: 28px 24px 64px;
+}
+
+.workspace:not(.workspace--optical-preview) .workspace-grid:has(.application-pack) .workspace-queue,
+.workspace:not(.workspace--optical-preview) .workspace-grid:has(.application-pack) .proof-context,
+.workspace:not(.workspace--optical-preview) .workspace-grid:has(.application-pack) .workspace-rail {
+  display: none;
+}
+
+.workspace:not(.workspace--optical-preview) .workspace-grid:has(.application-pack) .workspace-canvas {
+  padding: 0;
+}
+
+/* The canvas topline says "Decision workspace" and carries the rail's toggle. On this route
+   the first is untrue and the second would be a control pointing at a panel that is no longer
+   rendered, which is worse than untidy. */
+.workspace:not(.workspace--optical-preview) .workspace-grid:has(.application-pack) .canvas-topline {
+  display: none;
+}
+
+/* A page, not a full-bleed screen: the masthead already sets a reading measure, and a document
+   whose body runs to 1440px while its own standfirst wraps at 660 reads as two compositions.
+   The sheet takes its width from its own contents, not from the window: `margin: 0 auto` on a
+   flex item turns off the cross-axis stretch, so it sizes to fit — the 660px measure plus the
+   paper's own clamp(28px, 5vw, 76px) inline padding, which is 806px at the judge viewport and
+   narrows with it. The max-width is an upper bound only and does not bind here; it is what
+   stops a single unbroken recorded token from stretching the sheet.
+
+   The edge is a sheet's edge, not a card's: one mineral hairline, a 3px radius that only stops
+   the corners reading as cut, and a shadow that is long and faint rather than a lift. */
+.workspace:not(.workspace--optical-preview) .application-pack {
+  max-width: 860px;
+  margin: 0 auto;
+  padding-block: 56px 76px;
+  border: 1px solid #b7bbb4;
+  border-radius: 3px;
+  box-shadow: 0 18px 46px -26px #000000a6;
+}
+
+/* Two columns inside the same measure as everything else, so the identifiers sit under the
+   standfirst rather than striping the page — and so a 36-character id still fits on one line. */
+.workspace:not(.workspace--optical-preview) .pack-attribution {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: var(--document-measure);
+}

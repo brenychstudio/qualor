@@ -14,6 +14,14 @@ function citationUrl(reference: string): string | null {
   }
 }
 
+/** A recorded enum read as language. Lossless and presentational only: the exact recorded
+ *  value is still printed verbatim in Traceability, and nothing here reinterprets it. */
+function readable(value: string | null | undefined): string {
+  if (!value) return 'Unrecorded';
+  const words = value.toLowerCase().replaceAll('_', ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 /**
  * The approved Application Pack, read-only by construction.
  *
@@ -69,29 +77,20 @@ export function ApplicationPack() {
         Finished local document, prepared for human review. No external submission has occurred
         and nothing here is sent anywhere.
       </p>
+      {/* The recorded preparation facts, read as language. Enough for a person to know what
+          they are holding; the records behind it are gathered in Traceability below. */}
+      <div role="group" aria-label="How this pack was prepared">
+        <ul className="pack-preparation">
+          <li>{readable(pack.content_kind)}</li>
+          <li>{readable(pack.creator_kind)} preparation</li>
+          <li>{readable(pack.mode)} research mode</li>
+        </ul>
+      </div>
     </header>
 
-    <dl className="pack-attribution" aria-label="Pack attribution">
-      <div><dt>Pack</dt><dd>{pack.id}<small>Version {pack.version}</small></dd></div>
-      <div><dt>Approval</dt><dd>{pack.approval_id}<small>Version {pack.approval_version}</small></dd></div>
-      <div><dt>Drafting job</dt><dd>{pack.draft_job_id}<small>Version {pack.draft_job_version}</small></dd></div>
-      <div><dt>Actor</dt><dd>{pack.actor_id}</dd></div>
-      <div><dt>Prepared by</dt><dd>{pack.creator_kind ?? 'Unrecorded'}</dd></div>
-      <div><dt>Content kind</dt><dd>{pack.content_kind ?? 'Unrecorded'}</dd></div>
-      <div><dt>Research mode</dt><dd>{pack.mode}</dd></div>
-      <div><dt>Generated</dt><dd><time dateTime={pack.generated_at}>{pack.generated_at}</time></dd></div>
-    </dl>
-
-    <div className="pack-block" role="group" aria-label="Bound versions">
-      <h2 className="pack-block-title">Bound versions</h2>
-      <p className="pack-block-note">The approval was recorded against exactly these versions.</p>
-      <ul className="pack-versions">
-        <li>Opportunity version {bound.opportunity_version}</li>
-        <li>Profile version {bound.founder_profile_version}</li>
-        <li>Project version {bound.project_version}</li>
-        <li>Decision version {bound.decision_version}</li>
-        {policies.map(([name, version]) => <li key={name}>Policy · {name} {String(version)}</li>)}
-      </ul>
+    {/* What QUALOR prepared comes before how it can be traced. */}
+    <div className="pack-sections">
+      {pack.sections.map(section => <DraftPackSection key={section.key} section={section} />)}
     </div>
 
     <div className="pack-block" role="group" aria-label="Missing information">
@@ -102,10 +101,6 @@ export function ApplicationPack() {
           <p className="pack-block-note">{pack.missing_fields.length} recorded gaps remain unresolved. They are not answered here.</p>
           <ul className="pack-missing">{pack.missing_fields.map(field => <li key={field}>{field}</li>)}</ul>
         </>}
-    </div>
-
-    <div className="pack-sections">
-      {pack.sections.map(section => <DraftPackSection key={section.key} section={section} />)}
     </div>
 
     <div className="pack-block" role="group" aria-label="Source and evidence references">
@@ -127,6 +122,37 @@ export function ApplicationPack() {
         </li>)}
       </ul>
     </div>
+
+    {/* `group`, not the `region` a named section would otherwise be: the seven prepared
+        sections are the regions of this document, and an eighth would make the count of what
+        QUALOR prepared disagree with the pack the server recorded. */}
+    <section className="pack-trace" role="group" aria-label="Traceability">
+      <h2 className="pack-block-title">Traceability</h2>
+      <p className="pack-block-note">Every record this pack was prepared from, exactly as the workspace recorded it.</p>
+
+      <dl className="pack-attribution" aria-label="Pack attribution">
+        <div><dt>Pack</dt><dd>{pack.id}<small>Version {pack.version}</small></dd></div>
+        <div><dt>Approval</dt><dd>{pack.approval_id}<small>Version {pack.approval_version}</small></dd></div>
+        <div><dt>Drafting job</dt><dd>{pack.draft_job_id}<small>Version {pack.draft_job_version}</small></dd></div>
+        <div><dt>Actor</dt><dd>{pack.actor_id}</dd></div>
+        <div><dt>Prepared by</dt><dd>{pack.creator_kind ?? 'Unrecorded'}</dd></div>
+        <div><dt>Content kind</dt><dd>{pack.content_kind ?? 'Unrecorded'}</dd></div>
+        <div><dt>Research mode</dt><dd>{pack.mode}</dd></div>
+        <div><dt>Generated</dt><dd><time dateTime={pack.generated_at}>{pack.generated_at}</time></dd></div>
+      </dl>
+
+      <div className="pack-block" role="group" aria-label="Bound versions">
+        <h3 className="pack-block-subtitle">Bound versions</h3>
+        <p className="pack-block-note">The approval was recorded against exactly these versions.</p>
+        <ul className="pack-versions">
+          <li>Opportunity version {bound.opportunity_version}</li>
+          <li>Profile version {bound.founder_profile_version}</li>
+          <li>Project version {bound.project_version}</li>
+          <li>Decision version {bound.decision_version}</li>
+          {policies.map(([name, version]) => <li key={name}>Policy · {name} {String(version)}</li>)}
+        </ul>
+      </div>
+    </section>
 
     <p className="pack-colophon">
       Draft prose is not verified evidence. Review every answer before using it. No external

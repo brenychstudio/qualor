@@ -352,3 +352,45 @@ test.each(['WATCH', 'SKIP'] as const)('%s never opens the approval checkpoint', 
   expect(screen.queryByRole('region', { name: /human approval/i })).not.toBeInTheDocument();
   expect(calls.request).toBe(0);
 });
+
+/* The judge-facing hierarchy of the checkpoint: what is being authorised comes first, the
+ * records it is bound to come after. The bindings were one flat list, so a version hash read
+ * at the same weight as the action itself. */
+
+test('leads with the action being authorised, before the records it is bound to', async () => {
+  stub();
+  const { container } = renderPanel();
+  const region = await screen.findByRole('region', { name: /human approval/i });
+  const lede = within(region).getByText(/you are approving one bounded action/i);
+  const provenance = within(region).getByRole('group', { name: /approval provenance/i });
+  // Node order, not styling: the action is stated before any identifier is offered.
+  expect(lede.compareDocumentPosition(provenance) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(container.textContent ?? '').toMatch(/prepare a draft pack/i);
+});
+
+test('separates what the approval is for from the records it is bound to', async () => {
+  stub();
+  renderPanel();
+  const region = await screen.findByRole('region', { name: /human approval/i });
+  // The decision this approval is about.
+  const subject = within(region).getByRole('group', { name: /approval subject/i });
+  expect(within(subject).getByText('Selected program')).toBeVisible();
+  expect(within(subject).getByText(/Recorded project/)).toBeVisible();
+  // The records it is bound to, kept apart from it.
+  const provenance = within(region).getByRole('group', { name: /approval provenance/i });
+  expect(within(provenance).getByText('GENERATE_DRAFT_PACK')).toBeVisible();
+  expect(within(provenance).getByText('founder-1')).toBeVisible();
+  expect(within(provenance).getByText(/2026-09-10T12:00:00Z/)).toBeVisible();
+});
+
+test('states the boundary as its own claim rather than as trailing fine print', async () => {
+  stub();
+  renderPanel();
+  const region = await screen.findByRole('region', { name: /human approval/i });
+  const boundary = within(region).getByRole('group', { name: /what this approval does not do/i });
+  expect(boundary.textContent ?? '').toMatch(/nothing is submitted externally/i);
+  expect(boundary.textContent ?? '').toMatch(/no organizer is contacted/i);
+  // And it is made before the person is asked to confirm.
+  const confirm = within(region).getByRole('button', { name: /confirm approval/i });
+  expect(boundary.compareDocumentPosition(confirm) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
