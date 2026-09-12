@@ -154,26 +154,30 @@ becomes truthful on the merits.
 
 ### The current truthful result
 
-A dry run of the deterministic stack against the real official facts and the audited real
-project facts, on a temporary local database with zero AWS calls, produced:
+Every figure below comes from running the deterministic stack against the real official facts
+and the audited real project facts, on a temporary local database with zero AWS calls.
+
+At preflight, before the owner supplied applicant facts and before the Task 2B contract work:
 
 ```text
-MODE=REPLAY
-BEST_PROJECT=UNRESOLVED
-ELIGIBILITY=REVIEW_REQUIRED
-RECOMMENDATION=WATCH
-STRATEGY=UNKNOWN
-READINESS=UNKNOWN
-CONFLICT=REVIEW_REQUIRED
+MODE=REPLAY · BEST_PROJECT=UNRESOLVED · ELIGIBILITY=REVIEW_REQUIRED
+RECOMMENDATION=WATCH · STRATEGY=UNKNOWN · READINESS=UNKNOWN · CONFLICT=REVIEW_REQUIRED
+```
+
+After Task 2 (real applicant and project facts) and Task 2B (the contract work in section 9):
+
+```text
+MODE=REPLAY · BEST_PROJECT=project_qualor · ELIGIBILITY=PASS
+READINESS=GAPS_EXECUTABLE · CONFLICT=NO_CONFLICT_DETECTED_IN_CHECKED_RULES
+CAPACITY=SUFFICIENT · STRATEGY=UNKNOWN · RECOMMENDATION=WATCH
 CURRENT_APPLY_READY=NO
 ```
 
-Reason codes: `ELIGIBILITY_MISSING_FACT`, `ELIGIBILITY_INCOMPLETE_COVERAGE`,
-`ELIGIBILITY_UNVERIFIED_EVIDENCE`, `STRATEGY_SCORE_UNKNOWN`, `CONFLICT_REVIEW_REQUIRED`.
-Explanation: *Matching does not identify a unique best project.*
+One input remains unrecorded, and it is an owner fact rather than a contract gap:
+`founder.strategic_goals`. `_goal_coverage` returns UNKNOWN when goals are absent, so the
+strategy score cannot resolve and the recommendation stays `WATCH`. It is not invented here.
 
-This is the honest state of the product against its own real opportunity, and it is the
-starting point the plan works from.
+This is the honest state of the product against its own real opportunity.
 
 ## 7. Two different kinds of gap
 
@@ -216,17 +220,31 @@ Verified against the repository, git history and the authenticated GitHub API on
 
 ## 9. Contract gaps found during preflight
 
-Recorded because they constrain what the demo can truthfully assert, not as work to start now.
+Four were found. Three were closed by Task 2B as generic contract work, carrying no
+opportunity-specific logic; one remains open and is recorded as such.
 
-- **No `NOT_IN` operator.** `Operator` offers `EQ, IN, GTE, LTE, BETWEEN, DATE_BETWEEN,
-  BOOL_IS, AND, OR`. The official eligibility section is an **exclusion** list of countries
-  and territories. It cannot be faithfully encoded, and inventing an inclusion list would be
-  fabrication, so no `GEOGRAPHY` rule was authored and the gap is reported instead.
-- **`OpportunityRecord.edition` is a required non-empty string.** Neither official page
+- **No `NOT_IN` operator — CLOSED (Task 2B).** `Operator` offered `EQ, IN, GTE, LTE, BETWEEN,
+  DATE_BETWEEN, BOOL_IS, AND, OR`. The official eligibility section is an **exclusion** list of
+  countries and territories, and inverting it into an invented allow-list would be fabrication.
+  `NOT_IN` now states an exclusion directly, inheriting every conservative guard the other
+  scalar operators have: an unknown subject, an unstated set or a type mismatch all stay
+  UNKNOWN.
+- **No representation for an absent adaptation cap — CLOSED (Task 2B).** `max_adaptation_hours`
+  could only be a number or unknown, so a source that publishes no cap forced the whole
+  comparable score to UNKNOWN. `adaptation_unbounded` distinguishes an *unread* cap from an
+  *absent* one. Absence of `max_adaptation_hours` never implies it, and a record cannot state
+  both.
+- **`LEGAL_ENTITY` eligibility is a disjunction — CLOSED (Task 2B)** by `IN` over the legal
+  forms the rules admit, grounded in the "IS open to" excerpts.
+- **`OpportunityRecord.edition` is a required non-empty string — OPEN.** Neither official page
   publishes an edition label. `2026` is recorded as **derived** from the stated Submission
   Period, explicitly not quoted as a label.
-- **`LEGAL_ENTITY` eligibility is a disjunction** (individuals, teams, or organizations) that
-  `EQ` cannot express.
+
+One residual is recorded rather than closed: the official exclusion list ends "and any other
+country designated by the United States Treasury's Office of Foreign Assets Control". A
+`NOT_IN` over the enumerated jurisdictions cannot evaluate that open-ended clause. The full
+clause is carried verbatim in the attached evidence, so a human reads it even though the
+operator does not.
 
 ## 10. Professional Agents fit, source-grounded
 

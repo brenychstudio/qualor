@@ -78,6 +78,7 @@ class Category(StrEnum):
 class Operator(StrEnum):
     EQ = "EQ"
     IN = "IN"
+    NOT_IN = "NOT_IN"
     GTE = "GTE"
     LTE = "LTE"
     BETWEEN = "BETWEEN"

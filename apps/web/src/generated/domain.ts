@@ -737,7 +737,7 @@ export type Value7 = string;
 export type Kind4 = "instant";
 export type Value8 = string;
 export type Operands = (TextValue | NumberValue | BoolValue | DateValue | InstantValue)[];
-export type Operator = "EQ" | "IN" | "GTE" | "LTE" | "BETWEEN" | "DATE_BETWEEN" | "BOOL_IS" | "AND" | "OR";
+export type Operator = "EQ" | "IN" | "NOT_IN" | "GTE" | "LTE" | "BETWEEN" | "DATE_BETWEEN" | "BOOL_IS" | "AND" | "OR";
 export type SchemaVersion5 = "1";
 export type SourceTextSummary = string;
 export type Supported1 = boolean;
@@ -1824,15 +1824,21 @@ export interface OpportunityRecord {
   version: Version11;
 }
 export interface MatchingRequirements {
+  adaptation_unbounded?: FactAnnotatedBoolStrictStrictTrue3;
   audience_labels?: FactTupleAnnotatedStrStringConstraints4;
   features?: FactTupleAnnotatedStrStringConstraints5;
   licenses?: FactTupleAnnotatedStrStringConstraints6;
   materials?: Materials;
   max_adaptation_hours?: FactAnnotatedDecimalBeforeValidatorFieldInfoAnnotationNoneTypeRequiredTrueMetadata_PydanticGeneralMetadataAllowInfNanFalseFieldInfoAnnotationNoneTypeRequiredTrueMetadataGeGe01;
-  original_code_required?: FactAnnotatedBoolStrictStrictTrue4;
+  original_code_required?: FactAnnotatedBoolStrictStrictTrue5;
   problem_labels?: FactTupleAnnotatedStrStringConstraints7;
   stages?: FactTupleProjectStage;
   technologies?: FactTupleAnnotatedStrStringConstraints8;
+}
+export interface FactAnnotatedBoolStrictStrictTrue3 {
+  evidence_refs?: EvidenceRefs2;
+  provenance?: Provenance2;
+  value?: Value1;
 }
 export interface FactTupleAnnotatedStrStringConstraints4 {
   evidence_refs?: EvidenceRefs1;
@@ -1851,9 +1857,9 @@ export interface FactTupleAnnotatedStrStringConstraints6 {
 }
 export interface MaterialRequirement {
   kind: MaterialKind;
-  required?: FactAnnotatedBoolStrictStrictTrue3;
+  required?: FactAnnotatedBoolStrictStrictTrue4;
 }
-export interface FactAnnotatedBoolStrictStrictTrue3 {
+export interface FactAnnotatedBoolStrictStrictTrue4 {
   evidence_refs?: EvidenceRefs2;
   provenance?: Provenance2;
   value?: Value1;
@@ -1863,7 +1869,7 @@ export interface FactAnnotatedDecimalBeforeValidatorFieldInfoAnnotationNoneTypeR
   provenance?: Provenance5;
   value?: Value9;
 }
-export interface FactAnnotatedBoolStrictStrictTrue4 {
+export interface FactAnnotatedBoolStrictStrictTrue5 {
   evidence_refs?: EvidenceRefs2;
   provenance?: Provenance2;
   value?: Value1;
@@ -1906,18 +1912,18 @@ export interface FactTupleAnnotatedStrStringConstraints9 {
   value?: Value;
 }
 export interface ParticipationCosts {
-  complete: FactAnnotatedBoolStrictStrictTrue5;
+  complete: FactAnnotatedBoolStrictStrictTrue6;
   items: Items;
 }
-export interface FactAnnotatedBoolStrictStrictTrue5 {
+export interface FactAnnotatedBoolStrictStrictTrue6 {
   evidence_refs?: EvidenceRefs2;
   provenance?: Provenance2;
   value?: Value1;
 }
 export interface ParticipationCost {
-  accepted: FactAnnotatedBoolStrictStrictTrue5;
+  accepted: FactAnnotatedBoolStrictStrictTrue6;
   amount: Money | null;
-  covered: FactAnnotatedBoolStrictStrictTrue5;
+  covered: FactAnnotatedBoolStrictStrictTrue6;
   kind: CostKind;
   reason: Reason1;
 }
@@ -1935,9 +1941,9 @@ export interface ProjectProfile {
   created_at: CreatedAt9;
   estimated_adaptation_hours?: FactAnnotatedDecimalBeforeValidatorFieldInfoAnnotationNoneTypeRequiredTrueMetadata_PydanticGeneralMetadataAllowInfNanFalseFieldInfoAnnotationNoneTypeRequiredTrueMetadataGeGe02;
   facts_verified_at?: FactsVerifiedAt;
-  has_sponsor_support?: FactAnnotatedBoolStrictStrictTrue6;
+  has_sponsor_support?: FactAnnotatedBoolStrictStrictTrue7;
   id: Id15;
-  is_new_project?: FactAnnotatedBoolStrictStrictTrue7;
+  is_new_project?: FactAnnotatedBoolStrictStrictTrue8;
   license_intent?: FactAnnotatedStrStringConstraints4;
   material_readiness?: MaterialReadiness;
   name: Name1;
@@ -1946,9 +1952,9 @@ export interface ProjectProfile {
   project_lineage?: FactTupleAnnotatedStrStringConstraints12;
   provenance: Provenance3;
   public_evidence_refs?: PublicEvidenceRefs;
-  reuse_disclosed?: FactAnnotatedBoolStrictStrictTrue10;
+  reuse_disclosed?: FactAnnotatedBoolStrictStrictTrue11;
   reused_components?: FactTupleAnnotatedStrStringConstraints13;
-  reward_conditions_met?: FactAnnotatedBoolStrictStrictTrue11;
+  reward_conditions_met?: FactAnnotatedBoolStrictStrictTrue12;
   schema_version: SchemaVersion9;
   stage?: FactProjectStage;
   technology_stack?: FactTupleAnnotatedStrStringConstraints14;
@@ -1975,12 +1981,12 @@ export interface FactAnnotatedDecimalBeforeValidatorFieldInfoAnnotationNoneTypeR
   provenance?: Provenance5;
   value?: Value9;
 }
-export interface FactAnnotatedBoolStrictStrictTrue6 {
+export interface FactAnnotatedBoolStrictStrictTrue7 {
   evidence_refs?: EvidenceRefs2;
   provenance?: Provenance2;
   value?: Value1;
 }
-export interface FactAnnotatedBoolStrictStrictTrue7 {
+export interface FactAnnotatedBoolStrictStrictTrue8 {
   evidence_refs?: EvidenceRefs2;
   provenance?: Provenance2;
   value?: Value1;
@@ -1991,17 +1997,17 @@ export interface FactAnnotatedStrStringConstraints4 {
   value?: Value2;
 }
 export interface MaterialReadiness1 {
-  gap_executable?: FactAnnotatedBoolStrictStrictTrue8;
+  gap_executable?: FactAnnotatedBoolStrictStrictTrue9;
   kind: MaterialKind;
-  ready?: FactAnnotatedBoolStrictStrictTrue9;
+  ready?: FactAnnotatedBoolStrictStrictTrue10;
   reason?: Reason2;
 }
-export interface FactAnnotatedBoolStrictStrictTrue8 {
+export interface FactAnnotatedBoolStrictStrictTrue9 {
   evidence_refs?: EvidenceRefs2;
   provenance?: Provenance2;
   value?: Value1;
 }
-export interface FactAnnotatedBoolStrictStrictTrue9 {
+export interface FactAnnotatedBoolStrictStrictTrue10 {
   evidence_refs?: EvidenceRefs2;
   provenance?: Provenance2;
   value?: Value1;
@@ -2021,7 +2027,7 @@ export interface FactTupleAnnotatedStrStringConstraints12 {
   provenance?: Provenance1;
   value?: Value;
 }
-export interface FactAnnotatedBoolStrictStrictTrue10 {
+export interface FactAnnotatedBoolStrictStrictTrue11 {
   evidence_refs?: EvidenceRefs2;
   provenance?: Provenance2;
   value?: Value1;
@@ -2031,7 +2037,7 @@ export interface FactTupleAnnotatedStrStringConstraints13 {
   provenance?: Provenance1;
   value?: Value;
 }
-export interface FactAnnotatedBoolStrictStrictTrue11 {
+export interface FactAnnotatedBoolStrictStrictTrue12 {
   evidence_refs?: EvidenceRefs2;
   provenance?: Provenance2;
   value?: Value1;

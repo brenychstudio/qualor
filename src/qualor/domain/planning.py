@@ -53,10 +53,20 @@ class MatchingRequirements(Contract):
     licenses: Fact[tuple[NonEmpty, ...]] = Fact()
     original_code_required: Fact[StrictBool] = Fact()
     max_adaptation_hours: Fact[NonNegativeDecimal] = Fact()
+    #: Whether the source states outright that it sets no adaptation limit. An unread cap and
+    #: an absent cap are different answers: the first is unknown, the second is satisfied by
+    #: any finite adaptation. Absence of `max_adaptation_hours` never implies this.
+    adaptation_unbounded: Fact[StrictBool] = Fact()
     materials: tuple[MaterialRequirement, ...] = ()
 
     @model_validator(mode="after")
     def unique_materials(self) -> Self:
         if len({m.kind for m in self.materials}) != len(self.materials):
             raise ValueError("Duplicate material requirements")
+        return self
+
+    @model_validator(mode="after")
+    def one_adaptation_answer(self) -> Self:
+        if self.adaptation_unbounded.value and self.max_adaptation_hours.value is not None:
+            raise ValueError("An unbounded adaptation constraint cannot also state a finite limit")
         return self

@@ -116,10 +116,29 @@ def match_project(
         project.estimated_adaptation_hours.value,
         requirements.max_adaptation_hours.value,
     )
+    # A source that states outright that it caps nothing has answered the question: no finite
+    # adaptation can exceed an absent limit, so the comparison is satisfied without needing
+    # the project's own figure. A cap that simply has not been read stays unknown.
+    adaptation_rating = (
+        4
+        if requirements.adaptation_unbounded.value
+        else None
+        if actual is None or maximum is None
+        else 4
+        if actual <= maximum
+        else 0
+    )
+    # Cite whichever requirement actually answered the question. Citing the numeric cap when
+    # the unbounded declaration is what satisfied the factor would put a field holding no
+    # value in front of a judge as a matched requirement.
+    adaptation_requirement = (
+        "adaptation_unbounded" if requirements.adaptation_unbounded.value
+        else "max_adaptation_hours"
+    )
     add(
         "adaptation",
-        None if actual is None or maximum is None else 4 if actual <= maximum else 0,
-        (("max_adaptation_hours", "estimated_adaptation_hours"),),
+        adaptation_rating,
+        ((adaptation_requirement, "estimated_adaptation_hours"),),
     )
     readiness_rating = {
         ReadinessState.READY: 4,

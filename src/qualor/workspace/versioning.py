@@ -81,6 +81,7 @@ def _matching(requirements: Any) -> dict[str, Any] | None:
         "licenses": _fact(requirements.licenses),
         "original_code_required": _fact(requirements.original_code_required),
         "max_adaptation_hours": _fact(requirements.max_adaptation_hours),
+        "adaptation_unbounded": _fact(requirements.adaptation_unbounded),
         "materials": [
             {"kind": material.kind.value, "required": _fact(material.required)}
             for material in requirements.materials

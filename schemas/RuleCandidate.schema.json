@@ -110,6 +110,7 @@
       "enum": [
         "EQ",
         "IN",
+        "NOT_IN",
         "GTE",
         "LTE",
         "BETWEEN",

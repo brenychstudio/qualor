@@ -94,3 +94,53 @@ def test_full_truth_tables(left, right):
     )
     assert evaluate_operator(Operator.AND, None, (), values) == expected_and
     assert evaluate_operator(Operator.OR, None, (), values) == expected_or
+
+
+# --- NOT_IN: exclusion-list eligibility -------------------------------------------------
+#
+# Official eligibility is frequently written as an exclusion list -- open to everyone except
+# these jurisdictions -- which IN cannot express without inverting the source into an invented
+# allow-list. NOT_IN inherits every conservative guard the other scalar operators already
+# have: an unknown subject, an unstated source set, or a type mismatch all stay UNKNOWN.
+
+
+@pytest.mark.parametrize(
+    "case,actual,operands,expected",
+    [
+        ("excluded value is refused", TextValue(value="Russia"),
+         (TextValue(value="Russia"), TextValue(value="Cuba")), "FAIL"),
+        ("value outside the excluded set passes", TextValue(value="Spain"),
+         (TextValue(value="Russia"), TextValue(value="Cuba")), "PASS"),
+        ("an unknown subject stays unknown", None, (TextValue(value="Russia"),), "UNKNOWN"),
+        ("an unstated excluded set stays unknown", TextValue(value="Spain"), (), "UNKNOWN"),
+        ("a type mismatch stays unknown", TextValue(value="Spain"),
+         (NumberValue(value="1"),), "UNKNOWN"),
+    ],
+)
+def test_not_in_excludes_without_inventing_an_allow_list(case, actual, operands, expected):
+    from qualor.eligibility.operators import evaluate_operator
+
+    assert evaluate_operator(Operator.NOT_IN, actual, operands) == RuleStatus(expected), case
+
+
+def test_not_in_over_a_declared_collection_stays_unknown():
+    """Excluding one member of a declared stack is not the same as excluding the stack."""
+    from qualor.eligibility.operators import evaluate_operator
+
+    assert evaluate_operator(
+        Operator.NOT_IN,
+        (TextValue(value="Python"), TextValue(value="Rust")),
+        (TextValue(value="Rust"),),
+    ) == RuleStatus.UNKNOWN
+
+
+def test_in_and_not_in_are_exact_complements_on_comparable_scalars():
+    """Neither operator may quietly become the other, at any value in the set or outside it."""
+    from qualor.eligibility.operators import evaluate_operator
+
+    operands = (TextValue(value="Russia"), TextValue(value="Cuba"))
+    for value in ("Russia", "Cuba", "Spain", "Portugal"):
+        actual = TextValue(value=value)
+        inside = evaluate_operator(Operator.IN, actual, operands)
+        outside = evaluate_operator(Operator.NOT_IN, actual, operands)
+        assert {inside, outside} == {RuleStatus.PASS, RuleStatus.FAIL}, value

@@ -108,9 +108,11 @@ decisions, and nothing may be invented in their place:
       `UNKNOWN` everywhere else.
 - [ ] Normalize the official opportunity from the captured sources: every rule carries its
       verbatim excerpt, verified character-for-character before use.
-- [ ] Record the `NOT_IN` operator gap rather than working around it: no `GEOGRAPHY` rule is
-      authored from an invented inclusion list. If geography must be gated, that is a
-      contract change and it STOPS for owner decision.
+- [x] Record the `NOT_IN` operator gap rather than working around it: no `GEOGRAPHY` rule is
+      authored from an invented inclusion list. Geography did need gating, so it stopped for
+      owner decision and was authorised as **Task 2B**, which closed `NOT_IN`,
+      `adaptation_unbounded` and the `LEGAL_ENTITY` disjunction as generic contract work.
+      See section 9 of the design specification.
 - [ ] Re-run the dry run and record the actual result.
 - [ ] **STOP.** Report the new truthful recommendation.
 

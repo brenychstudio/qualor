@@ -253,3 +253,98 @@ def test_zero_maximum_still_reports_missing_adaptation():
         project(estimated_adaptation_hours=Fact()), opportunity(max_adaptation_hours=fact("0")), NOW
     )
     assert "project.estimated_adaptation_hours" in result.missing_project_facts
+
+
+# --- explicitly unbounded adaptation ----------------------------------------------------
+#
+# An opportunity that publishes no adaptation cap is not the same as one whose cap has not
+# been read yet. The first has a definite answer -- every finite adaptation satisfies an
+# absent limit -- and the second does not. Collapsing them forced the whole comparable score
+# to UNKNOWN whenever a real source simply had nothing to say about adaptation hours.
+
+
+def adaptation_rating(match):
+    return next(f.rating for f in match.factor_results if f.factor == "adaptation")
+
+
+def test_an_unread_adaptation_cap_is_still_unknown():
+    """The absence of a value is never read as the absence of a limit."""
+    match = match_project(project(), opportunity(max_adaptation_hours=Fact()), NOW)
+    assert adaptation_rating(match) is None
+    assert match.comparable_score is None
+
+
+def test_a_finite_adaptation_cap_is_unchanged():
+    within = match_project(project(estimated_adaptation_hours=fact("4")), opportunity(), NOW)
+    beyond = match_project(project(estimated_adaptation_hours=fact("40")), opportunity(), NOW)
+    assert adaptation_rating(within) == 4
+    assert adaptation_rating(beyond) == 0
+
+
+def test_an_explicitly_unbounded_cap_is_satisfied_rather_than_unknown():
+    """Stated outright: this opportunity sets no adaptation limit."""
+    match = match_project(
+        project(estimated_adaptation_hours=fact("400")),
+        opportunity(max_adaptation_hours=Fact(), adaptation_unbounded=fact(True)),
+        NOW,
+    )
+    assert adaptation_rating(match) == 4
+    assert match.comparable_score is not None
+
+
+def test_an_explicitly_bounded_declaration_still_compares_against_the_cap():
+    """`adaptation_unbounded=False` is a statement, not a licence to skip the comparison."""
+    beyond = match_project(
+        project(estimated_adaptation_hours=fact("40")),
+        opportunity(adaptation_unbounded=fact(False)),
+        NOW,
+    )
+    assert adaptation_rating(beyond) == 0
+
+
+def test_an_unbounded_cap_cannot_also_state_a_finite_limit():
+    """Two contradictory answers to one question are refused at the contract boundary."""
+    with pytest.raises(ValidationError):
+        MatchingRequirements(
+            max_adaptation_hours=fact("10"), adaptation_unbounded=fact(True)
+        )
+
+
+def test_an_unbounded_adaptation_cites_the_requirement_that_answered_it():
+    """A matched requirement a judge reads must be the field that actually decided it."""
+    match = match_project(
+        project(estimated_adaptation_hours=fact("400")),
+        opportunity(max_adaptation_hours=Fact(), adaptation_unbounded=fact(True)),
+        NOW,
+    )
+    factor = next(f for f in match.factor_results if f.factor == "adaptation")
+    assert factor.requirement_refs == (
+        "opportunity.matching_requirements.adaptation_unbounded",
+    )
+    # The numeric cap holds no value here, so it must not be presented as matched.
+    matched = match.matched_requirements
+    assert "opportunity.matching_requirements.max_adaptation_hours" not in matched
+    assert "opportunity.matching_requirements.adaptation_unbounded" in matched
+
+
+def test_a_finite_adaptation_still_cites_the_numeric_cap():
+    match = match_project(project(), opportunity(), NOW)
+    factor = next(f for f in match.factor_results if f.factor == "adaptation")
+    assert factor.requirement_refs == (
+        "opportunity.matching_requirements.max_adaptation_hours",
+    )
+
+
+def test_the_semantic_digest_separates_an_unbounded_cap_from_an_unread_one():
+    """Versioning must see this fact, or a source that newly removes its cap would persist
+    as UNCHANGED and leave an outstanding approval bound to a decision that no longer holds."""
+    from qualor.workspace.versioning import opportunity_semantic_digest
+
+    unread = opportunity_semantic_digest(opportunity(max_adaptation_hours=Fact()))
+    unbounded = opportunity_semantic_digest(
+        opportunity(max_adaptation_hours=Fact(), adaptation_unbounded=fact(True))
+    )
+    bounded = opportunity_semantic_digest(
+        opportunity(max_adaptation_hours=Fact(), adaptation_unbounded=fact(False))
+    )
+    assert len({unread, unbounded, bounded}) == 3

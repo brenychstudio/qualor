@@ -45,8 +45,13 @@ def evaluate_operator(
         return RuleStatus.UNKNOWN
     first = operands[0].value
     value = actual.value
-    if operator == Operator.IN:
-        matched = value in [item.value for item in operands]
+    if operator in {Operator.IN, Operator.NOT_IN}:
+        # Official eligibility is as often written as an exclusion list as an allow-list.
+        # NOT_IN states that directly instead of inverting the source into an allow-list
+        # nobody published. Every guard above applies unchanged: an unknown subject, an
+        # unstated set, or a type mismatch has already returned UNKNOWN.
+        present = value in [item.value for item in operands]
+        matched = present if operator == Operator.IN else not present
     elif operator in {Operator.EQ, Operator.BOOL_IS}:
         if len(operands) != 1 or (operator == Operator.BOOL_IS and actual.kind != "bool"):
             return RuleStatus.UNKNOWN

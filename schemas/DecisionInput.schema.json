@@ -1029,6 +1029,14 @@
     "MatchingRequirements": {
       "additionalProperties": false,
       "properties": {
+        "adaptation_unbounded": {
+          "$ref": "#/$defs/Fact_Annotated_bool__Strict_strict_True___",
+          "default": {
+            "evidence_refs": [],
+            "provenance": "UNKNOWN",
+            "value": null
+          }
+        },
         "audience_labels": {
           "$ref": "#/$defs/Fact_tuple_Annotated_str__StringConstraints___________",
           "default": {
@@ -1229,6 +1237,7 @@
       "enum": [
         "EQ",
         "IN",
+        "NOT_IN",
         "GTE",
         "LTE",
         "BETWEEN",
