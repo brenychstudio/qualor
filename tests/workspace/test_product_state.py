@@ -27,7 +27,7 @@ def inputs(**changes) -> ProductStateInputs:
         freshness="FRESH",
         coverage_states=("EVALUATED", "EVALUATED"),
         evidence_count=4,
-        eligibility="PASS",
+        eligibility_states=("PASS",),
         recommendation="APPLY",
         approval_state=None,
         approval_reason=None,
@@ -49,7 +49,7 @@ def test_healthy_workspace_reports_no_degraded_product_state():
 
 def test_empty_profile_blocks_evaluation_and_hides_any_recommendation():
     result = derive_product_state(
-        inputs(profile_present=False, recommendation=None, eligibility=None)
+        inputs(profile_present=False, recommendation=None, eligibility_states=(None,))
     )
     assert result.state is ProductState.EMPTY_PROFILE
     assert result.primary_action is ProductAction.CREATE_PROFILE
@@ -61,7 +61,7 @@ def test_empty_profile_blocks_evaluation_and_hides_any_recommendation():
 
 def test_no_results_reports_an_empty_workspace_without_inventing_an_opportunity():
     result = derive_product_state(
-        inputs(result_count=0, recommendation=None, eligibility=None, run_state=None)
+        inputs(result_count=0, recommendation=None, eligibility_states=(None,), run_state=None)
     )
     assert result.state is ProductState.NO_RESULTS
     assert result.primary_action is ProductAction.ADJUST_SEARCH
@@ -102,7 +102,7 @@ def test_stale_evidence_retains_prior_proof_without_renewing_actionability():
 def test_unknown_eligibility_never_reads_as_pass():
     result = derive_product_state(
         inputs(
-            eligibility=None,
+            eligibility_states=(None,),
             recommendation="WATCH",
             action_available=False,
             action_reason="DECISION_NOT_ACTIONABLE",
@@ -118,7 +118,7 @@ def test_unknown_eligibility_never_reads_as_pass():
 def test_review_required_eligibility_is_also_unresolved():
     result = derive_product_state(
         inputs(
-            eligibility="REVIEW_REQUIRED",
+            eligibility_states=("REVIEW_REQUIRED",),
             recommendation="WATCH",
             action_available=False,
             action_reason="REVIEW_REQUIRED",
@@ -272,7 +272,7 @@ def test_disconnected_provider_never_hides_an_already_finished_pack():
 def test_unknown_eligibility_with_partially_admitted_evidence_keeps_the_sheet_available():
     result = derive_product_state(
         inputs(
-            eligibility=None,
+            eligibility_states=(None,),
             recommendation="WATCH",
             evidence_count=1,
             coverage_states=("EVALUATED", "UNKNOWN"),
@@ -333,7 +333,7 @@ def test_missing_profile_outranks_every_other_degraded_condition():
             approval_state="REVOKED_APPROVAL",
             approval_reason="CHANGE_REVOKED",
             recommendation=None,
-            eligibility=None,
+            eligibility_states=(None,),
         )
     )
     assert result.state is ProductState.EMPTY_PROFILE
@@ -372,3 +372,32 @@ def test_approval_availability_tracks_the_server_capability_exactly(available, r
     """Product state never widens or narrows the approval answer the server already gave."""
     result = derive_product_state(inputs(action_available=available, action_reason=reason))
     assert result.approval_available is expected
+
+
+# --- eligibility across a scope of more than one opportunity ---------------------------
+#
+# The inbox lists many opportunities and has to answer the eligibility question for all of
+# them at once. Passing no eligibility at all made `None not in {PASS, FAIL}` hold on every
+# request, so the list route asserted UNKNOWN_ELIGIBILITY permanently — including over rows
+# whose own persisted decision had already passed. The scope now carries every recorded
+# state, and stays unresolved if any one of them is.
+
+
+def test_every_recorded_eligibility_resolved_leaves_the_scope_healthy():
+    result = derive_product_state(inputs(eligibility_states=("PASS", "FAIL", "PASS")))
+    assert result.state is None
+
+
+def test_one_unresolved_eligibility_governs_the_whole_scope():
+    """Conservative by construction: a resolved majority never speaks for an unresolved row."""
+    result = derive_product_state(inputs(eligibility_states=("PASS", "REVIEW_REQUIRED", "PASS")))
+    assert result.state is ProductState.UNKNOWN_ELIGIBILITY
+    assert result.primary_action is ProductAction.RESOLVE_UNKNOWNS
+
+
+@pytest.mark.parametrize("states", [(), (None,), ("UNKNOWN",), ("PASS", None)])
+def test_an_absent_or_unresolved_eligibility_is_never_read_as_resolved(states):
+    """UNKNOWN is not PASS, and an empty scope has answered nothing."""
+    assert derive_product_state(inputs(eligibility_states=states)).state is (
+        ProductState.UNKNOWN_ELIGIBILITY
+    )

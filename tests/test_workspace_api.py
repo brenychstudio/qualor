@@ -761,3 +761,54 @@ def test_missing_fields_survive_into_the_persisted_pack(tmp_path):
         readiness = next(s for s in pack["sections"] if s["key"] == "READINESS_GAPS")
         for field in pack["missing_fields"]:
             assert f"MISSING: {field}" in readiness["content"]
+
+
+# --- the inbox banner must agree with the decisions it is listing ----------------------
+#
+# The list route derived its product state without passing any decision, so the eligibility
+# input was always absent and `absent not in {PASS, FAIL}` held on every request. The first
+# screen a person sees therefore announced "Eligibility unresolved" over rows whose own
+# persisted decision had already passed. The row and the banner contradicted each other.
+
+
+def test_inbox_banner_does_not_contradict_a_passed_decision(tmp_path):
+    """D01 persists ELIGIBILITY=PASS; the list route must not call that unresolved."""
+    database, fixture, decision = seed(tmp_path)
+    assert decision.eligibility_gate.state.value == "PASS"
+    with client_for(make_app(database, fixture, decision)) as client:
+        inbox = client.get("/api/v1/inbox").json()
+    assert inbox["items"][0]["recommendation"] == "APPLY"
+    assert inbox["product_state"]["state"] != "UNKNOWN_ELIGIBILITY"
+    assert inbox["product_state"]["primary_action"] != "RESOLVE_UNKNOWNS"
+
+
+def test_inbox_and_opportunity_routes_agree_on_eligibility(tmp_path):
+    """Two projections of one persisted decision may not disagree about it."""
+    database, fixture, decision = seed(tmp_path)
+    with client_for(make_app(database, fixture, decision)) as client:
+        inbox = client.get("/api/v1/inbox").json()
+        workspace = client.get(
+            f"/api/v1/opportunities/{fixture.opportunity.id}/workspace"
+        ).json()
+    unresolved = "UNKNOWN_ELIGIBILITY"
+    assert (inbox["product_state"]["state"] == unresolved) is (
+        workspace["product_state"]["state"] == unresolved
+    )
+
+
+def test_inbox_still_reports_unresolved_eligibility_when_the_decision_is_unresolved(tmp_path):
+    """D04 persists REVIEW_REQUIRED. The banner must keep saying so."""
+    database, fixture, decision = seed(tmp_path, fixture_name="D04_REVIEW_REQUIRED_WATCH")
+    assert decision.eligibility_gate.state.value == "REVIEW_REQUIRED"
+    with client_for(make_app(database, fixture, decision)) as client:
+        inbox = client.get("/api/v1/inbox").json()
+    assert inbox["product_state"]["state"] == "UNKNOWN_ELIGIBILITY"
+    assert inbox["product_state"]["primary_action"] == "RESOLVE_UNKNOWNS"
+
+
+def test_inbox_reports_unresolved_eligibility_when_no_decision_exists(tmp_path):
+    """Absence is never resolution: no persisted decision stays UNKNOWN."""
+    database, fixture, _ = seed(tmp_path, decision_present=False)
+    with client_for(make_app(database, fixture)) as client:
+        inbox = client.get("/api/v1/inbox").json()
+    assert inbox["product_state"]["state"] == "UNKNOWN_ELIGIBILITY"

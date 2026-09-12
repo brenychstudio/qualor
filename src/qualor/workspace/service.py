@@ -285,10 +285,14 @@ class WorkspaceService:
                 for record in repository.list_current()
             }
         items = []
+        # Each row's own authoritative eligibility, so the list banner describes the
+        # decisions it is actually listing rather than an absent one.
+        eligibility_states: list[str | None] = []
         for opportunity_id, discovered_at in discoveries.items():
             aggregate = self._aggregate(opportunity_id, now=now)
             opportunity = aggregate.current.opportunity
             canvas = self._canvas(aggregate, now=now)
+            eligibility_states.append(str(canvas.eligibility) if canvas.eligibility else None)
             run = self._current_run(aggregate)
             presentation_state = self._inbox_presentation_state(canvas, run, opportunity_id, now)
             items.append(
@@ -328,7 +332,9 @@ class WorkspaceService:
             profile_present=profile_present,
             page=page_info(len(ranked), limit, offset),
             product_state=self._product_state(
-                profile_present=profile_present, result_count=len(ranked)
+                profile_present=profile_present,
+                result_count=len(ranked),
+                eligibility_states=tuple(eligibility_states),
             ),
         )
 
@@ -417,6 +423,7 @@ class WorkspaceService:
         evidence_count=0,
         canvas=None,
         approval=None,
+        eligibility_states=None,
     ) -> ProductStateView:
         """Hand the recorded facts to the policy. No safety decision is taken here."""
         action = canvas.primary_action if canvas else None
@@ -430,7 +437,9 @@ class WorkspaceService:
                 freshness=str(freshness),
                 coverage_states=tuple(str(entry.state) for entry in coverage),
                 evidence_count=evidence_count,
-                eligibility=str(canvas.eligibility) if canvas and canvas.eligibility else None,
+                eligibility_states=eligibility_states
+                if eligibility_states is not None
+                else ((str(canvas.eligibility) if canvas and canvas.eligibility else None,)),
                 recommendation=str(canvas.recommendation)
                 if canvas and canvas.recommendation
                 else None,

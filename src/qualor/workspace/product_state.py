@@ -138,7 +138,9 @@ class ProductStateInputs:
     freshness: str
     coverage_states: tuple[str, ...]
     evidence_count: int
-    eligibility: str | None
+    #: Every eligibility state recorded in the scope being described. A selected opportunity
+    #: contributes one; a list contributes one per row. An empty scope has answered nothing.
+    eligibility_states: tuple[str | None, ...]
     recommendation: str | None
     approval_state: str | None
     approval_reason: str | None
@@ -174,7 +176,10 @@ def _conditions(given: ProductStateInputs) -> dict[ProductState, bool]:
         ProductState.BUDGET_STOPPED: given.run_state == "BUDGET_STOPPED",
         ProductState.STALE_EVIDENCE: given.freshness == "STALE",
         ProductState.PARTIAL_SOURCE_FAILURE: given.run_state in INCOMPLETE_RUNS,
-        ProductState.UNKNOWN_ELIGIBILITY: given.eligibility not in RESOLVED_ELIGIBILITY,
+        # Unresolved if any recorded state is, or if nothing was recorded at all. A
+        # resolved majority never speaks for a row that is still open.
+        ProductState.UNKNOWN_ELIGIBILITY: not given.eligibility_states
+        or any(state not in RESOLVED_ELIGIBILITY for state in given.eligibility_states),
         ProductState.REVOKED_APPROVAL: given.approval_state == "REVOKED_APPROVAL",
         ProductState.PENDING_APPROVAL: given.approval_state == "PENDING_APPROVAL",
         ProductState.FINISHED_PACK: given.pack_id is not None,
