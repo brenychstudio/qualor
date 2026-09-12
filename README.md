@@ -12,17 +12,41 @@ This describes the intended product. The authoritative specification is [the can
 
 ## Current development status
 
-**Early development / AWS Agents for Humans 2026 build**
+**AWS Agents for Humans 2026 build**
 
-QUALOR-00 establishes the development foundation: a health endpoint, an offline doctor, a static frontend shell, dependency locks and verification. Product discovery, agents and cloud deployment are not implemented. See [bootstrap status](docs/status/QUALOR-00.md) for measured results.
+The end-to-end path works: a Strands agent researches official sources, deterministic engines
+judge, the decision workspace presents the result with its evidence, a human approves, and an
+application pack is prepared locally. Nothing is ever submitted externally.
 
-QUALOR-01 adds typed domain contracts and a deterministic eligibility core, exercised only with owned synthetic fixtures. It checks evidence references, critical coverage, freshness and explicit rules, and returns PASS, FAIL or REVIEW_REQUIRED. Eligibility is not a submission recommendation. See [QUALOR-01 status](docs/status/QUALOR-01.md).
+- **Agent runtime** — one Strands `Agent` with four tools, sequential tool execution and
+  lifecycle hooks enforcing a physical call budget: [`src/qualor/runtime/agent.py`](src/qualor/runtime/agent.py).
+- **Deterministic decision core** — eligibility, matching, conflicts, effort and capacity,
+  readiness and strategy compose into APPLY, PREPARE, WATCH or SKIP. Strategy is internal
+  prioritization, never a probability of winning. No model sits in this path.
+- **Workspace** — versioned opportunities, decisions, run records and events, version-bound
+  approvals and immutable draft packs, persisted in SQLite with full provenance.
+- **Decision workspace UI** — opportunity inbox, decision canvas, evidence reader with exact
+  source excerpts, and a recorded activity rail.
 
-QUALOR-02 adds deterministic project matching, strategy scoring, readiness, effort/capacity, affordability and submission conflict checks. It composes these with the existing eligibility gate into APPLY, PREPARE, WATCH or SKIP. Twelve owned decision fixtures exercise this offline layer. Strategy score is internal prioritization, never a probability of winning. See [QUALOR-02 status](docs/status/QUALOR-02.md).
+Runtime mode is fail-closed. `LIVE`, `REPLAY` and `FIXTURE` are distinct, a run gets exactly
+one, and the mode the product displays is the mode that actually ran.
 
-## Architecture direction
+Not built, and not claimed: AgentCore runtime deployment, a hosted live demo, and any external
+submission capability.
 
-Python 3.12, Pydantic v2 and FastAPI form the backend foundation. Pydantic owns the domain contracts and exported JSON Schema. The eligibility core is pure Python and does not import AWS, network or agent clients. Strands Agents SDK is installed for later tasks. React, TypeScript, Vite and Tailwind v4 form the frontend foundation. Live AgentCore integration belongs to later tasks.
+Per-phase measured results are recorded under [docs/status/](docs/status/).
+
+## Architecture
+
+![QUALOR architecture](docs/architecture/qualor-architecture.svg)
+
+Python 3.12, Pydantic v2 and FastAPI on the backend; React, TypeScript, Vite and Tailwind v4
+on the frontend. Pydantic owns the domain contracts and the exported JSON Schema, which
+generates the frontend types — no domain interface is hand-maintained on either side.
+
+The decision core is pure Python and imports no AWS, network or agent client. The Strands
+agent is confined to research: it chooses what to read, never what the answer is. AgentCore
+web search is used in `LIVE` mode only; there is no AgentCore runtime deployment.
 
 ## Local development
 
@@ -67,9 +91,44 @@ Public APIs and policy details are documented in the [eligibility plan](docs/sup
 
 Verification includes a clean Git worktree gate, so commit intended changes before the final run. Stop the frontend dev server first on Windows: `npm ci` reinstalls native packages that the running server can lock. Preflight performs separate read-only AWS metadata checks; missing access is reported as blocked. Its detailed output stays in ignored `.qualor/local/`. The doctor and CI do not contact AWS.
 
+### Running the decision workspace
+
+The commands above reach the bootstrap shell. To run the actual product, seed a workspace and
+start both servers against the same database. No AWS credentials and no network access are
+required, and no paid call is made.
+
+```powershell
+$env:QUALOR_ENV = "development"
+$env:DATABASE_PATH = "$PWD\.qualor\local\workspace.db"
+
+uv run qualor seed-workspace-fixture tests/fixtures/workspace/W01_DECISION_TO_DRAFT_PACK.json
+uv run qualor serve --port 8000
+```
+
+In a second terminal:
+
+```powershell
+npm --prefix apps/web run dev
+```
+
+Open `http://127.0.0.1:5173/inbox`, select the seeded opportunity, and the full path is
+available: decision, evidence reader, recorded activity, human approval and the application
+pack. The seeded scenario is an owned `FIXTURE` and is labelled as such throughout.
+
+The browser acceptance suite drives this same stack end to end:
+
+```powershell
+npm --prefix apps/web run test:e2e
+```
+
 ## Safety boundaries
 
-No paid inference, live search, cloud provisioning or external application submission exists in this bootstrap. Discovery of model metadata does not prove inference permission. FIXTURE, REPLAY and LIVE must remain distinct in future work. Keep credentials, `.env` and runtime data out of Git. The repository remains private until explicitly authorized otherwise.
+No external application submission exists anywhere in this repository, and no code path
+performs one. Paid inference and live search run only under an explicit `LIVE` opt-in with a
+physical budget guard; the default path makes no paid call, and the doctor, the test suites and
+CI never contact AWS. Discovery of model metadata does not prove inference permission. FIXTURE,
+REPLAY and LIVE are distinct and fail closed. Approvals are version-bound, expiring and
+single-use. Keep credentials, `.env` and runtime data out of Git.
 
 ## License
 

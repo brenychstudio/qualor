@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1620" width="1080" height="1620" role="img" aria-labelledby="title desc" font-family="'Segoe UI',Inter,system-ui,-apple-system,sans-serif">
+  <title id="title">QUALOR architecture</title>
+  <desc id="desc">Official opportunity sources are captured under an explicit LIVE, REPLAY or FIXTURE boundary, read by a Strands Agents runtime, normalized into evidence and opportunity facts, judged by a deterministic decision engine, persisted with provenance, presented in a decision workspace, and stopped at a human approval boundary before an Application Pack is prepared locally. Nothing is submitted externally.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6f97ad"/>
+    </marker>
+    <marker id="arrowWarm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#c8a877"/>
+    </marker>
+  </defs>
+
+  <style>
+    .band      { fill:#101f2a; stroke:#294252; stroke-width:1.2; rx:8; }
+    .bandWarm  { fill:#171d21; stroke:#5d5142; stroke-width:1.2; rx:8; }
+    .box       { fill:#14242f; stroke:#2f4a5b; stroke-width:1; rx:6; }
+    .boxHero   { fill:#12303f; stroke:#7cc0e6; stroke-width:1.4; rx:6; }
+    .boxWarm   { fill:#21252a; stroke:#6d5f4c; stroke-width:1; rx:6; }
+    .kicker    { fill:#7fa8bf; font-size:13px; letter-spacing:.16em; font-weight:600; }
+    .kickerW   { fill:#b49a74; font-size:13px; letter-spacing:.16em; font-weight:600; }
+    .h         { fill:#eaf3f8; font-size:21px; font-weight:600; }
+    .hWarm     { fill:#f0ece4; font-size:21px; font-weight:600; }
+    .lbl       { fill:#dceaf2; font-size:17px; font-weight:600; }
+    .sub       { fill:#93aec0; font-size:14.5px; }
+    .mono      { fill:#8fb6cb; font-size:13.5px; font-family:'Cascadia Mono',Consolas,monospace; }
+    .flow      { stroke:#6f97ad; stroke-width:1.8; fill:none; marker-end:url(#arrow); }
+    .flowWarm  { stroke:#c8a877; stroke-width:1.8; fill:none; marker-end:url(#arrowWarm); }
+    .side      { stroke:#55788c; stroke-width:1.5; fill:none; stroke-dasharray:5 4; marker-end:url(#arrow); }
+  </style>
+
+  <rect width="1080" height="1620" fill="#0a141c"/>
+
+  <!-- ── title ─────────────────────────────────────────────────────────────── -->
+  <text x="40" y="46" fill="#f2f8fb" font-size="27" font-weight="600" letter-spacing=".01em">QUALOR — Autonomous Opportunity Intelligence</text>
+  <text x="40" y="72" class="sub" font-size="15.5">Strands Agents research → deterministic judgment → human approval → prepared application pack</text>
+  <line x1="40" y1="88" x2="1040" y2="88" stroke="#294252"/>
+
+  <!-- ── 1. sources ────────────────────────────────────────────────────────── -->
+  <rect x="40" y="108" width="1000" height="74" class="band"/>
+  <text x="60" y="133" class="kicker">01 · OFFICIAL OPPORTUNITY SOURCES</text>
+  <text x="60" y="162" class="lbl">Published rules, overview and FAQ pages — the only accepted evidence</text>
+  <text x="700" y="162" class="mono">HTTPS · host-allowlisted · DNS-pinned</text>
+  <path d="M 540 182 L 540 212" class="flow"/>
+
+  <!-- ── 2. capture + mode boundary ────────────────────────────────────────── -->
+  <rect x="40" y="216" width="1000" height="176" class="band"/>
+  <text x="60" y="241" class="kicker">02 · RESEARCH &amp; SOURCE CAPTURE — FAIL-CLOSED MODE BOUNDARY</text>
+  <text x="60" y="266" class="sub">One runtime mode per run. The mode that ran is the mode the product displays; providers are refused outside it.</text>
+
+  <rect x="60" y="282" width="306" height="92" class="box"/>
+  <text x="78" y="308" class="lbl">LIVE</text>
+  <text x="78" y="331" class="sub">Network fetch during the run</text>
+  <text x="78" y="352" class="mono">AgentCore search · Bedrock</text>
+  <text x="78" y="369" class="mono">paid calls · explicit opt-in</text>
+
+  <rect x="387" y="282" width="306" height="92" class="boxHero"/>
+  <text x="405" y="308" class="lbl">REPLAY</text>
+  <text x="405" y="331" class="sub">Captured real official source</text>
+  <text x="405" y="352" class="mono">RecordedProviders · offline</text>
+  <text x="405" y="369" class="mono">no credentials · no network</text>
+
+  <rect x="714" y="282" width="306" height="92" class="box"/>
+  <text x="732" y="308" class="lbl">FIXTURE</text>
+  <text x="732" y="331" class="sub">Owned synthetic scenario</text>
+  <text x="732" y="352" class="mono">acceptance and regression</text>
+  <text x="732" y="369" class="mono">never shown as real</text>
+  <path d="M 540 392 L 540 422" class="flow"/>
+
+  <!-- ── 3. strands runtime (hero) ─────────────────────────────────────────── -->
+  <rect x="40" y="426" width="1000" height="212" fill="#0f2a38" stroke="#7cc0e6" stroke-width="1.6" rx="8"/>
+  <text x="60" y="451" class="kicker" fill="#9ed3f0">03 · STRANDS AGENTS RUNTIME</text>
+  <text x="60" y="479" class="h">One Strands agent plans the research; it never authors the verdict</text>
+
+  <rect x="60" y="495" width="300" height="60" class="box"/>
+  <text x="76" y="518" class="lbl" font-size="15.5">Tools</text>
+  <text x="76" y="540" class="mono">search_web · fetch_official_source</text>
+  <text x="76" y="555" class="mono">extract_official_claims</text>
+
+  <rect x="372" y="495" width="216" height="60" class="box"/>
+  <text x="388" y="518" class="lbl" font-size="15.5">Execution</text>
+  <text x="388" y="540" class="mono">SequentialToolExecutor</text>
+  <text x="388" y="555" class="mono">evaluate_current_state</text>
+
+  <rect x="600" y="495" width="204" height="60" class="box"/>
+  <text x="616" y="518" class="lbl" font-size="15.5">Hooks</text>
+  <text x="616" y="540" class="mono">BeforeModelCall</text>
+  <text x="616" y="555" class="mono">Before/AfterToolCall</text>
+
+  <rect x="816" y="495" width="204" height="60" class="box"/>
+  <text x="832" y="518" class="lbl" font-size="15.5">Model</text>
+  <text x="832" y="540" class="mono">BedrockModel</text>
+  <text x="832" y="555" class="mono">budget-guarded</text>
+
+  <rect x="60" y="567" width="960" height="54" fill="#0c2230" stroke="#2f5a71" stroke-width="1" rx="6"/>
+  <text x="78" y="590" class="lbl" font-size="15.5">Physical budget guard</text>
+  <text x="78" y="611" class="sub">Every model and tool call is reserved before it runs and committed after it returns. Exhausting it stops the run, with the reason recorded.</text>
+  <path d="M 540 638 L 540 668" class="flow"/>
+
+  <!-- ── 4. evidence ───────────────────────────────────────────────────────── -->
+  <rect x="40" y="672" width="1000" height="146" class="band"/>
+  <text x="60" y="697" class="kicker">04 · EVIDENCE &amp; NORMALIZED OPPORTUNITY FACTS</text>
+
+  <rect x="60" y="713" width="306" height="88" class="box"/>
+  <text x="78" y="737" class="lbl" font-size="15.5">SourceDocument</text>
+  <text x="78" y="759" class="mono">original_url · final_url</text>
+  <text x="78" y="776" class="mono">retrieved_at · sha256</text>
+  <text x="78" y="793" class="mono">authority</text>
+
+  <rect x="387" y="713" width="306" height="88" class="box"/>
+  <text x="405" y="737" class="lbl" font-size="15.5">EvidenceRecord</text>
+  <text x="405" y="759" class="mono">exact verbatim excerpt</text>
+  <text x="405" y="776" class="mono">normalized_field</text>
+  <text x="405" y="793" class="mono">freshness · extraction_state</text>
+
+  <rect x="714" y="713" width="306" height="88" class="box"/>
+  <text x="732" y="737" class="lbl" font-size="15.5">RuleCandidate</text>
+  <text x="732" y="759" class="mono">typed operator + operands</text>
+  <text x="732" y="776" class="mono">criticality · evidence_ids</text>
+  <text x="732" y="793" class="mono">source_text_summary</text>
+  <path d="M 540 818 L 540 848" class="flow"/>
+
+  <!-- ── 5. deterministic decision engine ──────────────────────────────────── -->
+  <rect x="40" y="852" width="1000" height="242" class="band"/>
+  <text x="60" y="877" class="kicker">05 · DETERMINISTIC DECISION ENGINE — NO MODEL IN THIS PATH</text>
+  <text x="60" y="901" class="sub">Pure Python. Same inputs always produce the same verdict, and UNKNOWN is never treated as PASS.</text>
+
+  <rect x="60" y="917"  width="184" height="56" class="box"/><text x="76" y="940" class="lbl" font-size="15.5">Eligibility</text><text x="76" y="961" class="mono">rules + coverage</text>
+  <rect x="254" y="917" width="184" height="56" class="box"/><text x="270" y="940" class="lbl" font-size="15.5">Matching</text><text x="270" y="961" class="mono">project fit score</text>
+  <rect x="448" y="917" width="184" height="56" class="box"/><text x="464" y="940" class="lbl" font-size="15.5">Conflicts</text><text x="464" y="961" class="mono">policy collisions</text>
+  <rect x="642" y="917" width="184" height="56" class="box"/><text x="658" y="940" class="lbl" font-size="15.5">Effort</text><text x="658" y="961" class="mono">capacity + cost</text>
+  <rect x="836" y="917" width="184" height="56" class="box"/><text x="852" y="940" class="lbl" font-size="15.5">Readiness</text><text x="852" y="961" class="mono">material gaps</text>
+
+  <rect x="60" y="985" width="472" height="56" class="box"/>
+  <text x="76" y="1008" class="lbl" font-size="15.5">Strategy — prioritization, not win probability</text>
+  <text x="76" y="1029" class="mono">fit · readiness · time · value · affordability</text>
+
+  <rect x="548" y="985" width="472" height="56" class="boxHero"/>
+  <text x="564" y="1008" class="lbl" font-size="15.5">Recommendation</text>
+  <text x="564" y="1029" class="mono">APPLY · PREPARE · WATCH · SKIP  + reason codes</text>
+
+  <text x="60" y="1073" class="sub">Founder and project profiles enter here as owner-supplied facts. An unrecorded fact stays UNKNOWN; it is never inferred.</text>
+  <path d="M 540 1094 L 540 1124" class="flow"/>
+
+  <!-- ── 6. persistence ────────────────────────────────────────────────────── -->
+  <rect x="40" y="1128" width="1000" height="94" class="band"/>
+  <text x="60" y="1153" class="kicker">06 · WORKSPACE PERSISTENCE &amp; PROVENANCE — SQLITE</text>
+  <text x="60" y="1181" class="lbl" font-size="16.5">Versioned opportunities · decisions · run records &amp; events · approvals · draft packs</text>
+  <text x="60" y="1205" class="sub">A semantic digest versions each opportunity, so a source that changes creates a new version and invalidates an approval bound to the old one.</text>
+  <path d="M 540 1222 L 540 1252" class="flow"/>
+
+  <!-- ── 7. workspace ui ───────────────────────────────────────────────────── -->
+  <rect x="40" y="1256" width="1000" height="112" class="band"/>
+  <text x="60" y="1281" class="kicker">07 · DECISION WORKSPACE — REACT + TYPESCRIPT</text>
+  <rect x="60" y="1297"  width="232" height="54" class="box"/><text x="76" y="1319" class="lbl" font-size="15.5">Opportunity Inbox</text><text x="76" y="1340" class="mono">server-ordered queue</text>
+  <rect x="304" y="1297" width="232" height="54" class="box"/><text x="320" y="1319" class="lbl" font-size="15.5">Decision Canvas</text><text x="320" y="1340" class="mono">recommendation + signals</text>
+  <rect x="548" y="1297" width="232" height="54" class="box"/><text x="564" y="1319" class="lbl" font-size="15.5">Evidence Reader</text><text x="564" y="1340" class="mono">exact excerpt + citation</text>
+  <rect x="792" y="1297" width="228" height="54" class="box"/><text x="808" y="1319" class="lbl" font-size="15.5">Intelligence Rail</text><text x="808" y="1340" class="mono">recorded agent activity</text>
+  <path d="M 540 1368 L 540 1398" class="flowWarm"/>
+
+  <!-- ── 8. human approval ─────────────────────────────────────────────────── -->
+  <rect x="40" y="1402" width="1000" height="92" fill="#0f1c25" stroke="#7cc0e6" stroke-width="1.6" rx="8"/>
+  <text x="60" y="1427" class="kicker" fill="#9ed3f0">08 · HUMAN APPROVAL BOUNDARY — THE AGENT STOPS HERE</text>
+  <text x="60" y="1455" class="h">A person explicitly approves one bounded action</text>
+  <text x="60" y="1479" class="sub">Version-bound · expiring · single-use · revoked if the opportunity, project or policy version changes</text>
+  <path d="M 540 1494 L 540 1524" class="flowWarm"/>
+
+  <!-- ── 9. application pack ───────────────────────────────────────────────── -->
+  <rect x="40" y="1528" width="1000" height="76" class="bandWarm"/>
+  <text x="60" y="1553" class="kickerW">09 · APPLICATION PACK — PREPARED LOCALLY</text>
+  <text x="60" y="1581" class="hWarm" font-size="19">Seven immutable sections, fully attributed — and nothing is submitted anywhere</text>
+</svg>

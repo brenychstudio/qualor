@@ -24,7 +24,7 @@
 - Recommendation priority is exactly owner Rules 1–6. Rule 4 PREPARE does not add an affordability predicate absent from the task; in the full pipeline unknown affordability makes the required economic strategy factor unknown, triggering earlier WATCH.
 - Portfolio selection uses comparable matching scores, not prize amounts. Any unknown candidate or tied top score leaves selection unresolved; no lexical tie-break.
 - No real UI; retain the bootstrap shell. No proprietary data/repositories or third-party rules content.
-- Use installed Node 24.13.0/npm 11.6.2 via process-local PATH `C:\Users\CONCEPT2048\AppData\Local\nvm\v24.13.0`; do not change the owner's global NVM selection.
+- Use installed Node 24.13.0/npm 11.6.2 via process-local PATH `%LOCALAPPDATA%\nvm\v24.13.0`; do not change the owner's global NVM selection.
 
 ## Contract and policy decisions
 
