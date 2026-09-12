@@ -4,6 +4,16 @@
 
 Find what qualifies. Pursue what matters.
 
+QUALOR reads an opportunity's official rules, decides whether it is worth pursuing, shows the
+evidence behind that decision, and stops before anything consequential happens.
+
+![The QUALOR decision workspace evaluating the AWS Agents for Humans Hackathon and returning PREPARE](docs/assets/qualor-interface-hero.png)
+
+*QUALOR evaluating the real Agents for Humans Hackathon — with QUALOR itself as the candidate
+project — in `REPLAY` mode over captured official source evidence. Eligibility passes, capacity
+is sufficient, and the recommendation is `PREPARE` rather than `APPLY`, because four required
+submission materials were still outstanding when the decision ran.*
+
 ## What QUALOR is
 
 QUALOR is autonomous opportunity intelligence for founders and small technology or creative teams. It discovers opportunities, verifies evidence and blockers against real project constraints, and prepares the next decision for human approval.
