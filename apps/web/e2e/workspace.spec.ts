@@ -851,9 +851,12 @@ test('a recorded value stays inside its lane and out of the connector corridor a
   }
 });
 
-test('the accepted wide Decision Field geometry is unchanged by the medium correction', async ({ page }) => {
-  // 1440 and 1280 are regression anchors: the medium fix must not reach them.
-  for (const [width, expected] of [[1440, { lane: 320.63, value: 83 }], [1280, { lane: 282.23, value: 83 }]] as const) {
+test('the accepted wide Decision Field geometry holds around the signal-lane correction', async ({ page }) => {
+  // 1440 and 1280 are regression anchors for the frame the lane sits in: the lane stack's own
+  // width and rhythm, and where the hero begins. The value column is inside that frame and is
+  // re-accepted here — it was a fixed 83px, which is what put the recorded name in the
+  // arrowhead; it is now the lane's own proportional share.
+  for (const [width, expected] of [[1440, { lane: 320.63, value: 99.75 }], [1280, { lane: 282.23, value: 84.39 }]] as const) {
     await selectW01(page, width);
     const measured = await page.evaluate(() => {
       const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -875,9 +878,8 @@ test('the accepted wide Decision Field geometry is unchanged by the medium corre
         connectorEnd: r2(first.getPointAtLength(first.getTotalLength()).matrixTransform(ctm).x),
       };
     });
-    // Pinned measurements, deliberately: this is a freeze anchor for a band the medium rule
-    // must not reach, so a change to the canvas padding or the body track ratios should fail
-    // here and be re-accepted rather than pass unnoticed.
+    // Pinned measurements, deliberately: a change to the canvas padding or the body track
+    // ratios should fail here and be re-accepted rather than pass unnoticed.
     expect(measured.laneWidth, `lane width at ${width}`).toBeCloseTo(expected.lane, 0);
     expect(measured.valueColumn, `value column at ${width}`).toBeCloseTo(expected.value, 0);
     for (const gap of measured.gaps) expect(gap, `signal gap at ${width}`).toBeCloseTo(10, 1);
@@ -955,5 +957,114 @@ test('no supported width scrolls the document sideways', async ({ page }) => {
     const overflow = await page.evaluate(() =>
       document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow, `horizontal overflow at ${width}`).toBeLessThanOrEqual(0);
+  }
+});
+
+/* --------------------------------------------------------------------------------------------
+ * Signal-lane text integrity.
+ *
+ * The invariant above — a value box that does not intersect the connector path — is necessary
+ * and was not sufficient, because it measures against `lane.getBoundingClientRect()`. A lane's
+ * border box runs to the tip of its arrowhead, so text can sit deep inside the taper, touch
+ * nothing, and still read as crushed against the point. Measured at HEAD the recorded project
+ * name overran the taper by 34.67px at 1440, 26.99 at 1280, 19.8 at 1024 and 66.88 at 768.
+ *
+ * What follows models the shape the lane actually paints. `.signal-lane::before` is an SVG
+ * background on a 340x60 viewBox with `preserveAspectRatio='none'`, stretched to the border box:
+ * the body's top edge runs flat to x=272 and then a cubic carries it to the tip at (339, 29.5),
+ * with the bottom edge mirrored. So the rightmost x a lane can hold depends on how tall the
+ * text is — a single line has most of the taper available, a three-line block almost none. The
+ * boundary is solved per line box from that cubic rather than approximated by a percentage,
+ * which is what makes this fail when text is moved into the taper without touching a connector.
+ * ------------------------------------------------------------------------------------------ */
+
+/** The lane's painted right boundary at each value line, and how far the text clears it. */
+async function taperIntegrity(page: Page) {
+  return page.evaluate(() => {
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    // The `::before` path, in its own viewBox units. Kept beside the stylesheet's copy: if the
+    // shape is ever redrawn this model has to be redrawn with it, and the numbers below say so.
+    const VB_W = 340, VB_H = 60, BODY_END = 272, TIP_X = 339, TIP_Y = 29.5;
+    const P = [{ x: BODY_END, y: 0.5 }, { x: 303, y: 0.5 }, { x: 306, y: TIP_Y }, { x: TIP_X, y: TIP_Y }];
+    const at = (k: 'x' | 'y', t: number) => {
+      const u = 1 - t;
+      return u * u * u * P[0][k] + 3 * u * u * t * P[1][k] + 3 * u * t * t * P[2][k] + t * t * t * P[3][k];
+    };
+    /** Rightmost x, in viewBox units, at which the shape still spans the given y. */
+    const boundaryAt = (y: number) => {
+      const top = Math.min(y, VB_H - y);          // mirrored about the tip's centreline
+      if (top <= P[0].y) return BODY_END;          // above the body's top edge: nothing is painted
+      if (top >= TIP_Y) return TIP_X;              // on the centreline the shape reaches the tip
+      let lo = 0, hi = 1;                          // y(t) is monotonic over this segment
+      for (let i = 0; i < 60; i++) {
+        const mid = (lo + hi) / 2;
+        if (at('y', mid) < top) lo = mid; else hi = mid;
+      }
+      return at('x', (lo + hi) / 2);
+    };
+    return [...document.querySelectorAll('.signal-lane')].map(lane => {
+      const box = lane.getBoundingClientRect();
+      const toScreenX = (vx: number) => box.left + (vx / VB_W) * box.width;
+      const toViewY = (sy: number) => ((sy - box.top) / box.height) * VB_H;
+      const value = lane.querySelector('dd strong')!;
+      const range = document.createRange();
+      range.selectNodeContents(value);
+      const lines = [...range.getClientRects()].filter(line => line.width > 0);
+      // Every line is checked against the boundary at its own top and bottom, so a tall block is
+      // held to a stricter limit than a short one — which is how the shape actually behaves.
+      const clearances = lines.map(line => Math.min(
+        toScreenX(boundaryAt(toViewY(line.top))) - line.right,
+        toScreenX(boundaryAt(toViewY(line.bottom))) - line.right));
+
+      // Word integrity: a source word must paint as one contiguous run, never split mid-word.
+      const node = value.firstChild;
+      const fragmented: string[] = [];
+      if (node && node.nodeType === Node.TEXT_NODE) {
+        for (const match of (node.textContent ?? '').matchAll(/\S+/g)) {
+          const word = document.createRange();
+          word.setStart(node, match.index!);
+          word.setEnd(node, match.index! + match[0].length);
+          if ([...word.getClientRects()].filter(r => r.width > 0).length > 1) fragmented.push(match[0]);
+        }
+      }
+      const meaning = lane.querySelector('.signal-meaning')!;
+      return {
+        label: lane.querySelector('dt')?.textContent ?? '',
+        clearance: r2(Math.min(...clearances)),
+        lineCount: lines.length,
+        fragmented,
+        // The label keeps its own side of the lane: the value never starts inside it.
+        labelOverlap: r2(meaning.getBoundingClientRect().right - Math.min(...lines.map(l => l.left))),
+        escapesTop: r2(box.top - Math.min(...lines.map(l => l.top))),
+        escapesBottom: r2(Math.max(...lines.map(l => l.bottom)) - box.bottom),
+      };
+    });
+  });
+}
+
+// One optical unit of air between the last painted glyph and the shape's edge. The lane's own
+// column gap is 8-9px, so this is the same rhythm the lane already spaces its regions with.
+const TAPER_SAFE_GAP = 8;
+
+test('a recorded value keeps clear of the lane it is painted in, taper included', async ({ page }) => {
+  // 901 is in the list for the same reason it is in the test above: it is the narrowest lane
+  // the layout ever produces — the signature still splits at 48% there but the canvas has
+  // nearly closed — so it is the width where a proportional reservation is under most pressure.
+  for (const width of [1440, 1280, 1024, 901, 768]) {
+    await selectW01(page, width);
+    const lanes = await taperIntegrity(page);
+    expect(lanes, `lane count at ${width}`).toHaveLength(4);
+    for (const lane of lanes) {
+      // The defect the owner could see: text sitting inside the arrowhead. Negative clearance
+      // means the glyphs are painted past the edge the shape still has at their own height.
+      expect(lane.clearance, `${lane.label} clears the taper at ${width}`)
+        .toBeGreaterThanOrEqual(TAPER_SAFE_GAP);
+      // An ordinary word never breaks mid-word; it may wrap at spaces onto as many lines as it
+      // needs, so the line count is deliberately not asserted.
+      expect(lane.fragmented, `${lane.label} keeps whole words at ${width}`).toEqual([]);
+      expect(lane.labelOverlap, `${lane.label} value clears its label at ${width}`).toBeLessThanOrEqual(0);
+      expect(lane.escapesTop, `${lane.label} escapes lane top at ${width}`).toBeLessThanOrEqual(0);
+      expect(lane.escapesBottom, `${lane.label} escapes lane bottom at ${width}`).toBeLessThanOrEqual(0);
+    }
   }
 });

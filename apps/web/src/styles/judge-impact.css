@@ -3,7 +3,8 @@
  * Presentation only. Every rule is scoped with :not(.workspace--optical-preview) so the frozen
  * A1.2 D02 optical frame inherits none of it. Almost all of it is confined to the 1280px+ judge
  * viewport so the narrower projections keep the geometry Task 15 accepted; the one exception is
- * the 768-1279 signal-lane correction near the end of this file, which is bounded to that band.
+ * the signal-lane correction near the end of this file, which carries one shared geometry down
+ * through the 768-1279 projection because the defect it fixes was present at every width.
  *
  * The five-second read this layer serves: selected opportunity, recommendation, reason, action.
  */
@@ -742,7 +743,7 @@
 }
 
 /* ------------------------------------------------------------------------------------------
- * Responsive integrity — the medium signal lane, and the rail's first fold.
+ * Responsive integrity — the desktop signal lane, and the rail's first fold.
  *
  * Measured at HEAD before anything changed, and the measurement corrected the diagnosis.
  *
@@ -755,6 +756,16 @@
  *   it escapes its own lane's border box by 1.56px and reads as text spilling into the causal
  *   geometry. The label column had the room the value needed all along.
  *
+ *   That correction was bounded to 768-1279 and left a third defect standing at every width,
+ *   which no element-bound assertion could see either. A lane's border box runs to the tip of
+ *   its arrowhead, so text can stay inside the lane, clear the connector, and still be painted
+ *   in the taper. Measured before this change, the recorded project name overran the point at
+ *   which the lane's body ends by 34.67px at 1440, 26.99 at 1280, 19.8 at 1024 and 66.88 at
+ *   768 — and at 1440 and 1280 it did so inside a third column still fixed at 83px, with
+ *   `overflow-wrap: anywhere` standing by to split an ordinary word the moment 83px stopped
+ *   being enough for it. That is the "crushed against the point" the owner could see and the
+ *   "Demonstra / tor" waiting behind it: one defect, so one correction, applied to both bands.
+ *
  *   The rail defect is that the panel's fixed height falls inside the second section, so at rest
  *   the Local Controller section begins 37.86px (1440) of crisply painted content before the
  *   fade starts, and at 1440 the line "Local controller connected" straddles the panel edge.
@@ -762,21 +773,48 @@
  *   continuing rather than cut.
  * ---------------------------------------------------------------------------------------- */
 
-@media (min-width: 768px) and (max-width: 1279px) {
-  /* Three regions the layout knows about: icon, then label, then value — with the connector
-     corridor kept by the lane's own right padding, which the measurement confirms the connector
-     starts at. Sharing the free space between label and value instead of starving one of them
-     is what keeps a long recorded name inside its lane: it is proportional, so it holds for a
-     longer name and for a narrower canvas rather than being fitted to today's string. */
+@media (min-width: 768px) {
+  /* Three regions the layout knows about — icon, then label, then value — and then the
+     lane's own arrowhead, which is presentation and holds no text.
+
+     The first track is `auto` so it is the icon that sizes it: the icon is 42px at 1280 and up
+     and 40px below that, and a repeated literal here is exactly how a track and the box inside
+     it drift apart. Sharing what is left between label and value instead of starving one of
+     them is what keeps a long recorded name inside its lane; it is proportional, so it holds
+     for a longer name and a narrower canvas rather than being fitted to today's string. */
   .workspace:not(.workspace--optical-preview) .signal-lane {
-    grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr);
+    /* The lane's shape is the `::before` background in propagation.css: a 340x60 viewBox drawn
+       with `preserveAspectRatio='none'` and stretched over the border box, whose body ends at
+       x=272 and whose tip is at x=339. So the arrowhead is the last 68 of 340 units — a flat
+       20% of whatever the lane is currently wide, which is why the reservation is a percentage
+       and not a pixel count. Reserved once here and consumed as the lane's right padding, so
+       the shape and the text cannot be given two different ideas of where the body ends.
+
+       One gap unit comes back: x=272 is where the top edge *starts* curving away, and a
+       vertically centred block clears the curve some way past that — the shape only reaches
+       its full width on the centreline. What guarantees the air is not this constant but the
+       browser test, which solves the real cubic at each line's own top and bottom and requires
+       the same gap of clearance there. */
+    --signal-taper: 20%;
+    --signal-content-gap: 8px;
+    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+    padding-right: calc(var(--signal-taper) - var(--signal-content-gap));
   }
 
-  /* A wrapped value stays one readable block rather than four fragments, and never breaks
-     mid-word now that the column is wide enough to hold the words. */
+  /* A wrapped value stays one readable block rather than a column of fragments. `break-word`
+     rather than `anywhere`: an ordinary word wraps at its spaces and only a single token too
+     long for the whole column is ever broken, which is the difference between "Synthetic /
+     Eligibility / Demonstrator" and "Demonstra / tor". */
   .workspace:not(.workspace--optical-preview) .signal-lane dd .signal-state {
     line-height: 1.35;
     overflow-wrap: break-word;
+  }
+
+  /* The descriptor wraps like it already does at every width below 1280. Held to `nowrap` in a
+     track that is now proportional, the longest of them ("Authoritative project fit", 97.17px
+     at 1280) is wider than the track it sits in and would simply paint over the value. */
+  .workspace:not(.workspace--optical-preview) .signal-meaning > span {
+    white-space: normal;
   }
 }
 
