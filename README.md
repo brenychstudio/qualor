@@ -31,8 +31,8 @@ application pack is prepared locally. Nothing is ever submitted externally.
 Runtime mode is fail-closed. `LIVE`, `REPLAY` and `FIXTURE` are distinct, a run gets exactly
 one, and the mode the product displays is the mode that actually ran.
 
-Not built, and not claimed: AgentCore runtime deployment, a hosted live demo, and any external
-submission capability.
+Not built, and not claimed: Amazon Bedrock AgentCore Runtime deployment, a hosted live demo,
+and any external submission capability.
 
 Per-phase measured results are recorded under [docs/status/](docs/status/).
 
@@ -45,8 +45,12 @@ on the frontend. Pydantic owns the domain contracts and the exported JSON Schema
 generates the frontend types — no domain interface is hand-maintained on either side.
 
 The decision core is pure Python and imports no AWS, network or agent client. The Strands
-agent is confined to research: it chooses what to read, never what the answer is. AgentCore
-web search is used in `LIVE` mode only; there is no AgentCore runtime deployment.
+agent is confined to research: it chooses what to read, never what the answer is.
+
+Two AWS services are used, and only in the `LIVE` provider path: Amazon Bedrock for the model,
+and Amazon Bedrock AgentCore **search**. QUALOR is **not** deployed on Amazon Bedrock AgentCore
+**Runtime** — a provider integration and a runtime deployment are different things, and only
+the first exists here.
 
 ## Local development
 
@@ -82,7 +86,7 @@ The CLI prints `MODE=FIXTURE`, `ELIGIBILITY=...` and the structured gate. `POST 
 
 `decide-fixture` prints eight status lines, including the selected project, score and recommendation. Unknown scores remain `UNKNOWN`; ties or insufficient matching evidence leave the project `UNRESOLVED`. `POST /dev/decide-fixture` accepts structured fixture JSON and returns the full assessments, reason codes, explanation and missing information. Its candidate decisions are conditional analyses; an unresolved portfolio does not choose a candidate. Both development routes are unavailable outside development, and neither performs an external submission.
 
-Public APIs and policy details are documented in the [eligibility plan](docs/superpowers/plans/2026-09-05-qualor-01-domain-eligibility-core.md) and [decision plan](docs/superpowers/plans/2026-09-05-qualor-02-decision-core.md). Twenty canonical exports in `schemas/` generate [frontend domain types](apps/web/src/generated/domain.ts) with pinned [json-schema-to-typescript](https://github.com/bcherny/json-schema-to-typescript). Install frontend dependencies before generation. No domain interfaces are hand-maintained. TypeScript describes serialization shapes; Python remains responsible for numeric bounds, date/decimal formats, uniqueness, evidence checks and cross-field rules.
+Public APIs and policy details are documented in the [eligibility plan](docs/superpowers/plans/2026-09-05-qualor-01-domain-eligibility-core.md) and [decision plan](docs/superpowers/plans/2026-09-05-qualor-02-decision-core.md). Forty-two canonical domain contracts are exported to `schemas/`, one JSON Schema file each, and those files generate [frontend domain types](apps/web/src/generated/domain.ts) with pinned [json-schema-to-typescript](https://github.com/bcherny/json-schema-to-typescript). Install frontend dependencies before generation. No domain interfaces are hand-maintained. TypeScript describes serialization shapes; Python remains responsible for numeric bounds, date/decimal formats, uniqueness, evidence checks and cross-field rules.
 
 ```powershell
 .\scripts\verify.ps1

@@ -12,8 +12,8 @@ QUALOR is autonomous opportunity intelligence for professionals.
 
 It takes an opportunity — a grant, a programme, an award, a call for proposals — reads the
 official rules itself, and works out whether *you* should actually pursue it. Not "here are
-some results". A decision: **APPLY**, **PREPARE**, **WATCH** or **SKIP**, with the exact
-sentence from the official rules that justifies each part of it.
+some results". A decision: **APPLY**, **PREPARE**, **WATCH** or **SKIP**, reached from the
+official rules together with your own project and capacity, and auditable at every step.
 
 Then it stops. Before anything consequential happens, a human approves. Only then does QUALOR
 prepare an application pack — locally, for you to review. It never submits anything anywhere.
@@ -45,9 +45,13 @@ and re-evaluates what it still needs. Every call is budgeted before it runs.
 capacity, readiness and strategy are pure Python. The same inputs always produce the same
 verdict. The model never authors the recommendation — that separation is the point.
 
-**Evidence is exact.** Every fact carries the verbatim excerpt that proves it, plus the source
-URL, the retrieval instant, the content hash and the source authority. If a structured fact
-and its quoted excerpt ever disagreed, that would be a defect — so it is checked mechanically.
+**Evidence is exact — and the three kinds of input stay separate.** Every *source-derived
+opportunity fact* carries the verbatim excerpt that proves it, plus the source URL, the
+retrieval instant, the content hash and the source authority; if a structured fact and its
+quoted excerpt ever disagreed, that would be a defect, so it is checked mechanically. *Owner
+and project facts* — residence, capacity, licence, which materials exist — are yours, and
+carry their own provenance rather than a source citation. *Assessments* like eligibility,
+readiness and strategy are deterministic outputs computed from those two, never asserted.
 
 **UNKNOWN is never PASS.** If a rule cannot be evaluated from the evidence, QUALOR says so and
 the decision reflects it. It does not guess, and it does not fill gaps to look decisive.
@@ -65,7 +69,7 @@ interface is hand-maintained on either side.
 
 The verification gate runs Ruff, the Python suite, schema and type drift checks, the frontend
 suite, typecheck, build, a canonical-document hash and a secret scan, and refuses to pass on a
-dirty worktree. Current state: **1050 Python tests, 312 frontend tests, 27 browser end-to-end
+dirty worktree. Current state: **1060 Python tests, 312 frontend tests, 27 browser end-to-end
 tests**, all green.
 
 The browser tests drive the real API against a real database. Nothing is stubbed, and no test
@@ -112,14 +116,20 @@ Three things follow from that, and they are the parts we'd point a judge at:
 
 1. **The model researches; deterministic code judges.** Re-running the same inputs gives the
    same verdict, every time.
-2. **Every displayed fact is backed by the exact source sentence**, with its URL, retrieval
-   time and content hash — one click away in the Evidence Reader.
+2. **Every source-derived opportunity fact is backed by its exact supporting official
+   excerpt**, with the source URL, retrieval time and content hash — one click away in the
+   Evidence Reader.
 3. **It will tell you "not yet".** Which brings us to the demo.
 
 ## The demo: QUALOR evaluates itself
 
 For the demonstration we pointed QUALOR at the real AWS Agents for Humans Hackathon — this
 one — and asked it to evaluate QUALOR as the candidate project.
+
+The evidence is **real official source material** captured from the Devpost rules and overview
+pages, replayed in `REPLAY` mode. That is not fixture data, and it is not a fresh network fetch
+dressed up as one: `REPLAY` deterministically replays a captured real source and the product
+displays that mode rather than claiming `LIVE`.
 
 It read the official rules, extracted the submission requirements, checked them against the
 repository as it actually is, and returned:
@@ -133,9 +143,11 @@ STRATEGY      = 75
 RECOMMENDATION = PREPARE
 ```
 
-**PREPARE, not APPLY** — because at evaluation time four required submission materials did not
-yet exist: the public repository, the architecture diagram, the demo video and the written
-narrative.
+**PREPARE, not APPLY** — because at the moment of that recorded evaluation four required
+submission materials did not yet exist: the public repository, the architecture diagram, the
+demo video and the written narrative. Some of those have since been produced; the verdict
+above is the record of what was true when the engine ran, and it is deliberately not
+back-dated.
 
 That is the behaviour we most want judged. QUALOR had every reason to say APPLY about its own
 submission, and it did not, because the deterministic engine found real gaps. An agent that
@@ -177,7 +189,7 @@ exactly the class of drift that turns a quotation into a paraphrase.
 - A human approval boundary with real version binding, expiry and single use.
 - A judge-ready decision workspace: inbox, decision, evidence reader, activity trail,
   approval, application pack.
-- 1050 Python tests, 312 frontend tests, 27 browser end-to-end tests against the real stack.
+- 1060 Python tests, 312 frontend tests, 27 browser end-to-end tests against the real stack.
 - An agent that returned PREPARE about its own submission when APPLY would have been easier.
 
 ## What we learned
@@ -188,14 +200,15 @@ truthfulness and the approval boundary, and that is what makes the output worth 
 
 ## What's next
 
-- Close the four readiness gaps and re-run the decision to see whether QUALOR truthfully
-  reaches APPLY about itself.
+- Complete the remaining submission materials, then perform one final truthful re-run and
+  keep whatever recommendation the engine produces.
 - Persisted in-flight run visibility, so a long research run is watchable as it happens.
-- Broaden beyond the current profile shape to other professional verticals — creators,
-  studios, independent researchers. The domain contracts are general; the verticals are not
-  yet built, and we are not claiming them as current functionality.
-- Optional AgentCore deployment. QUALOR uses AgentCore web search in LIVE mode today, but it
-  is **not** deployed on AgentCore runtime, and we are not presenting it as such.
+- Broaden beyond the current profile shape to other professional verticals. The domain
+  contracts are general; the verticals are not yet built, and we are not claiming them as
+  current functionality.
+- Optional AgentCore Runtime deployment. The LIVE provider path integrates Amazon Bedrock
+  AgentCore search today, but QUALOR is **not** deployed on AgentCore Runtime, and we are not
+  presenting it as such.
 
 ---
 
@@ -208,12 +221,14 @@ Recorded so a reviewer can check this document against the repository.
 | Strands `Agent`, 4 tools, `SequentialToolExecutor`, 3 hooks | `src/qualor/runtime/agent.py` | VERIFIED |
 | `BedrockModel` with budget-guarded `converse` | `src/qualor/runtime/agent.py`, `runtime/budget.py` | VERIFIED |
 | Deterministic engines, no model in the decision path | `src/qualor/{eligibility,matching,conflicts,effort,strategy,decisions}` | VERIFIED |
-| 1050 / 312 / 27 tests green | `scripts/verify.ps1`, `npm run test:e2e` | VERIFIED |
+| 1060 / 312 / 27 tests green | `scripts/verify.ps1`, `npm run test:e2e` | VERIFIED |
 | 42 exported schemas generate frontend types | `schemas/`, `apps/web/src/generated/domain.ts` | VERIFIED |
 | Version-bound, expiring, single-use approval | `src/qualor/workspace/approval.py` | VERIFIED |
 | No external submission path exists | repository-wide; asserted in browser tests | VERIFIED |
 | LIVE / REPLAY / FIXTURE fail-closed | `src/qualor/runtime/mode.py` | VERIFIED |
 | Real-source run returned PREPARE | `.qualor/local/killer-demo-real-source/task2c-result.json` | VERIFIED |
-| AgentCore **runtime deployment** | none exists | NOT CLAIMED |
+| Demonstration runs in REPLAY over captured official source | persisted run mode; `runtime/replay.py` | VERIFIED |
+| LIVE provider integrates Amazon Bedrock AgentCore search | `src/qualor/runtime/search.py` | VERIFIED |
+| AgentCore **Runtime** deployment | none exists | NOT CLAIMED |
 | Live hosted demo | none exists | NOT CLAIMED |
-| Creator / studio verticals | not built | MARKED FUTURE |
+| Additional professional verticals | not built | MARKED FUTURE |

@@ -27,6 +27,7 @@
     .flow      { stroke:#6f97ad; stroke-width:1.8; fill:none; marker-end:url(#arrow); }
     .flowWarm  { stroke:#c8a877; stroke-width:1.8; fill:none; marker-end:url(#arrowWarm); }
     .side      { stroke:#55788c; stroke-width:1.5; fill:none; stroke-dasharray:5 4; marker-end:url(#arrow); }
+    .flowTail  { stroke:#6f97ad; stroke-width:1.8; fill:none; }
   </style>
 
   <rect width="1080" height="1620" fill="#0a141c"/>
@@ -44,15 +45,16 @@
   <path d="M 540 182 L 540 212" class="flow"/>
 
   <!-- ── 2. capture + mode boundary ────────────────────────────────────────── -->
-  <rect x="40" y="216" width="1000" height="176" class="band"/>
+  <rect x="40" y="216" width="1000" height="184" class="band"/>
   <text x="60" y="241" class="kicker">02 · RESEARCH &amp; SOURCE CAPTURE — FAIL-CLOSED MODE BOUNDARY</text>
   <text x="60" y="266" class="sub">One runtime mode per run. The mode that ran is the mode the product displays; providers are refused outside it.</text>
+  <text x="60" y="386" class="sub" font-size="13.5" fill="#7c94a3">AWS services are used only where named. QUALOR is not deployed on Amazon Bedrock AgentCore Runtime.</text>
 
   <rect x="60" y="282" width="306" height="92" class="box"/>
   <text x="78" y="308" class="lbl">LIVE</text>
   <text x="78" y="331" class="sub">Network fetch during the run</text>
-  <text x="78" y="352" class="mono">AgentCore search · Bedrock</text>
-  <text x="78" y="369" class="mono">paid calls · explicit opt-in</text>
+  <text x="78" y="352" class="mono">Amazon Bedrock AgentCore search</text>
+  <text x="78" y="369" class="mono">Amazon Bedrock · paid calls</text>
 
   <rect x="387" y="282" width="306" height="92" class="boxHero"/>
   <text x="405" y="308" class="lbl">REPLAY</text>
@@ -65,36 +67,37 @@
   <text x="732" y="331" class="sub">Owned synthetic scenario</text>
   <text x="732" y="352" class="mono">acceptance and regression</text>
   <text x="732" y="369" class="mono">never shown as real</text>
-  <path d="M 540 392 L 540 422" class="flow"/>
+  <path d="M 540 400 L 540 424" class="flow"/>
 
   <!-- ── 3. strands runtime (hero) ─────────────────────────────────────────── -->
-  <rect x="40" y="426" width="1000" height="212" fill="#0f2a38" stroke="#7cc0e6" stroke-width="1.6" rx="8"/>
+  <rect x="40" y="428" width="1000" height="210" fill="#0f2a38" stroke="#7cc0e6" stroke-width="1.6" rx="8"/>
   <text x="60" y="451" class="kicker" fill="#9ed3f0">03 · STRANDS AGENTS RUNTIME</text>
   <text x="60" y="479" class="h">One Strands agent plans the research; it never authors the verdict</text>
 
-  <rect x="60" y="495" width="300" height="60" class="box"/>
-  <text x="76" y="518" class="lbl" font-size="15.5">Tools</text>
-  <text x="76" y="540" class="mono">search_web · fetch_official_source</text>
-  <text x="76" y="555" class="mono">extract_official_claims</text>
+  <rect x="60" y="493" width="250" height="62" class="box"/>
+  <text x="76" y="516" class="lbl" font-size="15.5">Amazon Bedrock</text>
+  <text x="76" y="537" class="mono">plans the next step</text>
+  <text x="76" y="552" class="mono">BedrockModel</text>
+  <path d="M 312 524 L 366 524" class="flow"/>
 
-  <rect x="372" y="495" width="216" height="60" class="box"/>
-  <text x="388" y="518" class="lbl" font-size="15.5">Execution</text>
-  <text x="388" y="540" class="mono">SequentialToolExecutor</text>
-  <text x="388" y="555" class="mono">evaluate_current_state</text>
+  <rect x="370" y="493" width="320" height="62" class="box"/>
+  <text x="386" y="516" class="lbl" font-size="15.5">Tools</text>
+  <text x="386" y="537" class="mono">search_web · fetch_official_source</text>
+  <text x="386" y="552" class="mono">extract_official_claims</text>
+  <path d="M 692 524 L 746 524" class="flow"/>
 
-  <rect x="600" y="495" width="204" height="60" class="box"/>
-  <text x="616" y="518" class="lbl" font-size="15.5">Hooks</text>
-  <text x="616" y="540" class="mono">BeforeModelCall</text>
-  <text x="616" y="555" class="mono">Before/AfterToolCall</text>
+  <rect x="750" y="493" width="270" height="62" class="boxHero"/>
+  <text x="766" y="516" class="lbl" font-size="15.5">evaluate_current_state</text>
+  <text x="766" y="537" class="mono">asks the engine what is</text>
+  <text x="766" y="552" class="mono">still missing</text>
 
-  <rect x="816" y="495" width="204" height="60" class="box"/>
-  <text x="832" y="518" class="lbl" font-size="15.5">Model</text>
-  <text x="832" y="540" class="mono">BedrockModel</text>
-  <text x="832" y="555" class="mono">budget-guarded</text>
+  <path d="M 885 555 L 885 574 L 700 574" class="flowTail"/>
+  <text x="540" y="578" class="sub" font-size="13.5" text-anchor="middle">next retrieval, or the next model step</text>
+  <path d="M 380 574 L 185 574 L 185 557" class="flow"/>
 
-  <rect x="60" y="567" width="960" height="54" fill="#0c2230" stroke="#2f5a71" stroke-width="1" rx="6"/>
-  <text x="78" y="590" class="lbl" font-size="15.5">Physical budget guard</text>
-  <text x="78" y="611" class="sub">Every model and tool call is reserved before it runs and committed after it returns. Exhausting it stops the run, with the reason recorded.</text>
+  <rect x="60" y="586" width="960" height="44" fill="#0c2230" stroke="#2f5a71" stroke-width="1" rx="6"/>
+  <text x="78" y="606" class="lbl" font-size="15.5">SequentialToolExecutor · lifecycle hooks · physical budget guard</text>
+  <text x="78" y="624" class="sub" font-size="13.5">Every model and tool call is reserved before it runs and committed after it returns. Exhausting it stops the run, with the reason recorded.</text>
   <path d="M 540 638 L 540 668" class="flow"/>
 
   <!-- ── 4. evidence ───────────────────────────────────────────────────────── -->
@@ -123,23 +126,25 @@
   <!-- ── 5. deterministic decision engine ──────────────────────────────────── -->
   <rect x="40" y="852" width="1000" height="242" class="band"/>
   <text x="60" y="877" class="kicker">05 · DETERMINISTIC DECISION ENGINE — NO MODEL IN THIS PATH</text>
-  <text x="60" y="901" class="sub">Pure Python. Same inputs always produce the same verdict, and UNKNOWN is never treated as PASS.</text>
+  <text x="60" y="899" class="sub">Pure Python. Same inputs always produce the same verdict, and UNKNOWN is never treated as PASS.</text>
 
-  <rect x="60" y="917"  width="184" height="56" class="box"/><text x="76" y="940" class="lbl" font-size="15.5">Eligibility</text><text x="76" y="961" class="mono">rules + coverage</text>
-  <rect x="254" y="917" width="184" height="56" class="box"/><text x="270" y="940" class="lbl" font-size="15.5">Matching</text><text x="270" y="961" class="mono">project fit score</text>
-  <rect x="448" y="917" width="184" height="56" class="box"/><text x="464" y="940" class="lbl" font-size="15.5">Conflicts</text><text x="464" y="961" class="mono">policy collisions</text>
-  <rect x="642" y="917" width="184" height="56" class="box"/><text x="658" y="940" class="lbl" font-size="15.5">Effort</text><text x="658" y="961" class="mono">capacity + cost</text>
-  <rect x="836" y="917" width="184" height="56" class="box"/><text x="852" y="940" class="lbl" font-size="15.5">Readiness</text><text x="852" y="961" class="mono">material gaps</text>
+  <rect x="60" y="909" width="960" height="42" fill="#132a22" stroke="#3d6152" stroke-width="1" rx="6"/>
+  <text x="78" y="929" class="lbl" font-size="15.5" fill="#cfe8dc">Owner-supplied inputs — founder / owner profile · project profile</text>
+  <text x="78" y="946" class="sub" font-size="13.5" fill="#8fb6a4">Residence, legal form, capacity, budget; project stage, licence, materials. Real constraints, never source evidence.</text>
 
-  <rect x="60" y="985" width="472" height="56" class="box"/>
-  <text x="76" y="1008" class="lbl" font-size="15.5">Strategy — prioritization, not win probability</text>
-  <text x="76" y="1029" class="mono">fit · readiness · time · value · affordability</text>
+  <rect x="60" y="961"  width="184" height="54" class="box"/><text x="76" y="983" class="lbl" font-size="15.5">Eligibility</text><text x="76" y="1004" class="mono">rules + coverage</text>
+  <rect x="254" y="961" width="184" height="54" class="box"/><text x="270" y="983" class="lbl" font-size="15.5">Matching</text><text x="270" y="1004" class="mono">project fit score</text>
+  <rect x="448" y="961" width="184" height="54" class="box"/><text x="464" y="983" class="lbl" font-size="15.5">Conflicts</text><text x="464" y="1004" class="mono">policy collisions</text>
+  <rect x="642" y="961" width="184" height="54" class="box"/><text x="658" y="983" class="lbl" font-size="15.5">Effort</text><text x="658" y="1004" class="mono">capacity + cost</text>
+  <rect x="836" y="961" width="184" height="54" class="box"/><text x="852" y="983" class="lbl" font-size="15.5">Readiness</text><text x="852" y="1004" class="mono">material gaps</text>
 
-  <rect x="548" y="985" width="472" height="56" class="boxHero"/>
-  <text x="564" y="1008" class="lbl" font-size="15.5">Recommendation</text>
-  <text x="564" y="1029" class="mono">APPLY · PREPARE · WATCH · SKIP  + reason codes</text>
+  <rect x="60" y="1027" width="472" height="54" class="box"/>
+  <text x="76" y="1049" class="lbl" font-size="15.5">Strategy — prioritization, not win probability</text>
+  <text x="76" y="1070" class="mono">fit · readiness · time · value · affordability</text>
 
-  <text x="60" y="1073" class="sub">Founder and project profiles enter here as owner-supplied facts. An unrecorded fact stays UNKNOWN; it is never inferred.</text>
+  <rect x="548" y="1027" width="472" height="54" class="boxHero"/>
+  <text x="564" y="1049" class="lbl" font-size="15.5">Recommendation</text>
+  <text x="564" y="1070" class="mono">APPLY · PREPARE · WATCH · SKIP  + reason codes</text>
   <path d="M 540 1094 L 540 1124" class="flow"/>
 
   <!-- ── 6. persistence ────────────────────────────────────────────────────── -->
@@ -151,7 +156,7 @@
 
   <!-- ── 7. workspace ui ───────────────────────────────────────────────────── -->
   <rect x="40" y="1256" width="1000" height="112" class="band"/>
-  <text x="60" y="1281" class="kicker">07 · DECISION WORKSPACE — REACT + TYPESCRIPT</text>
+  <text x="60" y="1281" class="kicker">07 · DECISION WORKSPACE — THE HUMAN-FACING INTERFACE</text>
   <rect x="60" y="1297"  width="232" height="54" class="box"/><text x="76" y="1319" class="lbl" font-size="15.5">Opportunity Inbox</text><text x="76" y="1340" class="mono">server-ordered queue</text>
   <rect x="304" y="1297" width="232" height="54" class="box"/><text x="320" y="1319" class="lbl" font-size="15.5">Decision Canvas</text><text x="320" y="1340" class="mono">recommendation + signals</text>
   <rect x="548" y="1297" width="232" height="54" class="box"/><text x="564" y="1319" class="lbl" font-size="15.5">Evidence Reader</text><text x="564" y="1340" class="mono">exact excerpt + citation</text>
