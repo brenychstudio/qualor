@@ -7,6 +7,15 @@ import type {
 import { DecisionTrace } from '../../layout/DecisionTrace';
 import { DECISION_COPY, LANE_LABEL_ALIASES, PRIMARY_CTA_LABELS, RECOMMENDATION_LABELS } from './decision-copy';
 
+/** The four causal curves, drawn twice: a shoulder that carries the arrowhead's weight across
+ *  the handoff, and the core stroke over it. One array so the two can never drift apart. */
+const causalPaths = [
+  'M450 34 C570 34 565 150 686 150',
+  'M450 111 C570 111 590 150 686 150',
+  'M450 189 C570 189 590 150 686 150',
+  'M450 266 C570 266 565 150 686 150',
+];
+
 const incompleteRuns = new Set(['CREATED', 'RUNNING', 'PARTIAL', 'FAILED', 'CANCELLED', 'BUDGET_STOPPED']);
 
 function humanize(value: string) {
@@ -113,7 +122,7 @@ export function DecisionCanvas({ workspace, onPrimaryAction, approvalOpen = fals
         <div className="signal-lane"><span className="signal-icon"><SignalIcon kind="feasibility" /></span><div className="signal-meaning"><dt>Effort</dt><span>{decision.effort ? 'Preparation estimate' : 'Effort unavailable'}</span></div><dd><strong>{effortText(decision.effort)}</strong><span className="signal-rule" aria-hidden="true" /></dd></div>
         <div role="group" aria-label="Readiness assessment" className="signal-lane signal-lane--readiness"><span className="signal-icon"><SignalIcon kind="readiness" /></span><div className="signal-meaning"><dt>Readiness</dt><span>{readiness ? factText(readiness.state) : 'Readiness unavailable'}</span></div><dd><strong>{readinessCount}</strong><span className="signal-rule" aria-hidden="true" /></dd></div>
       </dl>
-      <svg className="decision-convergence" viewBox="0 0 1000 300" preserveAspectRatio="none" aria-hidden="true"><path d="M477 34 C570 34 565 150 686 150" /><path d="M477 111 C570 111 590 150 686 150" /><path d="M477 189 C570 189 590 150 686 150" /><path className="convergence-warm" d="M477 266 C570 266 565 150 686 150" /><path d="M686 150H692" /><circle cx="690" cy="150" r="3" /></svg>
+      <svg className="decision-convergence" viewBox="0 0 1000 300" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="judge-causal-cool" gradientUnits="userSpaceOnUse" x1="463" y1="0" x2="467" y2="0"><stop stopColor="#99cde9" stopOpacity="0" /><stop offset="1" stopColor="#99cde9" /></linearGradient><linearGradient id="judge-causal-warm" gradientUnits="userSpaceOnUse" x1="463" y1="0" x2="467" y2="0"><stop stopColor="#c8b08c" stopOpacity="0" /><stop offset="1" stopColor="#c8b08c" /></linearGradient><linearGradient id="judge-causal-shoulder-cool" gradientUnits="userSpaceOnUse" x1="463" y1="0" x2="502" y2="0"><stop stopColor="#a4d8f1" stopOpacity="0" /><stop offset=".1" stopColor="#a4d8f1" /><stop offset="1" stopColor="#a4d8f1" stopOpacity="0" /></linearGradient><linearGradient id="judge-causal-shoulder-warm" gradientUnits="userSpaceOnUse" x1="463" y1="0" x2="502" y2="0"><stop stopColor="#d4b687" stopOpacity="0" /><stop offset=".1" stopColor="#d4b687" /><stop offset="1" stopColor="#d4b687" stopOpacity="0" /></linearGradient></defs><g className="judge-causal-shoulder">{causalPaths.map((path, index) => <path key={path} className={index === 3 ? 'convergence-warm' : undefined} d={path} />)}</g>{causalPaths.map((path, index) => <path key={path} className={index === 3 ? 'convergence-warm' : undefined} d={path} />)}<path d="M686 150H692" /><circle cx="690" cy="150" r="3" /></svg>
       <svg className="mobile-convergence" viewBox="0 0 350 317" preserveAspectRatio="none" fill="none" aria-hidden="true"><path d="M329 31H349V285H175V317M329 102H349M329 173H349M329 244H349" /></svg>
       <section className="recommendation-surface" aria-label="Recommendation">
         <span className="section-index">Recommendation</span>

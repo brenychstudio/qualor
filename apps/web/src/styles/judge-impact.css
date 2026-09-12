@@ -743,6 +743,104 @@
 }
 
 /* ------------------------------------------------------------------------------------------
+ * The causal junction has one visible owner.
+ *
+ * A lane's silhouette is a CSS background image and its connector is an SVG element: two
+ * rasterizers, two coordinate spaces, two stroke models — the connector's stroke is
+ * `non-scaling-stroke` at a flat 1px, the lane's is a gradient scaled non-uniformly with the
+ * background. Aligning their endpoints to the pixel does not make them one line, and three
+ * rounds of endpoint offsets are the evidence: isolated, the lane paints a ~2px bright wedge
+ * that ends in a flat cap, and the connector paints a thinner, dimmer line that starts with
+ * another flat cap just inside it. Where they overlapped the paint doubled into a bright knot;
+ * past the lane's tip the weight dropped to a single hairline. Both defects are two visible
+ * endpoints meeting, so neither is fixable by moving them closer together.
+ *
+ * So neither endpoint is painted any more. The lane's outline fades out across its last 1.5%
+ * — the stretch where its two taper edges are already within a stroke of each other and were
+ * only ever painting a wedge — and the connector fades in across the same handoff from its own
+ * start. The arrowhead keeps its bright edges, the causal line keeps its weight, and between
+ * them there is exactly one thing painted at a time and no cap at either end.
+ *
+ * The alternative considered and rejected for now: one SVG owning the lane silhouettes and the
+ * connectors together, which is the only way to make this a true vector join. The connector's
+ * viewBox anchors sit at fixed fractions of the stack and the lane stack's rhythm is not the
+ * same fraction at every breakpoint — measured, the anchors already drift 1.31px from the lane
+ * centres at 1024 — so drawing the silhouette from those anchors would trade this seam for a
+ * misregistered outline. That is a geometry change, not a paint change, and it needs its own
+ * task.
+ *
+ * Deferred deliberately, with the junction accepted as it stands: at judge-view scale the
+ * handoff reads as one line, and what remains is an optical shoulder visible only in a
+ * magnified crop. Unifying the lane silhouettes and the connectors into one SVG paint system
+ * is revisited only if a Gold-Bar review shows it materially affects the demo.
+ * ---------------------------------------------------------------------------------------- */
+
+/* Deliberately outside any media query: the connector paints wherever base.css shows it, and
+   a handoff that only held at the judge viewport would be the same defect at another width. */
+
+/* In front of the lane rather than behind it. Behind, the lane's fill decides where the line
+   begins — and that fill is nearly black at the tip, so the line was occluded until the lane
+   had already converged and then appeared all at once, whatever its path said. A causal line
+   that emerges from a signal belongs over it; the ramp below is what keeps it from painting a
+   hairline across the lane body on its way out. */
+.workspace:not(.workspace--optical-preview) .decision-convergence {
+  z-index: 1;
+}
+
+.workspace:not(.workspace--optical-preview) .decision-convergence path {
+  stroke: url(#judge-causal-cool);
+}
+
+.workspace:not(.workspace--optical-preview) .decision-convergence .convergence-warm {
+  stroke: url(#judge-causal-warm);
+}
+
+/* The weight the arrowhead hands over. Its two edges merge into about 2px of paint before the
+   tip and the causal line is 1px, so removing the merged bar on its own left the handoff
+   lighter than the thing it replaced — a hole in place of a knot. This carries the edges'
+   weight across the handoff in the lane's own edge colour and tapers out of it over the next
+   ~40 viewBox units, under the core stroke, so the line leaves the signal at the weight the
+   signal ends on and thins to its own. Same element, same coordinate space, same rasterizer as
+   the core: the junction still has one paint owner.
+
+   `.decision-convergence` is in both selectors deliberately. Without it these match the core's
+   own rules at exactly the same specificity and win only by sitting lower in the file, which
+   is not a thing to rely on the next time this section is edited. */
+.workspace:not(.workspace--optical-preview) .decision-convergence .judge-causal-shoulder path {
+  stroke: url(#judge-causal-shoulder-cool);
+  stroke-width: 2.4;
+}
+
+.workspace:not(.workspace--optical-preview) .decision-convergence .judge-causal-shoulder .convergence-warm {
+  stroke: url(#judge-causal-shoulder-warm);
+}
+
+/* 901 is where base.css starts painting the connector; below it the lane's tip is the end of
+   the drawing and has to stay a tip, so this is bounded to the band that has something to hand
+   over to. The lane stops painting across the last stretch of its own arrowhead — where its
+   two edges have already closed to within a stroke of each other and were only ever painting a
+   blunt bar with a flat cap. The connector is already at full strength by then and is painted
+   over the lane, so it replaces the bar rather than being added to it.
+
+   The mask is fully transparent by 97.3%, which is where that bar starts and not where it ends:
+   solving the shape's top edge, the two strokes close to within a stroke of each other at
+   viewBox x=330 of 340. A fade still running where the bar is only dims the bar, and a dimmed
+   blunt bar is the same blunt bar in grey — measured with the connector hidden, which is the
+   only way to see whose paint it is. It is a short fade and a late one for the same reason
+   from the other side: masked earlier it takes the edges while they are still a visible
+   distance apart, and two edges vanishing to be replaced by one line on the centre is a
+   jump of its own. The ramp and the mask cover one identical stretch — lane
+   96.4%..97.3% is x=463..467 in the connector's userSpace, since a lane fraction f is f*480
+   there — so what one gives up the other takes. Both are fractions because the shape they follow is a fraction, and they stay
+   in step at every width by construction rather than by a per-breakpoint value. */
+@media (min-width: 901px) {
+  .workspace:not(.workspace--optical-preview) .signal-lane::before {
+    -webkit-mask-image: linear-gradient(to right, #000 96.4%, transparent 97.3%);
+    mask-image: linear-gradient(to right, #000 96.4%, transparent 97.3%);
+  }
+}
+
+/* ------------------------------------------------------------------------------------------
  * Responsive integrity — the desktop signal lane, and the rail's first fold.
  *
  * Measured at HEAD before anything changed, and the measurement corrected the diagnosis.
@@ -802,8 +900,15 @@
        narrower than that. It is a fixed length rather than a content size on purpose: every
        lane resolves it identically, so the four values stay in one column, which is what makes
        them read as four readings of one instrument. A value longer than the floor still wraps
-       in the geometry built for it, and gains room here rather than losing it. */
-    grid-template-columns: auto minmax(0, 1fr) minmax(96px, 1fr);
+       in the geometry built for it, and gains room here rather than losing it.
+
+       91px, not more: at 1280 the lane has 168.79px to divide and the label needs 76.59 of it
+       for an eyebrow that must not wrap, so the value's floor is what is left over. A floor of
+       96 took the label under that and wrapped BEST PROJECT onto two lines, which made the
+       label block 64.78px inside a 50px content box — it escaped the lane by 8.78px and grew
+       the grid row, which is what pushed the icon 7px off its own centre. The floor binds only
+       where an even share would be narrower than it, so 1440, 1024 and 768 are untouched. */
+    grid-template-columns: auto minmax(min-content, 1fr) minmax(91px, 1fr);
     padding-right: calc(var(--signal-taper) - var(--signal-content-gap));
   }
 
@@ -821,6 +926,14 @@
      at 1280) is wider than the track it sits in and would simply paint over the value. */
   .workspace:not(.workspace--optical-preview) .signal-meaning > span {
     white-space: normal;
+  }
+
+  /* The eyebrow names the signal — fixed product copy, never content — so it wraps to no
+     purpose and costs a whole line of a 50px lane when it does. Held on one line, with the
+     label track floored at its own min-content so holding it there can never push it out of
+     the track instead. */
+  .workspace:not(.workspace--optical-preview) .signal-meaning dt {
+    white-space: nowrap;
   }
 
   /* The value box shrinks to the value, so the rule beneath it can take its width from it.

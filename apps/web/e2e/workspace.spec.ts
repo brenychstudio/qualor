@@ -683,12 +683,19 @@ test('the four causal signals read as a rhythm and every connector meets its lan
     }
     expect(Math.max(...field.gaps) - Math.min(...field.gaps), `gap evenness at ${width}`).toBeLessThanOrEqual(1);
 
-    // Every connector's first painted point sits on the tip of the lane it continues. The
+    // Every connector runs out of the lane it continues, on that lane's own centreline. The
     // defect measured up to 44px of vertical drift, worst at the outer lanes.
     expect(field.attachment, `connector count at ${width}`).toHaveLength(4);
     for (const anchor of field.attachment) {
       expect(Math.abs(anchor.dy), `${anchor.lane} connector dy at ${width}`).toBeLessThanOrEqual(2);
-      expect(anchor.distance, `${anchor.lane} connector distance at ${width}`).toBeLessThanOrEqual(2.5);
+      // The path begins behind the lane's tip, not at it: it is painted over the lane and
+      // ramps up from nothing across the handoff, so its first point is deliberately hidden
+      // and a start that fell short of the tip would be the seam this replaced. Bounded on
+      // the other side too — far enough in and it would paint a hairline across the body
+      // before the ramp reaches it. Where the line actually becomes visible is a question
+      // about pixels, and the junction test measures it there.
+      expect(anchor.dx, `${anchor.lane} connector starts inside its lane at ${width}`).toBeLessThanOrEqual(0);
+      expect(anchor.dx, `${anchor.lane} connector start depth at ${width}`).toBeGreaterThanOrEqual(-26);
     }
 
     // The lane stack grew inside the existing field rather than pushing the recommendation:
@@ -856,8 +863,10 @@ test('the accepted wide Decision Field geometry holds around the signal-lane cor
   // width and rhythm, and where the hero begins. The value column is inside that frame and is
   // re-accepted here — it was a fixed 83px, which is what put the recorded name in the
   // arrowhead; it is now the lane's own proportional share, or the slot's floor where an even
-  // share would be narrower than a compact value needs — which is what 1280 resolves to.
-  for (const [width, expected] of [[1440, { lane: 320.63, value: 99.75 }], [1280, { lane: 282.23, value: 96 }]] as const) {
+  // share would be narrower than a compact value needs — which is what 1280 resolves to. The
+  // floor is what is left after the label's eyebrow, which must not wrap: at 96px it did, and
+  // the two-line label block then escaped its own lane and shifted the icon off centre.
+  for (const [width, expected] of [[1440, { lane: 320.63, value: 99.75 }], [1280, { lane: 282.23, value: 91 }]] as const) {
     await selectW01(page, width);
     const measured = await page.evaluate(() => {
       const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -1101,22 +1110,33 @@ test('a recorded value keeps clear of the lane it is painted in, taper included'
  *      than the recorded project name — attached to nothing in particular.
  * ------------------------------------------------------------------------------------------ */
 
-/** Luminance across each lane-to-connector junction, sampled from the rendered frame. */
+/** Luminance sampled along each connector, across its lane's tip and then along plain curve.
+ *
+ *  Along the curve rather than along a scanline: a 1px stroke at a shallow angle is antialiased
+ *  across two rows, so its brightness swings by 70 levels over its own length, and a horizontal
+ *  scan of a steeply descending connector spends half its samples on the background between
+ *  curve segments. Following the path keeps the line centred in every sample, which is what
+ *  makes the control run a usable unit of comparison.
+ */
 async function junctionProfiles(page: Page) {
   const geometry = await page.evaluate(() => {
     const svg = document.querySelector('.decision-convergence') as SVGSVGElement;
     const ctm = svg.getScreenCTM()!;
-    const paths = [...svg.querySelectorAll('path')];
     return [...document.querySelectorAll('.signal-lane')].map((lane, index) => {
       const box = lane.getBoundingClientRect();
-      const start = paths[index].getPointAtLength(0).matrixTransform(ctm);
+      const path = svg.querySelectorAll('path')[index];
+      const total = path.getTotalLength();
+      const points: { x: number; y: number }[] = [];
+      for (let at = 0; at <= total; at += 0.5) {
+        const point = path.getPointAtLength(at).matrixTransform(ctm);
+        points.push({ x: point.x, y: point.y });
+      }
       return {
         label: lane.querySelector('dt')?.textContent ?? '',
-        // Where the lane's own shape stops painting: the tip of the ::before path, at x=339 of
-        // the 340-unit viewBox stretched over the border box.
+        // The handoff is at the lane's tip, wherever the connector's path begins: the path now
+        // starts inside the lane and is painted over it, so its start is not a visible event.
         tipX: box.left + (339 / 340) * box.width,
-        startX: start.x,
-        centreY: start.y,
+        points,
       };
     });
   });
@@ -1130,43 +1150,57 @@ async function junctionProfiles(page: Page) {
     canvas.height = image.height;
     const context = canvas.getContext('2d')!;
     context.drawImage(image, 0, 0);
-    /** Brightest pixel in a short vertical window at x — the painted line, whatever its width. */
-    const column = (x: number, y: number) => {
-      const { data } = context.getImageData(Math.round(x), Math.round(y) - 4, 1, 9);
-      let brightest = 0;
+    const brightest = (x: number, y: number) => {
+      const { data } = context.getImageData(Math.round(x), Math.round(y) - 2, 1, 5);
+      let best = 0;
       for (let i = 0; i < data.length; i += 4) {
         const luminance = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
-        if (luminance > brightest) brightest = luminance;
+        if (luminance > best) best = luminance;
       }
-      return Math.round(brightest);
+      return Math.round(best);
     };
-    return geometry.map(lane => {
-      // Two references either side of the junction, and the darkest column between them.
-      const laneSide = column(lane.tipX - 3, lane.centreY);
-      const connectorSide = column(lane.startX + 3, lane.centreY);
-      let darkest = Infinity;
-      for (let x = Math.floor(lane.tipX) - 1; x <= Math.ceil(lane.startX) + 2; x++) {
-        darkest = Math.min(darkest, column(x, lane.centreY));
+    const along = (points: { x: number; y: number }[], from: number, to: number) => {
+      const values: number[] = [];
+      let previous = Number.NaN;
+      for (const point of points) {
+        if (point.x < from || point.x > to || Math.round(point.x) === previous) continue;
+        previous = Math.round(point.x);
+        values.push(brightest(point.x, point.y));
       }
-      return { label: lane.label, laneSide, connectorSide, darkest };
-    });
+      let step = 0;
+      for (let i = 1; i < values.length; i++) step = Math.max(step, Math.abs(values[i] - values[i - 1]));
+      return { darkest: Math.min(...values), step };
+    };
+    return geometry.map(lane => ({
+      label: lane.label,
+      junction: along(lane.points, lane.tipX - 6, lane.tipX + 6),
+      control: along(lane.points, lane.tipX + 8, lane.tipX + 34),
+    }));
   }, { frame, geometry });
 }
 
 test('every signal meets its connector as one continuous painted line', async ({ page }) => {
-  // 768 is excluded deliberately: below 901 the signature stacks and the mobile bracket paints
-  // instead, which is a different junction with its own geometry.
+  // Reduced motion so the frame is the settled one: the canvas has a 420ms entrance, and a
+  // frame caught inside it moves these numbers by enough to make the comparison meaningless.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  // 768 is excluded deliberately: below 901 base.css paints the mobile bracket instead and the
+  // lane's tip is the end of the drawing, so there is no handoff to measure.
   for (const width of [1440, 1280, 1024]) {
     await selectW01(page, width);
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(400);
     const junctions = await junctionProfiles(page);
     expect(junctions, `junction count at ${width}`).toHaveLength(4);
-    for (const junction of junctions) {
-      // The junction is continuous when nothing across it is markedly darker than the line on
-      // either side of it. A background-coloured column between two painted ends fails here.
-      const floor = 0.75 * Math.min(junction.laneSide, junction.connectorSide);
-      expect(junction.darkest, `${junction.label} junction is unbroken at ${width}`)
-        .toBeGreaterThanOrEqual(floor);
+    for (const { label, junction, control } of junctions) {
+      // Nothing across the handoff is darker than the connector's own darkest pixel: a
+      // background-coloured column between two painted ends fails here.
+      expect(junction.darkest, `${label} junction is unbroken at ${width}`)
+        .toBeGreaterThanOrEqual(0.8 * control.darkest);
+      // And nothing across it changes faster than the line changes anyway. A flat cap or a
+      // merged bar ending in one is a step the line never takes on its own: measured against
+      // the HEAD this replaced, the ratio asserted below reached 1.87 on six of the twelve
+      // lane/width pairs and reaches 0.81 at worst now.
+      expect(junction.step, `${label} junction has no painted endpoint at ${width}`)
+        .toBeLessThanOrEqual(control.step);
     }
   }
 });
@@ -1204,6 +1238,50 @@ test('a value rule underlines its own value, inside the lane', async ({ page }) 
         expect(lane.ruleWiderThanValue, `${lane.label} rule is wider than its value at ${width}`)
           .toBeLessThanOrEqual(0.5);
       }
+    }
+  }
+});
+
+/** Every lane holds what it is given, and holds it centred.
+ *
+ *  The lane's height is fixed at 62px and its grid row is what the connector overlay's rhythm
+ *  is derived from, so a label taller than the row does not enlarge the lane — it overflows it
+ *  and drags the row's other items off their own centres on the way out. Measured at the point
+ *  this was written, a 96px floor on the value slot left the label 72.8px at 1280, which wrapped
+ *  a four-word eyebrow onto two lines: the label block became 64.78px inside a 50px content box,
+ *  escaped the lane by 8.78px, and pushed the icon 7.39px below where it sits in every other
+ *  lane. Both are visible and neither is a text-geometry assertion, which is why they are here.
+ */
+test('a lane holds its own label, and holds it centred', async ({ page }) => {
+  for (const width of [1440, 1280, 1024, 901, 768]) {
+    await selectW01(page, width);
+    const lanes = await page.evaluate(() => {
+      const r2 = (n: number) => Math.round(n * 100) / 100;
+      return [...document.querySelectorAll('.signal-lane')].map(lane => {
+        const box = lane.getBoundingClientRect();
+        const meaning = lane.querySelector('.signal-meaning')!.getBoundingClientRect();
+        const icon = lane.querySelector('.signal-icon')!.getBoundingClientRect();
+        const term = lane.querySelector('dt')!;
+        const range = document.createRange();
+        range.selectNodeContents(term);
+        return {
+          label: term.textContent ?? '',
+          escapesTop: r2(box.top - meaning.top),
+          escapesBottom: r2(meaning.bottom - box.bottom),
+          // How far the icon sits from the lane's own centre. Every lane should agree.
+          iconOffCentre: r2((icon.top + icon.bottom) / 2 - (box.top + box.bottom) / 2),
+          termLines: new Set([...range.getClientRects()].filter(r => r.width > 0).map(r => Math.round(r.top))).size,
+        };
+      });
+    });
+    expect(lanes, `lane count at ${width}`).toHaveLength(4);
+    for (const lane of lanes) {
+      expect(lane.escapesTop, `${lane.label} label escapes lane top at ${width}`).toBeLessThanOrEqual(0);
+      expect(lane.escapesBottom, `${lane.label} label escapes lane bottom at ${width}`).toBeLessThanOrEqual(0);
+      expect(Math.abs(lane.iconOffCentre), `${lane.label} icon off centre at ${width}`).toBeLessThanOrEqual(1);
+      // The eyebrow names the signal; it is fixed copy and there is no width at which wrapping
+      // it is the right answer, because the lane cannot afford the line.
+      expect(lane.termLines, `${lane.label} eyebrow lines at ${width}`).toBe(1);
     }
   }
 });
