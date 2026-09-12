@@ -20,12 +20,12 @@ export function useWorkspace() { return useOutletContext<WorkspaceContext>(); }
 
 const stateText = (value: string) => value.replaceAll('_', ' ');
 
-function selectedProof(workspace: OpportunityWorkspaceResponse) {
+export function selectedProof(workspace: OpportunityWorkspaceResponse) {
   const decision = workspace.decision;
   return <div className="proof-peek">
     <div className="proof-sheet-title"><h2>Decision context</h2><p>{stateText(workspace.presentation_state)} · {workspace.freshness}</p></div>
     <div className="proof-document-section proof-document-section--summary" role="group" aria-label="Decision summary"><div><span className="proof-provenance">Recommendation / recorded reason</span><p>{decision.recommendation ?? 'UNKNOWN'} · {decision.summary ?? 'No deterministic decision reason is available.'}</p><small>Server-owned decision summary</small></div></div>
-    <div className="proof-document-section proof-document-section--summary" role="group" aria-label="Decision limitations"><div><span className="proof-provenance">Current limitation</span><p>{decision.primary_blocker ? stateText(decision.primary_blocker) : decision.missing_information.length ? stateText(decision.missing_information[0]) : 'No primary blocker recorded'}</p><small>{decision.missing_information.length} unresolved {decision.missing_information.length === 1 ? 'field' : 'fields'}</small></div></div>
+    <div className="proof-document-section proof-document-section--summary" role="group" aria-label="Decision limitations"><div><span className="proof-provenance">Current limitation</span><p>{decision.primary_blocker ? stateText(decision.primary_blocker) : 'No primary blocker recorded'}</p><small>{decision.missing_information.length} unresolved {decision.missing_information.length === 1 ? 'field' : 'fields'}</small></div></div>
     <div className="proof-sheet-freshness">{workspace.freshness} decision context<span>{workspace.mode ?? 'No current run mode'} · {workspace.run_state ? stateText(workspace.run_state) : 'No current run'}</span></div>
   </div>;
 }
@@ -124,19 +124,20 @@ export function WorkspaceShell() {
   const [error, setError] = useState<string | null>(null);
   const [selectedWorkspace, setSelectedWorkspace] = useState<OpportunityWorkspaceResponse | null>(null);
   const [selectedWorkspaceError, setSelectedWorkspaceError] = useState<ApiError | null>(null);
+  const [inboxRevision, setInboxRevision] = useState(0);
   const location = useLocation();
   const inboxReadRoute = /^\/inbox(?:\/|$)/.test(location.pathname) ? '/inbox' : location.pathname;
   const selectedOpportunityPath = /^\/inbox\/([^/]+)\/?$/.exec(location.pathname)?.[1] ?? null;
   useEffect(() => {
     const controller = new AbortController();
-    setInbox(null); setError(null);
+    setError(null);
     apiRequest<InboxResponse>('/inbox', { signal: controller.signal }).then(value => {
       if (!controller.signal.aborted) { setInbox(value); setError(null); }
     }).catch(error => {
       if (!controller.signal.aborted) setError(error instanceof ApiError ? error.message : 'Local workspace unavailable');
     });
     return () => controller.abort();
-  }, [inboxReadRoute]);
+  }, [inboxReadRoute, inboxRevision]);
   useEffect(() => {
     const controller = new AbortController();
     setSelectedWorkspace(null); setSelectedWorkspaceError(null);
@@ -155,9 +156,9 @@ export function WorkspaceShell() {
     ? 'LOCAL API QA · SYNTHETIC FIXTURE DATA · NO LIVE DATA' : undefined;
   return <WorkspaceFrame
     qaLabel={qaLabel}
-    queue={<OpportunityInbox inbox={inbox} error={error} />}
+    queue={<OpportunityInbox inbox={inbox} error={error} onOpportunityCreated={() => setInboxRevision(value => value + 1)} />}
     context={<>
-      <IntelligenceRail />
+      <IntelligenceRail revision={inboxRevision} />
       <section className="rail-section"><h3>Local controller</h3><p className="connection-state" role="status">{error ?? (inbox ? 'Local controller connected' : 'Connecting to local controller…')}</p><p className="quiet">A local connection does not indicate LIVE research.</p></section>
       {selectedWorkspace ? <>
         <section className="rail-section"><h3>Current decision</h3><p>{selectedWorkspace.decision.recommendation ?? 'UNKNOWN'} · {stateText(selectedWorkspace.presentation_state)}</p><dl className="context-facts"><div><dt>Freshness</dt><dd>{selectedWorkspace.freshness}</dd></div><div><dt>Primary blocker</dt><dd>{selectedWorkspace.decision.primary_blocker ? stateText(selectedWorkspace.decision.primary_blocker) : 'None recorded'}</dd></div></dl></section>

@@ -273,12 +273,13 @@ test('unresolved recommendation, eligibility and readiness remain explicit and r
   expect(primaryActions()).toHaveLength(0);
 });
 
-test('readiness keeps exact gap count, blocker and unresolved information visible', () => {
-  render(<DecisionCanvas workspace={workspace({ decision: { ...workspace().decision, missing_information: ['license_intent'] } })} />);
+test('readiness keeps unresolved information truthful without exposing internal field paths', () => {
+  render(<DecisionCanvas workspace={workspace({ decision: { ...workspace().decision, missing_information: ['license_intent', 'opportunity.matching.requirements.stages'] } })} />);
   expect(screen.getByText('2 gaps')).toBeVisible();
   expect(screen.getByText('GAPS EXECUTABLE')).toBeVisible();
   expect(screen.getByText('Primary blocker: repository publication')).toBeVisible();
-  expect(screen.getByText('Missing information: license intent')).toBeVisible();
+  expect(screen.getByText('Missing information: 2 unresolved fields')).toBeVisible();
+  expect(screen.queryByText(/license intent|opportunity\.matching/i)).not.toBeInTheDocument();
 });
 
 test('Decision Trace keeps five named stages and does not fabricate completion for an incomplete current run', () => {

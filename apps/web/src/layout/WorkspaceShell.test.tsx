@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { App } from '../App';
-import { WorkspaceFrame } from './WorkspaceShell';
+import { selectedProof, WorkspaceFrame } from './WorkspaceShell';
 import { DecisionTrace } from './DecisionTrace';
 
 function mount(path = '/inbox') { return render(<MemoryRouter initialEntries={[path]}><App /></MemoryRouter>); }
@@ -128,6 +128,31 @@ test('shows actual setup facts from the protected portfolio read', async () => {
   const facts = screen.getByRole('group', { name: 'Portfolio context' });
   expect(await within(facts).findByText('1 project')).toBeVisible();
   expect(within(facts).getByText('Not added')).toBeVisible();
+});
+test('uses the server-advertised hosted research context instead of asking for a local profile', async () => {
+  const fetchMock = vi.fn(async (url: string) => Response.json(url.endsWith('/inbox')
+    ? { items: [], profile_present: false, live_research_available: true, page: { offset: 0, limit: 50, total: 0, has_more: false } }
+    : url.endsWith('/runs') ? { runs: [], events: [], runs_page: { offset: 0, limit: 50, total: 0, has_more: false }, events_page: { offset: 0, limit: 50, total: 0, has_more: false } }
+    : { founder: null, projects: [] }));
+  vi.stubGlobal('fetch', fetchMock);
+  mount();
+  expect(await screen.findByText('Research an opportunity to create an evaluated workspace.')).toBeVisible();
+  expect(screen.queryByText('Profile required')).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: /complete profile/i })).not.toBeInTheDocument();
+  expect(fetchMock.mock.calls.some(([request]) => String(request).endsWith('/portfolio'))).toBe(false);
+});
+test('proof summary never falls back to a raw missing-information path', () => {
+  const workspace = {
+    presentation_state: 'NEEDS_REVIEW', freshness: 'FRESH', mode: 'LIVE', run_state: 'COMPLETED',
+    decision: {
+      recommendation: 'WATCH', summary: 'Evidence remains unresolved.', primary_blocker: null,
+      missing_information: ['opportunity.matching.requirements.stages'],
+    },
+  } as import('../generated/domain').OpportunityWorkspaceResponse;
+  render(<MemoryRouter><WorkspaceFrame queue={null} context={null} proof={selectedProof(workspace)}><h1>Decision</h1></WorkspaceFrame></MemoryRouter>);
+  expect(screen.queryByText('opportunity.matching.requirements.stages')).not.toBeInTheDocument();
+  expect(screen.getByText('No primary blocker recorded')).toBeVisible();
+  expect(screen.getByText('1 unresolved field')).toBeVisible();
 });
 test('keeps loading and failed reads distinct from a successful empty workspace', async () => {
   let rejectRead!: (reason: Error) => void;

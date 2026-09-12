@@ -3,10 +3,14 @@ import type {
   ApprovalRequest,
   ApprovalView,
   DraftPackView,
+  LiveRunAccepted,
+  LiveRunError,
+  LiveRunRequest,
+  LiveRunStatus,
   ProductError,
 } from '../generated/domain';
 
-type ErrorCode = ProductError['code'] | 'LOCAL_DISCONNECTED';
+type ErrorCode = ProductError['code'] | LiveRunError['code'] | 'LOCAL_DISCONNECTED';
 const messages: Record<ErrorCode, string | null> = {
   ACTION_MISMATCH: null,
   ACTOR_MISMATCH: null,
@@ -49,6 +53,14 @@ const messages: Record<ErrorCode, string | null> = {
   PROJECT_LIMIT: 'This portfolio already contains five projects.',
   LOCAL_DISCONNECTED: 'Local controller disconnected',
   NOT_FOUND: 'This record is unavailable in the local workspace.',
+  LIVE_RUN_BUSY: 'Another research run is already active.',
+  LIVE_RUN_LIMIT_REACHED: 'The hosted research limit has been reached.',
+  LIVE_RUN_COOLDOWN: 'Research is temporarily unavailable. Try again shortly.',
+  LIVE_RUN_UNAVAILABLE: 'Live research is unavailable.',
+  LIVE_PERSISTENCE_FAILED: 'Research could not complete.',
+  LIVE_PROVIDER_FAILED: 'Research could not complete.',
+  INTERNAL_LIVE_RUN_FAILURE: 'Research could not complete.',
+  LIVE_RUN_INCOMPLETE: 'Research could not complete.',
 };
 export class ApiError extends Error {
   constructor(public readonly code: ErrorCode, public readonly status = 0) {
@@ -62,7 +74,7 @@ interface RequestOptions {
   actionToken?: string | null;
   signal?: AbortSignal;
 }
-export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+async function requestJson<T>(path: string, options: RequestOptions, actionRequired: boolean): Promise<T> {
   const segments = path.slice(1).split('/');
   if (!path.startsWith('/') || segments.some(segment => {
     if (!/^(?:[a-zA-Z0-9_.!~*'()-]|%[0-9a-fA-F]{2})+$/.test(segment)) return true;
@@ -70,10 +82,10 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     catch { return true; }
   })) throw new ApiError('INVALID_REQUEST');
   const method = options.method ?? 'GET';
-  if (method !== 'GET' && !options.actionToken) throw new ApiError('ACTION_FORBIDDEN', 403);
+  if (method !== 'GET' && actionRequired && !options.actionToken) throw new ApiError('ACTION_FORBIDDEN', 403);
   const headers = new Headers({ Accept: 'application/json' });
   if (options.body !== undefined) headers.set('Content-Type', 'application/json');
-  if (method !== 'GET') headers.set('X-Qualor-Action-Token', options.actionToken!);
+  if (method !== 'GET' && options.actionToken) headers.set('X-Qualor-Action-Token', options.actionToken);
   let response: Response;
   try {
     response = await fetch(`/api/v1${path}`, {
@@ -94,6 +106,20 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
   try { return await response.json() as T; }
   catch { throw new ApiError('INTERNAL_ERROR', response.status); }
+}
+
+export function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  return requestJson<T>(path, options, true);
+}
+
+/** Hosted trust is injected by the same-origin edge. The browser sends no capability header. */
+export function startLiveRun(officialUrl: string, signal?: AbortSignal) {
+  const body: LiveRunRequest = { official_url: officialUrl };
+  return requestJson<LiveRunAccepted>('/live-runs', { method: 'POST', body, signal }, false);
+}
+
+export function getLiveRunStatus(runId: string, signal?: AbortSignal) {
+  return requestJson<LiveRunStatus>(`/live-runs/${encodeURIComponent(runId)}`, { signal }, false);
 }
 
 /**

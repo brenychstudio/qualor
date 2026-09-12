@@ -89,6 +89,52 @@ def config(tmp_path, **updates):
     )
 
 
+def test_hosted_inbox_advertises_server_owned_live_research_context(tmp_path):
+    with TestClient(make_app(config(tmp_path), ControlledRunner())) as client:
+        response = client.get("/api/v1/inbox", headers=AUTH)
+
+    assert response.status_code == 200
+    assert response.json()["live_research_available"] is True
+
+
+def test_hosted_read_models_never_advertise_approval_authority(tmp_path, monkeypatch):
+    settings = config(tmp_path)
+    with TestClient(make_app(settings, ControlledRunner())) as client:
+        accepted = client.post("/api/v1/live-runs", headers=AUTH, json={"official_url": URL})
+        done = terminal(client, accepted.json()["run_id"])
+        opportunity_id = done["opportunity_id"]
+        service = client.app.state.workspace
+        authoritative = service.workspace(opportunity_id)
+        actionable = authoritative.model_copy(
+            update={
+                "decision": authoritative.decision.model_copy(
+                    update={
+                        "primary_action": authoritative.decision.primary_action.model_copy(
+                            update={"available": True, "reason": "VALID"}
+                        )
+                    }
+                ),
+                "product_state": authoritative.product_state.model_copy(
+                    update={"approval_available": True}
+                ),
+            }
+        )
+        monkeypatch.setattr(service, "workspace", lambda *args, **kwargs: actionable)
+
+        workspace = client.get(
+            f"/api/v1/opportunities/{opportunity_id}/workspace", headers=AUTH
+        ).json()
+        inbox = client.get("/api/v1/inbox", headers=AUTH).json()
+
+    assert workspace["decision"]["primary_action"] == {
+        "available": False,
+        "reason": "MODE_MISMATCH",
+        "approval_request": None,
+    }
+    assert workspace["product_state"]["approval_available"] is False
+    assert all(item["human_action_available"] is False for item in inbox["items"])
+
+
 class ControlledRunner:
     def __init__(self, *, pause=False, failure=None):
         self.pause, self.failure = pause, failure
@@ -234,6 +280,11 @@ def test_async_live_path_persists_graph_and_survives_reconnect(tmp_path, caplog)
         assert payloads[1]["items"][0]["mode"] == "LIVE"
         assert payloads[2]["mode"] == "LIVE"
         assert any(p["excerpt"] == "Deadline: 2030-06-01T17:00:00Z." for p in payloads[3]["proofs"])
+        assert payloads[4]["events"]
+        assert all(event["mode"] == "LIVE" for event in payloads[4]["events"])
+        assert any(
+            event["event_type"] == "DECISION_EVALUATED" for event in payloads[4]["events"]
+        )
         serialized = json.dumps(payloads) + caplog.text + runner.inputs.model_dump_json()
         for private in (
             SECRET,

@@ -1,5 +1,16 @@
 import type { IncomingMessage } from 'node:http';
 
+interface ProxyRequestHeaders {
+  removeHeader(name: string): void;
+  setHeader(name: string, value: string): void;
+}
+
+/** Development-server boundary only; QUALOR_DEV_* values are never bundled by Vite. */
+export function injectHostedOriginAuth(request: ProxyRequestHeaders, secret: string | undefined) {
+  request.removeHeader('X-QUALOR-Origin-Auth');
+  if (secret) request.setHeader('X-QUALOR-Origin-Auth', secret);
+}
+
 // Same-origin GET does not carry Origin in browsers. This development-only
 // bridge admits the session handshake, never mutations or cross-site requests.
 export function sessionOrigin(request: Pick<IncomingMessage, 'method' | 'url' | 'headers'>): string | undefined {

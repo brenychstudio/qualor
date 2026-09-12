@@ -4,6 +4,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { expect, test, vi } from 'vitest';
 import { App } from '../../App';
+import type { ComponentType } from 'react';
 import type { ActivityResponse, RunEventView, RunView } from '../../generated/domain';
 import { ActivityHistory } from './ActivityHistory';
 import { presentEvent, presentRun } from './activity-presenter';
@@ -92,6 +93,27 @@ function renderRail(response: ActivityResponse | 'error' = activity()) {
   stub(response);
   return render(<MemoryRouter><IntelligenceRail /></MemoryRouter>);
 }
+
+test('reloads persisted activity when the workspace authority revision advances', async () => {
+  let reads = 0;
+  vi.stubGlobal('fetch', vi.fn(async () => {
+    reads += 1;
+    return Response.json(reads === 1 ? activity({ runs: [], events: [] }) : activity({
+      runs: [run({ mode: 'LIVE' })],
+      events: [event(1, { mode: 'LIVE' })],
+    }));
+  }));
+  const RefreshableRail = IntelligenceRail as unknown as ComponentType<{ revision: number }>;
+  const view = render(<MemoryRouter><RefreshableRail revision={0} /></MemoryRouter>);
+  expect(await screen.findByText('No recorded activity.')).toBeVisible();
+
+  view.rerender(<MemoryRouter><RefreshableRail revision={1} /></MemoryRouter>);
+
+  expect(await screen.findByRole('list', { name: 'Recorded activity' })).toBeVisible();
+  expect(screen.getByText('LIVE')).toBeVisible();
+  expect(screen.queryByText('No recorded activity.')).not.toBeInTheDocument();
+  expect(reads).toBe(2);
+});
 
 test('renders persisted events in their recorded order without inventing any', async () => {
   renderRail();

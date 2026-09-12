@@ -13,7 +13,10 @@ const item = (opportunity_id: string, priority_rank: number, changes: Partial<In
   freshness: 'FRESH', human_action_available: false, mode: 'FIXTURE', primary_blocker: null,
   readiness: null, run_state: 'COMPLETED', version: 1, ...changes,
 });
-const data = (items: InboxItem[]): InboxResponse => ({ items, profile_present: true, page: { offset: 0, limit: 50, total: items.length, has_more: false } });
+const data = (items: InboxItem[], liveResearchAvailable = true): InboxResponse => ({
+  items, profile_present: true, live_research_available: liveResearchAvailable,
+  page: { offset: 0, limit: 50, total: items.length, has_more: false },
+} as InboxResponse);
 const rows = () => within(screen.getByRole('list', { name: 'Saved opportunities' })).getAllByRole('link');
 const order = () => rows().map(row => within(row).getByText(/^Program /).textContent);
 function Location() {
@@ -24,6 +27,16 @@ function mount(items: InboxItem[], path = '/inbox') {
   return render(<MemoryRouter initialEntries={[path]}><Location /><Routes><Route path="/inbox/:opportunityId?" element={<OpportunityInbox inbox={data(items)} error={null} />} /></Routes></MemoryRouter>);
 }
 beforeEach(() => { vi.setSystemTime(new Date('2026-09-09T12:00:00Z')); });
+
+test('offers one deliberate research acquisition control inside the Inbox', () => {
+  mount([item('a', 0)]);
+  expect(screen.getByRole('button', { name: 'Research opportunity' })).toBeVisible();
+});
+
+test('does not offer hosted research when the server has not advertised it', () => {
+  render(<MemoryRouter initialEntries={['/inbox']}><Routes><Route path="/inbox" element={<OpportunityInbox inbox={data([], false)} error={null} />} /></Routes></MemoryRouter>);
+  expect(screen.queryByRole('button', { name: 'Research opportunity' })).not.toBeInTheDocument();
+});
 
 test('default priority follows server ranks even when decision and IDs disagree, with stable identity ties', () => {
   mount([item('a', 9), item('z', 0, { recommendation: 'SKIP' }), item('c', 4), item('b', 4)]);

@@ -73,6 +73,18 @@ def page_info(total, limit, offset):
     return PageInfo(offset=offset, limit=limit, total=total, has_more=offset + limit < total)
 
 
+def _display_blocker(blocking_gaps, missing_information):
+    """Project one bounded display label without exposing policy field paths."""
+    value = next(iter(blocking_gaps or missing_information), None)
+    if value is None:
+        return None
+    if len(value) <= 80 and all(
+        character.isalnum() or character in {"_", " "} for character in value
+    ):
+        return value
+    return "Unresolved information"
+
+
 class WorkspaceService:
     def __init__(
         self,
@@ -199,8 +211,8 @@ class WorkspaceService:
             deadline=deadline,
             readiness=decision.readiness if decision else None,
             freshness=aggregate.freshness,
-            primary_blocker=next(
-                iter(decision.project_match.blocking_gaps or decision.missing_information), None
+            primary_blocker=_display_blocker(
+                decision.project_match.blocking_gaps, decision.missing_information
             )
             if decision
             else None,

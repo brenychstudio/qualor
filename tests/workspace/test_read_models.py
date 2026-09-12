@@ -89,6 +89,16 @@ def test_no_decision_has_no_invented_project_score_or_recommendation(tmp_path):
     assert not canvas.primary_action.available
 
 
+def test_public_primary_blocker_never_exposes_internal_field_paths():
+    from qualor.workspace.service import _display_blocker
+
+    assert _display_blocker(("material.features",), ()) == "Unresolved information"
+    assert _display_blocker((), ("opportunity.matching.requirements.stages",)) == (
+        "Unresolved information"
+    )
+    assert _display_blocker(("technology",), ()) == "technology"
+
+
 def test_approval_capability_inspection_uses_existing_authority_without_writes(tmp_path):
     from test_approval import request, setup
 

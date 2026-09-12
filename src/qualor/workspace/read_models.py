@@ -208,6 +208,7 @@ class ProductStateView(Contract):
 class InboxResponse(Contract):
     items: Annotated[tuple[InboxItem, ...], Field(max_length=100)]
     profile_present: StrictBool
+    live_research_available: StrictBool = False
     page: PageInfo
     product_state: ProductStateView | None = None
 

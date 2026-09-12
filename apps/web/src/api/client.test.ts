@@ -1,5 +1,5 @@
 import { expect, test, vi, afterEach } from 'vitest';
-import { apiRequest, ApiError } from './client';
+import { apiRequest, ApiError, getLiveRunStatus, startLiveRun } from './client';
 afterEach(() => vi.unstubAllGlobals());
 test('sends a protected versioned update only to the local API', async () => {
   let received: RequestInit | undefined;
@@ -64,4 +64,48 @@ test('rejects prototype and arbitrary codes without rendering unsafe response va
     expect(error).toMatchObject({ code: 'INTERNAL_ERROR' });
     expect(String(error)).not.toContain(code);
   }
+});
+
+test('starts hosted research with only the official URL and no browser-held capability', async () => {
+  let destination = '';
+  let received: RequestInit | undefined;
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init) => {
+    destination = url; received = init;
+    return Response.json({ run_id: 'run-one', status: 'STARTING' }, { status: 202 });
+  }));
+
+  await expect(startLiveRun('https://example.org/opportunity/rules')).resolves.toEqual({
+    run_id: 'run-one', status: 'STARTING',
+  });
+
+  const headers = new Headers(received?.headers);
+  expect(destination).toBe('/api/v1/live-runs');
+  expect(received?.method).toBe('POST');
+  expect(received?.body).toBe('{"official_url":"https://example.org/opportunity/rules"}');
+  expect(headers.get('X-Qualor-Action-Token')).toBeNull();
+  expect(headers.get('X-QUALOR-Origin-Auth')).toBeNull();
+  expect(localStorage.length).toBe(0);
+  expect(sessionStorage.length).toBe(0);
+});
+
+test('polls one encoded live run status through the same-origin API', async () => {
+  let destination = '';
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    destination = url;
+    return Response.json({
+      run_id: 'run-one', status: 'RESEARCHING', mode: 'LIVE',
+      started_at: '2026-09-12T12:00:00Z',
+    });
+  }));
+  await expect(getLiveRunStatus('run-one')).resolves.toMatchObject({ status: 'RESEARCHING' });
+  expect(destination).toBe('/api/v1/live-runs/run-one');
+});
+
+test('maps hosted run failures to bounded copy and never exposes server detail', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => Response.json({
+    code: 'LIVE_PROVIDER_FAILED', detail: 'private AWS request and endpoint',
+  }, { status: 500 })));
+  const error = await startLiveRun('https://example.org/rules').catch(value => value);
+  expect(error).toMatchObject({ code: 'LIVE_PROVIDER_FAILED', message: 'Research could not complete.' });
+  expect(String(error)).not.toContain('private AWS');
 });

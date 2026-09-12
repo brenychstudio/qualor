@@ -231,7 +231,12 @@ def create_app(
         application.include_router(live_run_router())
     else:
         application.include_router(fixture_router)
-    application.include_router(workspace_router(read_only=hosted or config.qualor_read_only_demo))
+    application.include_router(
+        workspace_router(
+            read_only=hosted or config.qualor_read_only_demo,
+            live_research_available=hosted and config.qualor_hosted_live_enabled,
+        )
+    )
     # Last installed middleware wraps guard errors as well as successful responses.
     application.add_middleware(
         CORSMiddleware,

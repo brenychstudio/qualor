@@ -4,11 +4,13 @@ import type { ActivityResponse } from '../../generated/domain';
 import { latestRun, presentEvents, presentRun } from './activity-presenter';
 
 /** Structured operational telemetry read from persisted run history. Never a chat. */
-export function useActivity() {
+export function useActivity(revision = 0) {
   const [activity, setActivity] = useState<ActivityResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     const controller = new AbortController();
+    setActivity(null);
+    setError(null);
     apiRequest<ActivityResponse>('/runs', { signal: controller.signal })
       .then(value => {
         if (controller.signal.aborted) return;
@@ -23,7 +25,7 @@ export function useActivity() {
         setError(readError instanceof ApiError ? readError.message : 'Recorded activity is unavailable.');
       });
     return () => controller.abort();
-  }, []);
+  }, [revision]);
   return { activity, error };
 }
 
@@ -43,8 +45,8 @@ export function ActivityTimeline({ activity, label }: { activity: ActivityRespon
   </ol>;
 }
 
-export function IntelligenceRail() {
-  const { activity, error } = useActivity();
+export function IntelligenceRail({ revision = 0 }: { revision?: number }) {
+  const { activity, error } = useActivity(revision);
   if (error) return <section className="rail-section" aria-label="Intelligence">
     <h3>Activity</h3><p className="connection-state" role="status">Recorded activity is unavailable. {error}</p>
   </section>;

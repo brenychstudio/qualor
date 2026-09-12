@@ -14,21 +14,33 @@ import { ProductStateSurface } from './features/states/ProductStateSurface';
 function InboxFoundation() {
   const { inbox, error, selectedWorkspace, selectedWorkspaceError, selectedWorkspaceLoading } = useWorkspace();
   const { opportunityId } = useParams();
+  const liveResearchAvailable = inbox?.live_research_available === true;
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [portfolioError, setPortfolioError] = useState(false);
   useEffect(() => {
-    if (opportunityId) return;
+    if (opportunityId || !inbox || liveResearchAvailable) return;
     const controller = new AbortController();
     apiRequest<Portfolio>('/portfolio', { signal: controller.signal }).then(value => {
       if (!controller.signal.aborted) setPortfolio(value);
     }).catch(() => { if (!controller.signal.aborted) setPortfolioError(true); });
     return () => controller.abort();
-  }, [opportunityId]);
+  }, [inbox, liveResearchAvailable, opportunityId]);
   if (opportunityId) {
     if (selectedWorkspace?.opportunity_id === opportunityId) return <SelectedDecision workspace={selectedWorkspace} />;
     if (selectedWorkspaceError) return <UnavailableView title={selectedWorkspaceError.code === 'NOT_FOUND' ? 'Opportunity unavailable' : 'Decision workspace unavailable'} description={selectedWorkspaceError.message} />;
     if (selectedWorkspaceLoading || !selectedWorkspace) return <section className="structural-state" aria-live="polite"><span className="eyebrow">Selected opportunity</span><h1>Opening decision</h1><p>Reading the saved decision workspace…</p></section>;
   }
+  if (liveResearchAvailable && !error) return <section className="empty-decision" aria-labelledby="welcome-title">
+    <div className="decision-context"><span className="section-index">Inbox</span><span className="quiet">No selection</span></div>
+    <div className="decision-state"><h1 id="welcome-title">No active decision</h1><p className="state-description">Research an opportunity to create an evaluated workspace.</p></div>
+    <dl className="decision-readouts" role="group" aria-label="Research context">
+      <div><dt>Founder context</dt><dd>Server managed</dd></div>
+      <div><dt>Project context</dt><dd>Server managed</dd></div>
+      <div><dt>Qualification</dt><dd>Awaiting research</dd></div>
+    </dl>
+    <p className="quiet">Unknown facts remain UNKNOWN.</p>
+    <DecisionTrace />
+  </section>;
   const profilePresent = portfolio ? !!portfolio.founder : inbox?.profile_present;
   return <section className="empty-decision" aria-labelledby="welcome-title">
     <div className="decision-context"><span className="section-index">Inbox</span><span className="quiet">{error ? 'Connection unavailable' : !inbox ? 'Loading saved state' : 'No selection'}</span></div>

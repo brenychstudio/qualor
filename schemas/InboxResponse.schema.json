@@ -721,6 +721,11 @@
       "title": "Items",
       "type": "array"
     },
+    "live_research_available": {
+      "default": false,
+      "title": "Live Research Available",
+      "type": "boolean"
+    },
     "page": {
       "$ref": "#/$defs/PageInfo"
     },

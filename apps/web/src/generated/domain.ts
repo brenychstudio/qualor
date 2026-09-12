@@ -1089,6 +1089,7 @@ export type Version15 = number;
  * @maxItems 100
  */
 export type Items2 = InboxItem[];
+export type LiveResearchAvailable = boolean;
 export type ApprovalAvailable = boolean;
 export type CoverageComplete = boolean;
 export type DraftPackAvailable = boolean;
@@ -2291,6 +2292,7 @@ export interface InboxItem {
 }
 export interface InboxResponse {
   items: Items2;
+  live_research_available?: LiveResearchAvailable;
   page: PageInfo;
   product_state?: ProductStateView | null;
   profile_present: ProfilePresent;

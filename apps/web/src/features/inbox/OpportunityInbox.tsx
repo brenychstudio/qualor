@@ -3,10 +3,15 @@ import type { KeyboardEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import type { InboxResponse } from '../../generated/domain';
 import { OpportunityRow } from './OpportunityRow';
+import { LiveResearchPanel } from './LiveResearchPanel';
 import { visibleInboxItems } from './inbox-state';
 import type { InboxFilter, InboxSort } from './inbox-state';
 
-export function OpportunityInbox({ inbox, error }: { inbox: InboxResponse | null; error: string | null }) {
+export function OpportunityInbox({ inbox, error, onOpportunityCreated }: {
+  inbox: InboxResponse | null;
+  error: string | null;
+  onOpportunityCreated?: () => void;
+}) {
   const { opportunityId } = useParams();
   const navigate = useNavigate(); const location = useLocation();
   const [sort, setSort] = useState<InboxSort>('PRIORITY');
@@ -29,6 +34,7 @@ export function OpportunityInbox({ inbox, error }: { inbox: InboxResponse | null
   }
   return <>
     <div className="zone-heading"><h2>Opportunities</h2><span>{inbox ? inbox.page.total : '\u2014'}</span></div>
+    {inbox?.live_research_available && <LiveResearchPanel onOpportunityCreated={onOpportunityCreated} />}
     {inbox && !error ? <>
       <div className="inbox-controls">
         <label>Search<input type="search" aria-label="Search opportunities" placeholder="Title or organizer" value={search} onChange={event => setSearch(event.target.value)} /></label>

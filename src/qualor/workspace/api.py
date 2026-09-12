@@ -7,6 +7,7 @@ from fastapi import APIRouter, Query, Request
 from qualor.api_security import require_local_origin
 
 from .read_models import (
+    ActionCapability,
     ActivityResponse,
     ApprovalConfirmRequest,
     ApprovalRequest,
@@ -26,7 +27,29 @@ Limit = Annotated[int, Query(ge=1, le=100)]
 Offset = Annotated[int, Query(ge=0)]
 
 
-def workspace_router(*, read_only=False) -> APIRouter:
+def _without_action_authority(result):
+    product_state = result.product_state
+    updates = {
+        "product_state": product_state.model_copy(update={"approval_available": False})
+        if product_state
+        else None
+    }
+    if isinstance(result, InboxResponse):
+        updates["items"] = tuple(
+            item.model_copy(update={"human_action_available": False}) for item in result.items
+        )
+    else:
+        updates["decision"] = result.decision.model_copy(
+            update={
+                "primary_action": ActionCapability(
+                    available=False, reason="MODE_MISMATCH", approval_request=None
+                )
+            }
+        )
+    return result.model_copy(update=updates)
+
+
+def workspace_router(*, read_only=False, live_research_available=False) -> APIRouter:
     router = APIRouter(
         prefix="/api/v1",
         responses={status: {"model": ProductError} for status in (403, 404, 409, 422, 500)},
@@ -34,7 +57,11 @@ def workspace_router(*, read_only=False) -> APIRouter:
 
     @router.get("/inbox", response_model=InboxResponse)
     def inbox(request: Request, limit: Limit = 50, offset: Offset = 0):
-        return request.app.state.workspace.inbox(limit=limit, offset=offset)
+        result = request.app.state.workspace.inbox(limit=limit, offset=offset)
+        result = result.model_copy(
+            update={"live_research_available": bool(live_research_available)}
+        )
+        return _without_action_authority(result) if read_only else result
 
     @router.get("/portfolio", response_model=PortfolioView)
     def portfolio(request: Request):
@@ -50,9 +77,10 @@ def workspace_router(*, read_only=False) -> APIRouter:
         run_offset: Offset = 0,
         approval_offset: Offset = 0,
     ):
-        return request.app.state.workspace.workspace(
+        result = request.app.state.workspace.workspace(
             opportunity_id, limit=limit, run_offset=run_offset, approval_offset=approval_offset
         )
+        return _without_action_authority(result) if read_only else result
 
     @router.get("/opportunities/{opportunity_id}/evidence", response_model=EvidenceSheetView)
     def evidence(
