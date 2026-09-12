@@ -1,4 +1,4 @@
-"""Local development API; fixture evaluation has no provider or agent initialization."""
+"""Explicit local/hosted API boundaries; provider execution requires hosted admission."""
 
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -69,9 +69,11 @@ def create_app(
     policy_versions=None,
     mode="FIXTURE",
     clock=lambda: datetime.now(UTC),
+    live_runner=None,
+    live_resolver=None,
 ) -> FastAPI:
     """Construct routes without creating a database or initializing a provider."""
-    from qualor.api_security import require_action
+    from qualor.api_security import require_action, require_hosted_proxy
     from qualor.decisions.model import PolicyVersions
     from qualor.persistence import Database
     from qualor.workspace.api import workspace_router
@@ -81,6 +83,7 @@ def create_app(
     from qualor.workspace.service import ProductFailure, WorkspaceService
 
     config = settings or Settings()
+    hosted = config.qualor_security_mode == "HOSTED_DEMO"
 
     @asynccontextmanager
     async def lifespan(application):
@@ -89,19 +92,54 @@ def create_app(
         # close their connections. No connection spans offline author execution.
         with database.transaction():
             pass
+        application.state.live_runs = None
+        if hosted:
+            from qualor.hosted.coordinator import LiveRunCoordinator
+            from qualor.hosted.inputs import load_demo_profile
+            from qualor.workspace import WorkspaceStore
+
+            profile = load_demo_profile(config.qualor_demo_profile_path)
+            # A hosted process must never serve an owner's local database by accident.
+            with database.transaction() as connection:
+                store = WorkspaceStore(connection)
+                # This demo has one immutable founder/project snapshot. Checking only
+                # latest versions would leave historical decision-bound private facts
+                # readable through the existing Evidence API.
+                if (
+                    connection.execute("SELECT COUNT(*) FROM founder_profiles").fetchone()[0] > 1
+                    or connection.execute("SELECT COUNT(*) FROM project_profiles").fetchone()[0] > 1
+                    or any(item != profile.founder for item in store.profiles.list_current())
+                    or any(
+                        item != profile.projects[0].project
+                        for item in store.projects.list_current()
+                    )
+                ):
+                    raise RuntimeError("HOSTED_DEMO_DATABASE_REQUIRES_SANITIZED_PROFILE")
+            application.state.live_runs = LiveRunCoordinator(
+                database, profile, config, runner=live_runner, resolver=live_resolver, clock=clock
+            )
         policies = policy_versions or PolicyVersions(
             eligibility=1, matching=1, effort=1, conflicts=1, strategy=1, decisions=1
         )
         approvals = ApprovalService(
-            database, actor_id=actor_id, policy_versions=policies, mode=mode
+            database,
+            actor_id=profile.founder.id if hosted else actor_id,
+            policy_versions=policies,
+            mode="LIVE" if hosted else mode,
         )
         application.state.workspace = WorkspaceService(database, approvals=approvals, clock=clock)
-        yield
+        try:
+            yield
+        finally:
+            if application.state.live_runs is not None:
+                from starlette.concurrency import run_in_threadpool
+
+                await run_in_threadpool(application.state.live_runs.close)
 
     application = FastAPI(docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
     application.state.settings = config
     application.state.action_token = (
-        None if config.qualor_read_only_demo else config.new_action_token()
+        None if hosted or config.qualor_read_only_demo else config.new_action_token()
     )
 
     def bounded(code, status):
@@ -119,10 +157,24 @@ def create_app(
         if not request.url.path.startswith("/api/"):
             return await call_next(request)
         try:
+            if hosted:
+                require_hosted_proxy(request)
+                segments = request.url.path.strip("/").split("/")
+                if segments[2:3] in (
+                    ["session"],
+                    ["portfolio"],
+                    ["approvals"],
+                    ["draft-packs"],
+                ) or (
+                    request.method not in {"GET", "HEAD", "OPTIONS"}
+                    and request.url.path != "/api/v1/live-runs"
+                ):
+                    return bounded("NOT_FOUND", 404)
             if request.method not in {"GET", "HEAD", "OPTIONS"}:
                 if config.qualor_read_only_demo:
                     return bounded("NOT_FOUND", 404)
-                require_action(request)
+                if not hosted:
+                    require_action(request)
             response = await call_next(request)
             response.headers["Cache-Control"] = "no-store"
             return response
@@ -165,12 +217,25 @@ def create_app(
 
         return await http_exception_handler(request, exc)
 
-    application.include_router(fixture_router)
-    application.include_router(workspace_router(read_only=config.qualor_read_only_demo))
+    if hosted:
+        from qualor.hosted.api import live_run_router
+        from qualor.hosted.coordinator import LiveRunDenied
+
+        @application.exception_handler(LiveRunDenied)
+        async def live_denied(request, exc):
+            return JSONResponse(
+                {"code": exc.code}, status_code=exc.status, headers={"Cache-Control": "no-store"}
+            )
+
+        application.add_api_route("/health", health, methods=["GET"])
+        application.include_router(live_run_router())
+    else:
+        application.include_router(fixture_router)
+    application.include_router(workspace_router(read_only=hosted or config.qualor_read_only_demo))
     # Last installed middleware wraps guard errors as well as successful responses.
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=list(config.qualor_allowed_origins),
+        allow_origins=[] if hosted else list(config.qualor_allowed_origins),
         allow_methods=["GET", "PUT", "POST"],
         allow_headers=["Content-Type", "X-QUALOR-Action-Token"],
     )

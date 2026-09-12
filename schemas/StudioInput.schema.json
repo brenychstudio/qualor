@@ -915,6 +915,20 @@
       "title": "Goal",
       "type": "string"
     },
+    "official_url": {
+      "anyOf": [
+        {
+          "maxLength": 2048,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Official Url"
+    },
     "projects": {
       "items": {
         "$ref": "#/$defs/ProjectDecisionInput"

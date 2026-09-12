@@ -30,6 +30,10 @@ export type QualorDomain =
   | FounderProfile
   | InboxItem
   | InboxResponse
+  | LiveRunAccepted
+  | LiveRunError
+  | LiveRunRequest
+  | LiveRunStatus
   | OpportunityRecord
   | OpportunityWorkspaceResponse
   | PortfolioView
@@ -1126,6 +1130,51 @@ export type ProductState =
   | "PENDING_APPROVAL"
   | "FINISHED_PACK";
 export type ProfilePresent = boolean;
+export type RunId1 = string;
+export type Status1 = "STARTING";
+export type Code =
+  | "LIVE_RUN_BUSY"
+  | "LIVE_RUN_LIMIT_REACHED"
+  | "LIVE_RUN_COOLDOWN"
+  | "LIVE_RUN_UNAVAILABLE"
+  | "LIVE_PERSISTENCE_FAILED"
+  | "LIVE_PROVIDER_FAILED"
+  | "INTERNAL_LIVE_RUN_FAILURE"
+  | "LIVE_RUN_INCOMPLETE"
+  | "BUDGET_STOPPED";
+export type Goal = string | null;
+export type OfficialUrl = string;
+export type CompletedAt2 = string | null;
+export type ErrorCode =
+  | (
+      | "LIVE_RUN_BUSY"
+      | "LIVE_RUN_LIMIT_REACHED"
+      | "LIVE_RUN_COOLDOWN"
+      | "LIVE_RUN_UNAVAILABLE"
+      | "LIVE_PERSISTENCE_FAILED"
+      | "LIVE_PROVIDER_FAILED"
+      | "INTERNAL_LIVE_RUN_FAILURE"
+      | "LIVE_RUN_INCOMPLETE"
+      | "BUDGET_STOPPED"
+    )
+  | null;
+export type Mode5 = "LIVE";
+export type OpportunityId7 = string | null;
+export type RunId2 = string;
+export type StartedAt2 = string;
+export type Status2 = "STARTING" | "RESEARCHING" | "EVALUATING" | "COMPLETED" | "FAILED" | "BUDGET_STOPPED";
+export type TerminationReason2 =
+  | (
+      | "SUFFICIENT_CRITICAL_EVIDENCE"
+      | "HARD_FAIL_CONFIRMED"
+      | "BUDGET_EXHAUSTED"
+      | "NO_PROGRESS"
+      | "TOOL_FAILURE_BOUND_REACHED"
+      | "MAX_STEPS"
+      | "PROVIDER_DISCONNECTED"
+      | "INTERNAL_LIVE_RUN_FAILURE"
+    )
+  | null;
 /**
  * @maxItems 100
  */
@@ -1136,7 +1185,7 @@ export type Approvals = ApprovalView[];
 export type Coverage1 = CoverageEntry[];
 export type Edition2 = string;
 export type LastRefreshFailedAt1 = string | null;
-export type OpportunityId7 = string;
+export type OpportunityId8 = string;
 export type Organizer2 = string;
 export type ProgramName2 = string;
 /**
@@ -1158,7 +1207,7 @@ export type Projects2 =
   | [ProjectProfile, ProjectProfile, ProjectProfile]
   | [ProjectProfile, ProjectProfile, ProjectProfile, ProjectProfile]
   | [ProjectProfile, ProjectProfile, ProjectProfile, ProjectProfile, ProjectProfile];
-export type Code =
+export type Code1 =
   | ApprovalReason
   | (
       | "ACTION_FORBIDDEN"
@@ -1199,7 +1248,8 @@ export type AllowedHosts =
   | [string, string, string, string, string, string, string, string]
   | [string, string, string, string, string, string, string, string, string]
   | [string, string, string, string, string, string, string, string, string, string];
-export type Goal = string;
+export type Goal1 = string;
+export type OfficialUrl1 = string | null;
 /**
  * @minItems 1
  * @maxItems 5
@@ -2263,6 +2313,28 @@ export interface ProductStateView {
   recommendation_visible: RecommendationVisible;
   state: ProductState | null;
 }
+export interface LiveRunAccepted {
+  run_id: RunId1;
+  status?: Status1;
+}
+export interface LiveRunError {
+  code: Code;
+}
+export interface LiveRunRequest {
+  goal?: Goal;
+  official_url: OfficialUrl;
+}
+export interface LiveRunStatus {
+  completed_at?: CompletedAt2;
+  error_code?: ErrorCode;
+  mode?: Mode5;
+  opportunity_id?: OpportunityId7;
+  recommendation?: Recommendation | null;
+  run_id: RunId2;
+  started_at: StartedAt2;
+  status: Status2;
+  termination_reason?: TerminationReason2;
+}
 export interface OpportunityWorkspaceResponse {
   approvals: Approvals;
   approvals_page: PageInfo;
@@ -2272,7 +2344,7 @@ export interface OpportunityWorkspaceResponse {
   freshness: FreshnessStatus;
   last_refresh_failed_at: LastRefreshFailedAt1;
   mode: RuntimeMode | null;
-  opportunity_id: OpportunityId7;
+  opportunity_id: OpportunityId8;
   organizer: Organizer2;
   presentation_state: InboxPresentationState;
   product_state: ProductStateView;
@@ -2288,7 +2360,7 @@ export interface PortfolioView {
   projects: Projects2;
 }
 export interface ProductError {
-  code: Code;
+  code: Code1;
 }
 export interface ProfileUpdateRequest {
   expected_version: ExpectedVersion;
@@ -2305,7 +2377,8 @@ export interface SessionView {
 export interface StudioInput {
   allowed_hosts: AllowedHosts;
   founder: FounderProfile;
-  goal: Goal;
+  goal: Goal1;
+  official_url?: OfficialUrl1;
   projects: Projects3;
   sanitized: Sanitized;
   schema_version: SchemaVersion12;

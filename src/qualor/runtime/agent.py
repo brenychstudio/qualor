@@ -350,6 +350,8 @@ def run_agent(run, *, model):
             for p in run.inputs.projects
         ],
     }
+    if run.inputs.official_url is not None:
+        profile_summary["unverified_user_opportunity_url"] = run.inputs.official_url
     try:
         response = agent(json.dumps(profile_summary), limits={"turns": 6})
         if response.stop_reason.startswith("limit_"):

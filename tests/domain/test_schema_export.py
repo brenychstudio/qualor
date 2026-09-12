@@ -44,6 +44,10 @@ EXPECTED = {
     "ExtractedClaimBatch",
     "ExtractedClaimBatchTransport",
     "AgentRunResult",
+    "LiveRunRequest",
+    "LiveRunAccepted",
+    "LiveRunStatus",
+    "LiveRunError",
 }
 
 

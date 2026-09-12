@@ -1,0 +1,25 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "code": {
+      "enum": [
+        "LIVE_RUN_BUSY",
+        "LIVE_RUN_LIMIT_REACHED",
+        "LIVE_RUN_COOLDOWN",
+        "LIVE_RUN_UNAVAILABLE",
+        "LIVE_PERSISTENCE_FAILED",
+        "LIVE_PROVIDER_FAILED",
+        "INTERNAL_LIVE_RUN_FAILURE",
+        "LIVE_RUN_INCOMPLETE",
+        "BUDGET_STOPPED"
+      ],
+      "title": "Code",
+      "type": "string"
+    }
+  },
+  "required": [
+    "code"
+  ],
+  "title": "LiveRunError",
+  "type": "object"
+}

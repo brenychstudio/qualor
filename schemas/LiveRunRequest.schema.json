@@ -1,0 +1,30 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "goal": {
+      "anyOf": [
+        {
+          "maxLength": 180,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Goal"
+    },
+    "official_url": {
+      "maxLength": 2048,
+      "minLength": 1,
+      "title": "Official Url",
+      "type": "string"
+    }
+  },
+  "required": [
+    "official_url"
+  ],
+  "title": "LiveRunRequest",
+  "type": "object"
+}

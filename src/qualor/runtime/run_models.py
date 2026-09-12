@@ -10,7 +10,7 @@ from qualor.decisions.model import DecisionOutput
 from qualor.domain.base import Contract, NonEmpty, UtcInstant
 from qualor.domain.enums import SourceType
 from qualor.domain.evidence import EvidenceRecord
-from qualor.domain.opportunity import OpportunityRecord
+from qualor.domain.opportunity import OpportunityRecord, SourceUrl
 from qualor.domain.profiles import FounderProfile
 
 from .claims import ValidatedClaim
@@ -21,6 +21,7 @@ class StudioInput(Contract):
     schema_version: Literal["1"]
     sanitized: Literal[True]
     goal: str = Field(min_length=1, max_length=300)
+    official_url: SourceUrl | None = Field(default=None, max_length=2048)
     allowed_hosts: Annotated[tuple[NonEmpty, ...], Field(min_length=1, max_length=10)]
     founder: FounderProfile
     projects: Annotated[tuple[ProjectDecisionInput, ...], Field(min_length=1, max_length=5)]

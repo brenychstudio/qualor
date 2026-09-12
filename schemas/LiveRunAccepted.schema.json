@@ -1,0 +1,20 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "status": {
+      "const": "STARTING",
+      "default": "STARTING",
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "run_id"
+  ],
+  "title": "LiveRunAccepted",
+  "type": "object"
+}

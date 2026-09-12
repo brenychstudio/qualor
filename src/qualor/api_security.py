@@ -26,3 +26,18 @@ def require_action(request: Request) -> None:
     expected = request.app.state.action_token
     if not expected or not hmac.compare_digest(supplied.encode(), expected.encode()):
         raise ProductFailure("ACTION_FORBIDDEN", 403)
+
+
+def require_hosted_proxy(request: Request) -> None:
+    """Authenticate the origin hop; browser session enforcement belongs to the edge."""
+    expected = request.app.state.settings.qualor_origin_auth
+    supplied = request.headers.getlist("x-qualor-origin-auth")
+    if (
+        expected is None
+        or len(supplied) != 1
+        or len(supplied[0]) > 1024
+        or not hmac.compare_digest(
+            supplied[0].encode(), expected.get_secret_value().encode()
+        )
+    ):
+        raise ProductFailure("ACTION_FORBIDDEN", 403)

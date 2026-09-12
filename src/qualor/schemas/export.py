@@ -18,6 +18,7 @@ from qualor.domain import (
     RuleEvaluation,
 )
 from qualor.effort import AffordabilityAssessment, CapacityAssessment, EffortEstimate
+from qualor.hosted.contracts import LiveRunAccepted, LiveRunError, LiveRunRequest, LiveRunStatus
 from qualor.matching import ProjectMatch, ProjectSelection, ReadinessAssessment
 from qualor.runtime.context import FetchedSourceRef
 from qualor.runtime.extraction import ExtractedClaimBatch, ExtractedClaimBatchTransport
@@ -53,6 +54,10 @@ CONTRACTS = (
     ExtractedClaimBatch,
     ExtractedClaimBatchTransport,
     AgentRunResult,
+    LiveRunRequest,
+    LiveRunAccepted,
+    LiveRunStatus,
+    LiveRunError,
 ) + PUBLIC_CONTRACTS
 DEFAULT_OUTPUT = Path(__file__).resolve().parents[3] / "schemas"
 
