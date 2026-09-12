@@ -9,7 +9,8 @@ from typing import Annotated
 import typer
 from pydantic import ValidationError
 
-from qualor.decisions import DecisionFixture, decide_fixture
+from qualor.decisions import DecisionFixture, WorkspaceSeedInput, decide_fixture
+from qualor.decisions.engine import decide
 from qualor.domain.fixture import FixtureInput
 from qualor.eligibility import aggregate_eligibility
 from qualor.settings import Settings
@@ -218,11 +219,19 @@ def _rebased_observations(payload: dict, now) -> dict:
 
 @app.command("seed-workspace-fixture")
 def seed_workspace_fixture(fixture_path: Path) -> None:
-    """Persist one owned FIXTURE file through the production workspace services.
+    """Persist one owned FIXTURE scenario or one captured REPLAY source.
 
     Development tooling for acceptance runs, not a product execution path. It reads a single
     explicit local file, never a URL, and it supplies inputs only: the deterministic engines
     produce the decision, and approval and drafting keep their own authority.
+
+    The two modes differ in exactly one respect, and it is the clock. A FIXTURE describes a
+    situation rather than a moment, so it is slid onto the current clock and keeps deciding
+    the way it was authored to. A REPLAY is a record of a real source as it actually read at
+    a real instant; the product quotes the excerpt that states those instants, so moving them
+    would make a displayed deadline disagree with its own citation. REPLAY is therefore
+    persisted exactly as captured. LIVE is refused: a local file cannot have been fetched by
+    the run reading it.
     """
     from datetime import UTC, datetime
 
@@ -239,14 +248,22 @@ def seed_workspace_fixture(fixture_path: Path) -> None:
     try:
         # An explicit local file only. A URL is not a path this command will read.
         text = Path(fixture_path).read_text(encoding="utf-8")
-        payload = _rebased_observations(json.loads(text), now)
-        # DecisionFixture pins mode to FIXTURE, so a LIVE claim fails validation here.
-        fixture = DecisionFixture.model_validate(payload)
+        payload = json.loads(text)
+        # Read before rebasing, because the declared mode is what decides whether to rebase
+        # at all. An unusable declaration falls through to the same refusal as any other
+        # malformed envelope rather than defaulting to a mode the file did not claim.
+        if not isinstance(payload, dict) or payload.get("mode") not in {"FIXTURE", "REPLAY"}:
+            raise ValueError("SEED_MODE_NOT_ACCEPTED")
+        if payload["mode"] == "FIXTURE":
+            payload = _rebased_observations(payload, now)
+        # WorkspaceSeedInput admits FIXTURE and REPLAY only, so a LIVE claim fails here too.
+        fixture = WorkspaceSeedInput.model_validate(payload)
     except (OSError, ValueError, KeyError, TypeError):
         typer.echo("INVALID_FIXTURE", err=True)
         raise typer.Exit(2) from None
 
-    result = decide_fixture(fixture)
+    mode = fixture.mode
+    result = decide(fixture)
     decision = result.selected_decision
     database = Database(settings.database_path)
     database.path.parent.mkdir(parents=True, exist_ok=True)
@@ -272,7 +289,7 @@ def seed_workspace_fixture(fixture_path: Path) -> None:
                 created_at=now,
                 updated_at=now,
                 provenance="DOCUMENTED",
-                mode="FIXTURE",
+                mode=mode,
                 state="COMPLETED",
                 opportunity_id=fixture.opportunity.id,
                 opportunity_version=fixture.opportunity.version,
@@ -288,10 +305,10 @@ def seed_workspace_fixture(fixture_path: Path) -> None:
                 f"seed-{fixture.opportunity.id}",
                 event_type=event,
                 payload=RunEventPayload(count=1),
-                mode="FIXTURE",
+                mode=mode,
                 occurred_at=now,
             )
-    typer.echo("MODE=FIXTURE")
+    typer.echo(f"MODE={mode}")
     typer.echo(f"OBSERVED_AT={fixture.evaluated_at.isoformat()}")
     typer.echo(f"OPPORTUNITY={fixture.opportunity.id}")
     typer.echo(f"EVIDENCE_RECORDS={len(fixture.evidence)}")

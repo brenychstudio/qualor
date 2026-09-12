@@ -405,3 +405,146 @@ def test_rebase_reaches_temporal_facts_the_current_fixtures_do_not_yet_carry():
     assert rebased["opportunity"]["rewards"][0]["kind"] == "CASH_PRIZE"
     assert rebased["active_submissions"][0]["submission_dates"] == ["2027-02-13"]
     assert rebased["opportunity"]["program_name"] == "AWS Agents for Humans"
+
+
+# --- Real-source REPLAY ingestion -----------------------------------------------------
+#
+# A captured real official source is not an owned scenario. Its instants are the source's
+# own and must survive ingestion untouched, because the product quotes the excerpt that
+# states them: a moved deadline would disagree with its own citation. FIXTURE keeps the
+# moving-scenario rebase; REPLAY must not inherit it, and LIVE stays refused here.
+
+
+def replay_payload():
+    """W01's shape, declared REPLAY. The contract under test is the mode and the clock."""
+    import json
+
+    payload = json.loads(W01.read_text(encoding="utf-8"))
+    payload["mode"] = "REPLAY"
+    return payload
+
+
+def seed_payload(tmp_path, monkeypatch, payload, name="capture.json"):
+    import json
+
+    path = tmp_path / name
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return seed_command(tmp_path, monkeypatch, path)
+
+
+def persisted(tmp_path, opportunity_id):
+    from qualor.persistence import Database
+    from qualor.workspace import WorkspaceStore
+
+    with Database(tmp_path / "workspace.db").transaction() as connection:
+        store = WorkspaceStore(connection)
+        workspace = store.load_opportunity_workspace(opportunity_id, 1)
+        run = store.runs.current(f"seed-{opportunity_id}")
+        events = store.runs.list_run_events(f"seed-{opportunity_id}")
+    return workspace, run, events
+
+
+def seeded_opportunity(result):
+    return next(
+        line.split("=", 1)[1]
+        for line in result.output.splitlines()
+        if line.startswith("OPPORTUNITY=")
+    )
+
+
+def test_seed_accepts_a_replay_capture_and_reports_its_own_mode(tmp_path, monkeypatch):
+    result = seed_payload(tmp_path, monkeypatch, replay_payload())
+    assert result.exit_code == 0, result.output
+    assert "MODE=REPLAY" in result.output
+    assert "MODE=FIXTURE" not in result.output
+
+
+def test_seed_persists_replay_as_replay_rather_than_as_a_fixture(tmp_path, monkeypatch):
+    """The recorded mode is the mode that ran. Nothing downstream may soften it."""
+    result = seed_payload(tmp_path, monkeypatch, replay_payload())
+    assert result.exit_code == 0, result.output
+    _, run, events = persisted(tmp_path, seeded_opportunity(result))
+    assert run is not None and run.mode.value == "REPLAY"
+    assert [event.mode.value for event in events] == ["REPLAY"] * len(events)
+    assert events, "the seeded run must record its observations"
+
+
+def test_a_replay_capture_is_never_rebased_onto_the_current_clock(tmp_path, monkeypatch):
+    """Every temporal fact the capture owns is the source's, not the seeding clock's."""
+    payload = replay_payload()
+    result = seed_payload(tmp_path, monkeypatch, payload)
+    assert result.exit_code == 0, result.output
+
+    authored = temporal_facts(payload)
+    assert authored, "the capture must carry temporal facts"
+    observed = next(
+        line.split("=", 1)[1]
+        for line in result.output.splitlines()
+        if line.startswith("OBSERVED_AT=")
+    )
+    assert instant(observed) == instant(authored["evaluated_at"])
+
+
+def test_a_replay_capture_keeps_its_official_deadline_and_source_truth(tmp_path, monkeypatch):
+    """Deadline, excerpt, URLs, hash and retrieval instant all survive the round trip."""
+    payload = replay_payload()
+    result = seed_payload(tmp_path, monkeypatch, payload)
+    assert result.exit_code == 0, result.output
+    workspace, _, _ = persisted(tmp_path, seeded_opportunity(result))
+
+    assert [d.isoformat().replace("+00:00", "Z") for d in workspace.opportunity.deadlines] == list(
+        payload["opportunity"]["deadlines"]
+    )
+
+    authored = {record["id"]: record for record in payload["evidence"]}
+    assert workspace.evidence, "the capture must persist its evidence"
+    for record in workspace.evidence:
+        source = authored[record.id]
+        assert record.supporting_excerpt == source["supporting_excerpt"]
+        assert record.original_url == source["original_url"]
+        assert record.final_url == source["final_url"]
+        assert record.content_hash == source["content_hash"]
+        assert record.retrieved_at.isoformat().replace("+00:00", "Z") == source["retrieved_at"]
+
+
+def test_a_replay_capture_survives_a_restart_unchanged(tmp_path, monkeypatch):
+    """Reopening the database is the only way to prove this was persisted, not cached."""
+    payload = replay_payload()
+    result = seed_payload(tmp_path, monkeypatch, payload)
+    assert result.exit_code == 0, result.output
+    opportunity = seeded_opportunity(result)
+
+    first, first_run, _ = persisted(tmp_path, opportunity)
+    second, second_run, _ = persisted(tmp_path, opportunity)
+    assert first_run.mode.value == second_run.mode.value == "REPLAY"
+    assert [r.supporting_excerpt for r in first.evidence] == [
+        r.supporting_excerpt for r in second.evidence
+    ]
+    assert second.opportunity.deadlines == first.opportunity.deadlines
+
+
+def test_seeding_a_fixture_still_moves_it_onto_the_current_clock(tmp_path, monkeypatch):
+    """The moving-scenario rebase is unchanged for owned fixtures; only REPLAY opts out."""
+    import json
+    from datetime import UTC, datetime
+
+    payload = json.loads(W01.read_text(encoding="utf-8"))
+    result = seed_payload(tmp_path, monkeypatch, payload, name="owned.json")
+    assert result.exit_code == 0, result.output
+    assert "MODE=FIXTURE" in result.output
+    observed = next(
+        line.split("=", 1)[1]
+        for line in result.output.splitlines()
+        if line.startswith("OBSERVED_AT=")
+    )
+    assert instant(observed) != instant(payload["evaluated_at"])
+    assert abs((datetime.now(UTC) - instant(observed)).total_seconds()) < 300
+
+
+def test_seed_still_refuses_a_capture_that_claims_live(tmp_path, monkeypatch):
+    """Widening the envelope to REPLAY must not open it to LIVE."""
+    payload = replay_payload()
+    payload["mode"] = "LIVE"
+    result = seed_payload(tmp_path, monkeypatch, payload, name="claims-live.json")
+    assert result.exit_code == 2
+    assert not (tmp_path / "workspace.db").exists()

@@ -41,3 +41,15 @@ class DecisionInput(Contract):
 
 class DecisionFixture(DecisionInput):
     mode: Literal["FIXTURE"]
+
+
+class WorkspaceSeedInput(DecisionInput):
+    """The development seeding envelope: an owned scenario, or a captured real source.
+
+    FIXTURE is a situation authored to be replayed at any clock. REPLAY is a record of a
+    real source as it actually read at a real instant, so its instants are the source's own
+    and the seeding path must not move them. LIVE is refused here: this envelope reads a
+    local file, and a file cannot have been fetched by the run that is reading it.
+    """
+
+    mode: Literal["FIXTURE", "REPLAY"]
