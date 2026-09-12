@@ -11,6 +11,7 @@ from qualor.effort import assess_affordability, assess_capacity, estimate_effort
 from qualor.eligibility import aggregate_eligibility, evaluate_freshness
 from qualor.eligibility.evidence import effective_deadlines
 from qualor.matching import assess_readiness, match_project, select_best_project
+from qualor.matching.model import ProjectSelection
 from qualor.strategy import derive_strategy
 
 from .fixture import DecisionFixture, DecisionInput
@@ -158,6 +159,14 @@ def decide(fixture: DecisionInput) -> DecisionOutput:
             )
         )
     selection = select_best_project(tuple(d.project_match for d in records))
+    if fixture.mode == "LIVE" and selection.best_project_id is None and len(records) == 1:
+        selection = ProjectSelection(
+            best_project_id=records[0].project_id,
+            candidates=selection.candidates,
+            reasons=(
+                "The only supplied project remains selected; incomplete match evidence is retained",
+            ),
+        )
     selected = next((d for d in records if d.project_id == selection.best_project_id), None)
     recommendation = (
         selected.recommendation

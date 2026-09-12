@@ -13,7 +13,7 @@ from .context import (
 )
 from .diagnostics import BoundaryEvent, reject, shape
 from .extraction import MAX_EXTRACTED_CLAIMS_PER_CALL
-from .handoff import compute_decision
+from .handoff import compile_decision_bundle
 from .mode import ProviderBoundaryError, RuntimeMode
 from .normalization import ClaimNormalizationError
 from .providers import FetchRequest, SearchRequest
@@ -46,6 +46,7 @@ class OpportunityRun:
         extractor=None,
         max_steps=24,
         sink=None,
+        opportunity_version_resolver=None,
     ):
         self.inputs = StudioInput.model_validate(inputs)
         self.mode = RuntimeMode(mode).value
@@ -89,6 +90,10 @@ class OpportunityRun:
         self.actions = set()
         self.termination_reason = None
         self.decision = None
+        self.bundle = None
+        self._authority_revision = 0
+        self._bundle_revision = -1
+        self.opportunity_version_resolver = opportunity_version_resolver
         self.contradictions = ()
 
     def event(
@@ -537,6 +542,7 @@ class OpportunityRun:
                 ids=(admitted.evidence.id,),
             )
             self.claims[admitted.evidence.id] = admitted
+            self._authority_revision += 1
             self.diagnostic(
                 "EVIDENCE_ADMISSION_RESULT",
                 "evidence_admission",
@@ -575,7 +581,10 @@ class OpportunityRun:
             return result
 
     def evaluate_current_state(self):
-        self.decision = compute_decision(self)
+        if self.bundle is None or self._bundle_revision != self._authority_revision:
+            self.bundle = compile_decision_bundle(self)
+            self._bundle_revision = self._authority_revision
+        self.decision = self.bundle.decision
         self.event(
             "ELIGIBILITY_EVALUATED", "DETERMINISTIC_ENGINE", count=len(self.decision.candidates)
         )
@@ -647,6 +656,7 @@ class OpportunityRun:
                 )
                 for s in self.sources.values()
             ),
+            bundle=self.bundle,
         )
         self._notify(lambda: self.sink.run_finished(result))
         return result

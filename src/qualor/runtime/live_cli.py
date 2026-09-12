@@ -31,20 +31,29 @@ def live_budget(diagnostic: bool = False) -> LiveBudgetGuard:
     )
 
 
-def workspace_run_capture(database_path: Path, *, budget=None, run_id: str | None = None):
+def workspace_run_capture(
+    database_path: Path,
+    *,
+    inputs: StudioInput,
+    budget=None,
+    run_id: str | None = None,
+):
     """Build the persistence sink only when workspace persistence is enabled."""
     from qualor.persistence import Database
     from qualor.workspace.run_capture import WorkspaceRunCapture
 
     return WorkspaceRunCapture(
-        Database(database_path), run_id=run_id or uuid4().hex, mode="LIVE", budget=budget
+        Database(database_path),
+        run_id=run_id or uuid4().hex,
+        mode="LIVE",
+        budget=budget,
+        inputs=inputs,
     )
 
 
 def execute_live(inputs: StudioInput, gateway_id: str, *, diagnostic=False, sink=None, budget=None):
     from .agent import live_extractor, live_model, run_agent
     from .loop import OpportunityRun
-    from .mode import ProviderBoundaryError
     from .search import AgentCoreSearchProvider
     from .search_transport import open_gateway_transport
     from .sources import OfficialSourceFetcher
@@ -65,12 +74,17 @@ def execute_live(inputs: StudioInput, gateway_id: str, *, diagnostic=False, sink
                 extractor=live_extractor(model),
                 budget=budget,
                 sink=sink,
+                opportunity_version_resolver=(
+                    getattr(sink, "resolve_opportunity_version", None)
+                    if sink is not None
+                    else None
+                ),
             )
             result, metrics = run_agent(run, model=model)
             metrics["gateway_mcp_calls"] = transport.http_calls
             metrics["budget"] = asdict(budget.snapshot())
         return result, metrics
-    except ProviderBoundaryError:
+    except (ValueError, RuntimeError, OSError):
         # A live provider that never connected is recorded as a degraded LIVE run, not a success.
         if sink is not None:
             sink.run_failed(
@@ -98,13 +112,20 @@ def run_command(profile: Path, gateway_id: str, *, diagnostic=False, workspace_d
         )
     budget = live_budget(diagnostic)
     sink = (
-        workspace_run_capture(workspace_database, budget=budget)
+        workspace_run_capture(workspace_database, inputs=inputs, budget=budget)
         if workspace_database is not None
         else None
     )
-    result, metrics = execute_live(
-        inputs, gateway_id, diagnostic=diagnostic, sink=sink, budget=budget
-    )
+    try:
+        result, metrics = execute_live(
+            inputs, gateway_id, diagnostic=diagnostic, sink=sink, budget=budget
+        )
+    except (ValueError, RuntimeError, OSError):
+        if sink is not None:
+            sink.require_persisted()
+        raise
+    if sink is not None:
+        sink.require_persisted()
     report.write_text(
         json.dumps(
             {"result": result.model_dump(mode="json"), "metrics": metrics}, default=str, indent=2

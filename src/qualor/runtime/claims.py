@@ -146,7 +146,19 @@ def validate_claim(claim: ExtractedClaim, sources: dict[str, SourceDocument]) ->
             " if ",
         )
     )
-    reviewed = False
+    continuation = text[start + len(excerpt) :].lstrip()
+    deadline_clause_complete = (
+        excerpt.rstrip().endswith((".", "!", "?"))
+        or not continuation
+        or continuation.startswith((".", "!", "?"))
+    )
+    reviewed = bool(
+        claim.state == "CANDIDATE"
+        and claim.field == "deadline"
+        and normalization.status == "SUPPORTED"
+        and source.authority in HARD_AUTHORITIES
+        and deadline_clause_complete
+    )
     if claim.state == "CANDIDATE" and not ambiguous and source.authority in HARD_AUTHORITIES:
         if claim.field == "required_technology" and value is not None:
             terms = value if isinstance(value, tuple) else (value,)
@@ -170,7 +182,7 @@ def validate_claim(claim: ExtractedClaim, sources: dict[str, SourceDocument]) ->
                 "projects must be newly created",
                 "project must be newly created",
             )
-    if new_only and not reviewed:
+    if (new_only or claim.field == "deadline") and not reviewed:
         value = None
     category = FIELD_CATEGORY.get(claim.field, Category.REWARD_CONDITIONS)
     digest = hashlib.sha256(claim.model_dump_json().encode()).hexdigest()

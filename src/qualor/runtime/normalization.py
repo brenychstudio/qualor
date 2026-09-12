@@ -1,6 +1,7 @@
 """Deterministic support checks between grounded source text and proposed values."""
 
 import re
+from datetime import UTC, datetime
 from typing import Literal
 
 from pydantic import StrictStr
@@ -158,6 +159,112 @@ def _literal_value(excerpt: str, proposed_value: NormalizedValue) -> NormalizedS
     return _supported(proposed_value, "OPEN_TEXT_EXACT_NORMALIZED_SUBSTRING")
 
 
+_QUALIFIERS = (" not ", " no ", " or ", " unless ", " except ", " if ")
+_LABELED_SCALAR = {
+    field: re.compile(
+        rf"^(?:the\s+)?{label}\s*(?::|\bis\b)\s*(?P<value>.+?)\s*[.!?]?$",
+        re.IGNORECASE,
+    )
+    for field, label in {
+        "organizer": "organizer",
+        "program": "program",
+        "edition": "edition",
+    }.items()
+}
+_DELIVERABLES = re.compile(
+    r"^(?:the\s+)?deliverables\s*(?::|\bare\b)\s*(?P<value>.+?)\s*[.!?]?$",
+    re.IGNORECASE,
+)
+
+
+def _unqualified(value: str) -> bool:
+    normalized = " " + normalize_text(value) + " "
+    return not any(marker in normalized for marker in _QUALIFIERS)
+
+
+def _labeled_scalar(
+    field: str, excerpt: str, proposed_value: NormalizedValue
+) -> NormalizedSupportResult:
+    if proposed_value is None:
+        return _unknown()
+    if not isinstance(proposed_value, str):
+        return _unsupported("LABELED_METADATA_REQUIRES_ONE_TEXT_VALUE")
+    match = _LABELED_SCALAR[field].fullmatch(excerpt.strip())
+    if match is None:
+        return _unsupported("METADATA_NOT_SUPPORTED_BY_CONTROLLED_FIELD_CLAUSE")
+    source_value = match.group("value").strip()
+    if not _unqualified(source_value):
+        return _ambiguous("METADATA_FIELD_CLAUSE_QUALIFIED")
+    if normalize_text(source_value) != normalize_text(proposed_value):
+        return _unsupported("METADATA_VALUE_NOT_EXACT_FIELD_VALUE")
+    return _supported(proposed_value, "METADATA_EXACT_FIELD_CLAUSE")
+
+
+def _deliverables(excerpt: str, proposed_value: NormalizedValue) -> NormalizedSupportResult:
+    if proposed_value is None:
+        return _unknown()
+    match = _DELIVERABLES.fullmatch(excerpt.strip())
+    if match is None:
+        return _unsupported("DELIVERABLES_NOT_SUPPORTED_BY_CONTROLLED_FIELD_CLAUSE")
+    source_value = match.group("value").strip()
+    if not _unqualified(source_value):
+        return _ambiguous("DELIVERABLES_FIELD_CLAUSE_QUALIFIED")
+    values = proposed_value if isinstance(proposed_value, tuple) else (proposed_value,)
+    normalized_values = tuple(normalize_text(value) for value in values)
+    joined = {
+        normalized_values[0] if len(normalized_values) == 1 else "",
+        ", ".join(normalized_values),
+        " and ".join(normalized_values),
+        "; ".join(normalized_values),
+    }
+    if len(normalized_values) > 1:
+        joined.add(", ".join(normalized_values[:-1]) + ", and " + normalized_values[-1])
+    if normalize_text(source_value) not in joined:
+        return _unsupported("DELIVERABLES_VALUE_NOT_EXACT_FIELD_VALUE")
+    return _supported(proposed_value, "DELIVERABLES_EXACT_FIELD_CLAUSE")
+
+
+_ABSOLUTE_DEADLINE = re.compile(
+    r"^(?:the\s+)?deadline\s*(?::|\bis\b)\s*(?P<value>.+?)\s*[.!?]?$",
+    re.IGNORECASE,
+)
+_RFC3339_ABSOLUTE = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$"
+)
+
+
+def parse_absolute_deadline(value: str) -> datetime | None:
+    """Return one UTC instant only when ``value`` carries an explicit offset."""
+
+    if not isinstance(value, str) or not value.strip():
+        return None
+    candidate = value.strip()
+    if _RFC3339_ABSOLUTE.fullmatch(candidate) is None:
+        return None
+    try:
+        parsed = datetime.fromisoformat(
+            candidate[:-1] + "+00:00" if candidate.endswith("Z") else candidate
+        )
+    except ValueError:
+        return None
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        return None
+    return parsed.astimezone(UTC)
+
+
+def _deadline(excerpt: str, proposed_value: NormalizedValue) -> NormalizedSupportResult:
+    if proposed_value is None:
+        return _unknown()
+    if not isinstance(proposed_value, str):
+        return _ambiguous("DEADLINE_REQUIRES_ONE_ABSOLUTE_INSTANT")
+    match = _ABSOLUTE_DEADLINE.fullmatch(excerpt.strip())
+    if match is None or normalize_text(match.group("value")) != normalize_text(proposed_value):
+        return _unsupported("DEADLINE_NOT_SUPPORTED_BY_CONTROLLED_CLAUSE")
+    if parse_absolute_deadline(proposed_value) is None:
+        return _ambiguous("DEADLINE_TIMEZONE_OR_INSTANT_AMBIGUOUS")
+    return _supported(proposed_value, "DEADLINE_ABSOLUTE_INSTANT")
+
+
 def normalize_supported_claim(
     normalized_field: str,
     evidence_span_exact_text: str,
@@ -177,6 +284,12 @@ def normalize_supported_claim(
         return _project_policy(evidence_span_exact_text)
     if normalized_field == "required_technology":
         return _required_technology(evidence_span_exact_text, proposed_value)
+    if normalized_field == "deadline":
+        return _deadline(evidence_span_exact_text, proposed_value)
+    if normalized_field in _LABELED_SCALAR:
+        return _labeled_scalar(normalized_field, evidence_span_exact_text, proposed_value)
+    if normalized_field == "deliverables":
+        return _deliverables(evidence_span_exact_text, proposed_value)
     return _literal_value(evidence_span_exact_text, proposed_value)
 
 

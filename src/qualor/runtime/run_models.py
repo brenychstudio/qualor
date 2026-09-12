@@ -2,12 +2,15 @@
 
 from typing import Annotated, Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
+from pydantic.json_schema import SkipJsonSchema
 
-from qualor.decisions.fixture import ProjectDecisionInput
+from qualor.decisions.fixture import DecisionInput, ProjectDecisionInput
 from qualor.decisions.model import DecisionOutput
 from qualor.domain.base import Contract, NonEmpty, UtcInstant
 from qualor.domain.enums import SourceType
+from qualor.domain.evidence import EvidenceRecord
+from qualor.domain.opportunity import OpportunityRecord
 from qualor.domain.profiles import FounderProfile
 
 from .claims import ValidatedClaim
@@ -60,6 +63,25 @@ class SourceCitation(Contract):
     truncated: bool
 
 
+class RuntimeDecisionBundle(Contract):
+    """The one canonical runtime graph handed to persistence without reevaluation."""
+
+    opportunity: OpportunityRecord
+    evidence: Annotated[tuple[EvidenceRecord, ...], Field(max_length=40)]
+    decision_input: DecisionInput
+    decision: DecisionOutput
+
+    @model_validator(mode="after")
+    def one_authority(self):
+        if (
+            self.decision_input.opportunity != self.opportunity
+            or self.decision_input.evidence != self.evidence
+            or self.decision.mode != self.decision_input.mode
+        ):
+            raise ValueError("Runtime decision bundle authority diverges")
+        return self
+
+
 class AgentRunResult(Contract):
     mode: Literal["LIVE", "FIXTURE", "REPLAY"]
     decision: DecisionOutput
@@ -81,3 +103,12 @@ class AgentRunResult(Contract):
     contradictions: tuple[NonEmpty, ...]
     sources: Annotated[tuple[SourceCitation, ...], Field(max_length=10)] = ()
     boundary_events: Annotated[tuple[BoundaryEvent, ...], Field(max_length=160)] = ()
+    bundle: SkipJsonSchema[RuntimeDecisionBundle | None] = None
+
+    @model_validator(mode="after")
+    def bundle_matches_reported_decision(self):
+        if self.bundle is not None and (
+            self.bundle.decision != self.decision or self.bundle.decision.mode != self.mode
+        ):
+            raise ValueError("Runtime result and decision bundle diverge")
+        return self
