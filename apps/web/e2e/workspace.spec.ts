@@ -855,8 +855,9 @@ test('the accepted wide Decision Field geometry holds around the signal-lane cor
   // 1440 and 1280 are regression anchors for the frame the lane sits in: the lane stack's own
   // width and rhythm, and where the hero begins. The value column is inside that frame and is
   // re-accepted here — it was a fixed 83px, which is what put the recorded name in the
-  // arrowhead; it is now the lane's own proportional share.
-  for (const [width, expected] of [[1440, { lane: 320.63, value: 99.75 }], [1280, { lane: 282.23, value: 84.39 }]] as const) {
+  // arrowhead; it is now the lane's own proportional share, or the slot's floor where an even
+  // share would be narrower than a compact value needs — which is what 1280 resolves to.
+  for (const [width, expected] of [[1440, { lane: 320.63, value: 99.75 }], [1280, { lane: 282.23, value: 96 }]] as const) {
     await selectW01(page, width);
     const measured = await page.evaluate(() => {
       const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -1028,9 +1029,19 @@ async function taperIntegrity(page: Page) {
         }
       }
       const meaning = lane.querySelector('.signal-meaning')!;
+      // The rule underlines the value, so it is held to the same boundary, solved at its own
+      // height — which is below the centreline, where the shape has already begun to narrow.
+      const rule = lane.querySelector('.signal-rule')!.getBoundingClientRect();
+      const widest = Math.max(...lines.map(line => line.width));
       return {
         label: lane.querySelector('dt')?.textContent ?? '',
         clearance: r2(Math.min(...clearances)),
+        ruleClearance: r2(Math.min(
+          toScreenX(boundaryAt(toViewY(rule.top))) - rule.right,
+          toScreenX(boundaryAt(toViewY(rule.bottom))) - rule.right)),
+        ruleEscapesTop: r2(box.top - rule.top),
+        ruleEscapesBottom: r2(rule.bottom - box.bottom),
+        ruleWiderThanValue: r2(rule.width - widest),
         lineCount: lines.length,
         fragmented,
         // The label keeps its own side of the lane: the value never starts inside it.
@@ -1065,6 +1076,134 @@ test('a recorded value keeps clear of the lane it is painted in, taper included'
       expect(lane.labelOverlap, `${lane.label} value clears its label at ${width}`).toBeLessThanOrEqual(0);
       expect(lane.escapesTop, `${lane.label} escapes lane top at ${width}`).toBeLessThanOrEqual(0);
       expect(lane.escapesBottom, `${lane.label} escapes lane bottom at ${width}`).toBeLessThanOrEqual(0);
+    }
+  }
+});
+
+/* --------------------------------------------------------------------------------------------
+ * The causal junction, and the value block that hangs off it.
+ *
+ * Three defects that survived every geometry assertion so far because none of them is about a
+ * box. Measured at HEAD:
+ *
+ *   1. A one-pixel dark column between each lane and its connector. The lane's shape is a
+ *      340-unit viewBox whose tip is drawn at x=339, so it stops 1/340 of the lane's width
+ *      short of its own border box; the connector's viewBox starts its paths at x=480 of 1000,
+ *      which is exactly 48% — the lane stack's border-box right edge. The two are a shade under
+ *      1px apart at 1440 and the background shows through: luminance runs 206, 85, 187 across
+ *      the junction at 1440 and 201, 23, 145 at 1024. Both endpoints are "correct" on their own
+ *      terms and the seam is still there, which is why this is measured in pixels.
+ *   2. The value's rule is painted outside the lane it belongs to. A three-line value plus its
+ *      9px gap and 1px rule is taller than the lane's 50px content box, and the rule is the
+ *      part that ends up over the edge: it sits at y=373 in a lane whose border box ends at
+ *      371.44 at 1440, reading as an orphan stroke under the lane rather than an underline.
+ *   3. The rule is a flat 52px whatever it underlines, so it is wider than PASS and narrower
+ *      than the recorded project name — attached to nothing in particular.
+ * ------------------------------------------------------------------------------------------ */
+
+/** Luminance across each lane-to-connector junction, sampled from the rendered frame. */
+async function junctionProfiles(page: Page) {
+  const geometry = await page.evaluate(() => {
+    const svg = document.querySelector('.decision-convergence') as SVGSVGElement;
+    const ctm = svg.getScreenCTM()!;
+    const paths = [...svg.querySelectorAll('path')];
+    return [...document.querySelectorAll('.signal-lane')].map((lane, index) => {
+      const box = lane.getBoundingClientRect();
+      const start = paths[index].getPointAtLength(0).matrixTransform(ctm);
+      return {
+        label: lane.querySelector('dt')?.textContent ?? '',
+        // Where the lane's own shape stops painting: the tip of the ::before path, at x=339 of
+        // the 340-unit viewBox stretched over the border box.
+        tipX: box.left + (339 / 340) * box.width,
+        startX: start.x,
+        centreY: start.y,
+      };
+    });
+  });
+  const frame = (await page.screenshot()).toString('base64');
+  return page.evaluate(async ({ frame, geometry }) => {
+    const image = new Image();
+    image.src = `data:image/png;base64,${frame}`;
+    await image.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const context = canvas.getContext('2d')!;
+    context.drawImage(image, 0, 0);
+    /** Brightest pixel in a short vertical window at x — the painted line, whatever its width. */
+    const column = (x: number, y: number) => {
+      const { data } = context.getImageData(Math.round(x), Math.round(y) - 4, 1, 9);
+      let brightest = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        const luminance = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+        if (luminance > brightest) brightest = luminance;
+      }
+      return Math.round(brightest);
+    };
+    return geometry.map(lane => {
+      // Two references either side of the junction, and the darkest column between them.
+      const laneSide = column(lane.tipX - 3, lane.centreY);
+      const connectorSide = column(lane.startX + 3, lane.centreY);
+      let darkest = Infinity;
+      for (let x = Math.floor(lane.tipX) - 1; x <= Math.ceil(lane.startX) + 2; x++) {
+        darkest = Math.min(darkest, column(x, lane.centreY));
+      }
+      return { label: lane.label, laneSide, connectorSide, darkest };
+    });
+  }, { frame, geometry });
+}
+
+test('every signal meets its connector as one continuous painted line', async ({ page }) => {
+  // 768 is excluded deliberately: below 901 the signature stacks and the mobile bracket paints
+  // instead, which is a different junction with its own geometry.
+  for (const width of [1440, 1280, 1024]) {
+    await selectW01(page, width);
+    await page.waitForTimeout(300);
+    const junctions = await junctionProfiles(page);
+    expect(junctions, `junction count at ${width}`).toHaveLength(4);
+    for (const junction of junctions) {
+      // The junction is continuous when nothing across it is markedly darker than the line on
+      // either side of it. A background-coloured column between two painted ends fails here.
+      const floor = 0.75 * Math.min(junction.laneSide, junction.connectorSide);
+      expect(junction.darkest, `${junction.label} junction is unbroken at ${width}`)
+        .toBeGreaterThanOrEqual(floor);
+    }
+  }
+});
+
+test('the compact lane shows a readable label and still tells the truth about the project',
+  async ({ page }) => {
+    for (const width of [1440, 1280, 1024, 768]) {
+      await selectW01(page, width);
+      const value = page.locator('.signal-lane').first().locator('dd strong');
+      // The lane carries a label sized for the lane.
+      await expect(value, `lane label at ${width}`).toHaveText('Synthetic demo');
+      // And the full recorded project name is never lost: it is on the value itself, and the
+      // queue card beside it still shows it in full.
+      await expect(value, `full project name on the value at ${width}`)
+        .toHaveAttribute('title', 'Synthetic Eligibility Demonstrator');
+      await expect(page.locator('.workspace-queue').getByText('Synthetic Eligibility Demonstrator'),
+        `full project name in the queue at ${width}`).toBeVisible();
+    }
+  });
+
+test('a value rule underlines its own value, inside the lane', async ({ page }) => {
+  for (const width of [1440, 1280, 1024, 901, 768]) {
+    await selectW01(page, width);
+    for (const lane of await taperIntegrity(page)) {
+      // Inside the lane it belongs to, rather than an orphan stroke painted under it: a
+      // three-line value used to push the rule to y=373 in a lane ending at 371.44 at 1440.
+      expect(lane.ruleEscapesTop, `${lane.label} rule escapes lane top at ${width}`).toBeLessThanOrEqual(0);
+      expect(lane.ruleEscapesBottom, `${lane.label} rule escapes lane bottom at ${width}`).toBeLessThanOrEqual(0);
+      // Clear of the shape's edge at the rule's own height, the same way the text is.
+      expect(lane.ruleClearance, `${lane.label} rule clears the taper at ${width}`)
+        .toBeGreaterThanOrEqual(TAPER_SAFE_GAP);
+      // It underlines the value rather than running past it. A wrapped value is the exception
+      // the rule cannot follow: its box is the track, not the widest line it happens to paint.
+      if (lane.lineCount === 1) {
+        expect(lane.ruleWiderThanValue, `${lane.label} rule is wider than its value at ${width}`)
+          .toBeLessThanOrEqual(0.5);
+      }
     }
   }
 });

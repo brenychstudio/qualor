@@ -5,7 +5,7 @@ import type {
   Recommendation,
 } from '../../generated/domain';
 import { DecisionTrace } from '../../layout/DecisionTrace';
-import { DECISION_COPY, PRIMARY_CTA_LABELS, RECOMMENDATION_LABELS } from './decision-copy';
+import { DECISION_COPY, LANE_LABEL_ALIASES, PRIMARY_CTA_LABELS, RECOMMENDATION_LABELS } from './decision-copy';
 
 const incompleteRuns = new Set(['CREATED', 'RUNNING', 'PARTIAL', 'FAILED', 'CANCELLED', 'BUDGET_STOPPED']);
 
@@ -88,6 +88,10 @@ export function DecisionCanvas({ workspace, onPrimaryAction, approvalOpen = fals
   const primaryAction = primaryActionFor(workspace);
   const readiness = decision.readiness;
   const readinessCount = readiness ? `${readiness.gaps.length} ${readiness.gaps.length === 1 ? 'gap' : 'gaps'}` : DECISION_COPY.unavailableFact;
+  // The lane shows a label sized for the lane; the recorded name it stands for is kept on
+  // the value itself, and is unabbreviated in the queue card beside it.
+  const projectName = decision.best_project?.name ?? DECISION_COPY.unresolvedProject;
+  const projectLaneLabel = LANE_LABEL_ALIASES.get(projectName) ?? projectName;
   const decisionClass = recommendation?.toLowerCase() ?? 'unknown';
   const actionLimitation = !decision.primary_action.available && decision.primary_action.reason !== 'DECISION_NOT_ACTIONABLE' ? decision.primary_action.reason : null;
   return <section className={`decision-composition decision-${decisionClass}`} aria-labelledby="opportunity-title">
@@ -104,12 +108,12 @@ export function DecisionCanvas({ workspace, onPrimaryAction, approvalOpen = fals
     <div className="section-rule"><h3>Decision field</h3></div>
     <div className="decision-signature">
       <dl className="signal-lanes" role="group" aria-label="Decision signals">
-        <div className="signal-lane"><span className="signal-icon"><SignalIcon kind="fit" /></span><div className="signal-meaning"><dt>Best project</dt><span>{decision.best_project ? 'Authoritative project fit' : 'Project fit unresolved'}</span></div><dd><strong className="signal-state">{decision.best_project?.name ?? DECISION_COPY.unresolvedProject}</strong><span className="signal-rule" aria-hidden="true" /></dd></div>
+        <div className="signal-lane"><span className="signal-icon"><SignalIcon kind="fit" /></span><div className="signal-meaning"><dt>Best project</dt><span>{decision.best_project ? 'Authoritative project fit' : 'Project fit unresolved'}</span></div><dd><strong className="signal-state" title={projectLaneLabel === projectName ? undefined : projectName}>{projectLaneLabel}</strong><span className="signal-rule" aria-hidden="true" /></dd></div>
         <div className="signal-lane"><span className="signal-icon"><SignalIcon kind="eligibility" /></span><div className="signal-meaning"><dt>Eligibility</dt><span>{decision.eligibility ? 'Deterministic gate' : 'Eligibility unresolved'}</span></div><dd><strong className="signal-state">{decision.eligibility ? factText(decision.eligibility) : DECISION_COPY.unavailableFact}</strong><span className="signal-rule" aria-hidden="true" /></dd></div>
         <div className="signal-lane"><span className="signal-icon"><SignalIcon kind="feasibility" /></span><div className="signal-meaning"><dt>Effort</dt><span>{decision.effort ? 'Preparation estimate' : 'Effort unavailable'}</span></div><dd><strong>{effortText(decision.effort)}</strong><span className="signal-rule" aria-hidden="true" /></dd></div>
         <div role="group" aria-label="Readiness assessment" className="signal-lane signal-lane--readiness"><span className="signal-icon"><SignalIcon kind="readiness" /></span><div className="signal-meaning"><dt>Readiness</dt><span>{readiness ? factText(readiness.state) : 'Readiness unavailable'}</span></div><dd><strong>{readinessCount}</strong><span className="signal-rule" aria-hidden="true" /></dd></div>
       </dl>
-      <svg className="decision-convergence" viewBox="0 0 1000 300" preserveAspectRatio="none" aria-hidden="true"><path d="M480 34 C570 34 565 150 686 150" /><path d="M480 111 C570 111 590 150 686 150" /><path d="M480 189 C570 189 590 150 686 150" /><path className="convergence-warm" d="M480 266 C570 266 565 150 686 150" /><path d="M686 150H692" /><circle cx="690" cy="150" r="3" /></svg>
+      <svg className="decision-convergence" viewBox="0 0 1000 300" preserveAspectRatio="none" aria-hidden="true"><path d="M477 34 C570 34 565 150 686 150" /><path d="M477 111 C570 111 590 150 686 150" /><path d="M477 189 C570 189 590 150 686 150" /><path className="convergence-warm" d="M477 266 C570 266 565 150 686 150" /><path d="M686 150H692" /><circle cx="690" cy="150" r="3" /></svg>
       <svg className="mobile-convergence" viewBox="0 0 350 317" preserveAspectRatio="none" fill="none" aria-hidden="true"><path d="M329 31H349V285H175V317M329 102H349M329 173H349M329 244H349" /></svg>
       <section className="recommendation-surface" aria-label="Recommendation">
         <span className="section-index">Recommendation</span>

@@ -797,7 +797,13 @@
        the same gap of clearance there. */
     --signal-taper: 20%;
     --signal-content-gap: 8px;
-    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+    /* The value slot has a floor because it holds compact authoritative tokens — PASS, 8–14 h,
+       0 gaps — that read badly broken across lines, and at 1280 an even share of the lane is
+       narrower than that. It is a fixed length rather than a content size on purpose: every
+       lane resolves it identically, so the four values stay in one column, which is what makes
+       them read as four readings of one instrument. A value longer than the floor still wraps
+       in the geometry built for it, and gains room here rather than losing it. */
+    grid-template-columns: auto minmax(0, 1fr) minmax(96px, 1fr);
     padding-right: calc(var(--signal-taper) - var(--signal-content-gap));
   }
 
@@ -815,6 +821,25 @@
      at 1280) is wider than the track it sits in and would simply paint over the value. */
   .workspace:not(.workspace--optical-preview) .signal-meaning > span {
     white-space: normal;
+  }
+
+  /* The value box shrinks to the value, so the rule beneath it can take its width from it.
+     A rule authored as a flat 52px is wider than PASS and narrower than a project name — it
+     underlines the slot rather than the value, which is what made it read as a stroke that had
+     come loose from the lane. Bounded by the track, so it cannot reach past the text into the
+     arrowhead either. */
+  .workspace:not(.workspace--optical-preview) .signal-lane dd {
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  /* No width of its own: it is as wide as the value box, which is as wide as the value. A
+     value long enough to wrap fills its track and the rule fills it too, and that is still
+     inside the shape — the rule sits below the centreline, but the track ends well before the
+     shape's edge has narrowed to meet it. The browser test holds that against the real curve
+     rather than against the track. */
+  .workspace:not(.workspace--optical-preview) .signal-lane .signal-rule {
+    width: auto;
   }
 }
 
