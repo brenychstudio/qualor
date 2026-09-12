@@ -1364,3 +1364,116 @@ test('the prepared document shows what was prepared in its first viewport', asyn
     .toBeLessThanOrEqual(810);
   await expect(pack.getByText(/Local draft for human review/i)).toBeInViewport();
 });
+
+/* ------------------------------------------------------------------------------------------
+ * QUALOR-04B Task 5 — the judge experience as one continuous session.
+ *
+ * Every moment above is proved in isolation: the decision hierarchy, the reader and its exact
+ * citation, the recorded trail, the approval boundary, the prepared pack. A judge never meets
+ * them that way. They meet them in one unbroken run, and four individually correct moments can
+ * still fail each other — the reader takes the canvas away and has to give it back unchanged,
+ * and the rail has to still be showing the run it was showing before the detour.
+ *
+ * So this test asserts continuity rather than features: what the decision and the recorded
+ * activity read as before the proof detour is captured from the page, and the same reads are
+ * required to match afterwards. Nothing here is compared against a value the test supplied.
+ * ------------------------------------------------------------------------------------------ */
+
+test('the judge sequence survives itself: decision, proof, activity, approval, pack',
+  async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 810 });
+    await page.goto('/inbox');
+
+    // --- Decision ---------------------------------------------------------------------
+    await page.getByRole('link', { name: /AWS Agents for Humans/ }).click();
+    await expect(page).toHaveURL(/\/inbox\/opp_/);
+    const opportunityUrl = page.url();
+
+    const hero = page.getByRole('heading', { level: 1, name: 'APPLY' });
+    const signals = page.getByRole('group', { name: 'Decision signals' });
+    const primaryAction = page.getByRole('button', { name: 'Approve application' });
+    await expect(hero).toBeVisible();
+    await expect(primaryAction).toBeEnabled();
+
+    // The reads that have to survive the detour, taken from the rendered page. Captured as
+    // `textContent` because that is what `toHaveText` normalises and compares against.
+    const decisionBefore = await signals.textContent() ?? '';
+    const activity = page.getByRole('list', { name: /recorded activity/i });
+    const counters = page.getByRole('group', { name: /recorded in this run/i });
+    const activityBefore = await activity.getByRole('listitem').locator('.event-title').allInnerTexts();
+    const countersBefore = await counters.locator('dd').allInnerTexts();
+    expect(activityBefore.length, 'the run recorded observations to survive').toBeGreaterThan(0);
+
+    // --- open Proof, and the exact citation it exists to carry ------------------------
+    const trigger = page.getByRole('button', { name: /why this decision/i });
+    await trigger.click();
+    const plane = page.getByRole('region', { name: 'Decision proof' });
+    await expect(plane).toBeVisible();
+    await expect(plane.locator('blockquote').first()).not.toBeEmpty();
+    const citation = plane.getByRole('link', { name: /view original/i }).first();
+    await expect(citation).toBeVisible();
+    await expect(citation).toHaveAttribute('href', /^https:\/\/rules\.aws-agents-for-humans\.example\//);
+
+    // --- close Proof ------------------------------------------------------------------
+    await page.keyboard.press('Escape');
+    await expect(plane).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+
+    // --- the Decision is still the decision it was ------------------------------------
+    await expect(hero).toBeVisible();
+    await expect(signals).toHaveText(decisionBefore);
+    await expect(primaryAction).toBeEnabled();
+
+    // --- and the recorded trail is still the same recorded trail ----------------------
+    // The reader is a presentation layer over persisted state; a detour through it must not
+    // reorder, drop or inflate a single recorded observation or counter.
+    await expect(activity.getByRole('listitem').locator('.event-title')).toHaveText(activityBefore);
+    await expect(counters.locator('dd')).toHaveText(countersBefore);
+
+    // --- Approval ---------------------------------------------------------------------
+    await primaryAction.click();
+    const checkpoint = page.getByRole('region', { name: 'Human approval' });
+    await expect(checkpoint).toContainText('PENDING_APPROVAL');
+    // The boundary is stated while the person can still decline, not after.
+    await expect(checkpoint).toContainText(/nothing is submitted externally/i);
+
+    // --- Confirm, and the state the server moves to -----------------------------------
+    await checkpoint.getByRole('button', { name: /confirm approval/i }).click();
+    await expect(checkpoint).toContainText('DRAFT_READY');
+
+    // --- Application Pack -------------------------------------------------------------
+    await checkpoint.getByRole('link', { name: /open draft pack/i }).click();
+    const pack = page.getByRole('article', { name: 'Application pack' });
+    await expect(pack).toBeVisible();
+    await expect(page).toHaveURL(/\/draft-packs\/.+/);
+    const packUrl = page.url();
+
+    // Section 01 is the payoff, and it is on the first screen of it.
+    const sections = pack.getByRole('region');
+    await expect(sections.first()).toHaveAttribute('data-section-key', 'SUBMISSION_SUMMARY');
+    await expect(pack.getByRole('heading', { name: /01 Submission summary/i })).toBeInViewport();
+
+    // Seven canonical sections, in the order the server prepared them.
+    await expect(sections).toHaveCount(7);
+    const sectionOrder = await sections.evaluateAll(
+      nodes => nodes.map(node => node.getAttribute('data-section-key')));
+
+    // --- direct pack reload, with no prior app state ----------------------------------
+    await page.goto(packUrl);
+    const reloaded = page.getByRole('article', { name: 'Application pack' });
+    await expect(reloaded).toBeVisible();
+    await expect(reloaded.getByRole('region')).toHaveCount(7);
+    // The same document, in the same order, rebuilt from persistence rather than from the
+    // approval that was still in memory a moment ago.
+    expect(await reloaded.getByRole('region')
+      .evaluateAll(nodes => nodes.map(node => node.getAttribute('data-section-key'))))
+      .toEqual(sectionOrder);
+    await expect(reloaded).toContainText('DRAFT_FOR_HUMAN_REVIEW');
+
+    // The session began at an opportunity and ended at a prepared local document; nothing it
+    // passed through offered to send that document anywhere.
+    for (const control of await reloaded.getByRole('link').all()) {
+      expect(await control.textContent() ?? '').not.toMatch(SUBMISSION_WORDS);
+    }
+    expect(opportunityUrl).toMatch(/\/inbox\/opp_/);
+  });
