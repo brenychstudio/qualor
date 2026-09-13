@@ -14,6 +14,8 @@ from .sources import SourceDocument
 
 MAX_EVIDENCE_SPAN_BYTES = 800
 MAX_EXTRACTION_SOURCE_BYTES = 9_000
+# Mirrors the scheduler's MAX_EXTRACTION_JOB_SPAN_IDS, which imports this module.
+MAX_SECTION_SPAN_IDS = 12
 
 
 class EvidenceSpan(Contract):
@@ -109,6 +111,39 @@ def _segments(text: str, *, absolute_start: int) -> tuple[tuple[int, int, str], 
     return tuple(result)
 
 
+def _section_segments(text: str, *, absolute_start: int) -> tuple[tuple[int, int, str], ...]:
+    """Structural capabilities for an explicit section range.
+
+    Paragraph and list/line layout are the boundaries, so a label and its value stay
+    separately selectable without multiplying dense prose into one span per sentence.
+    A line still over either bound falls through to the size-bound segmenter. Every
+    non-whitespace character keeps exactly one capability at its original offset.
+
+    A section whose lines would not fit one extraction job keeps the size-bound
+    segmentation instead, so finer layout never costs the section its reachability.
+    """
+
+    result = []
+    cursor = 0
+    for line in text.splitlines(keepends=True):
+        exact = line.strip()
+        if exact:
+            begin = cursor + len(line) - len(line.lstrip())
+            if (
+                len(exact) > MAX_EVIDENCE_EXCERPT_CHARS
+                or len(exact.encode("utf-8")) > MAX_EVIDENCE_SPAN_BYTES
+            ):
+                result.extend(_segments(exact, absolute_start=absolute_start + begin))
+            else:
+                result.append(
+                    (absolute_start + begin, absolute_start + begin + len(exact), exact)
+                )
+        cursor += len(line)
+    if len(result) > MAX_SECTION_SPAN_IDS:
+        return _segments(text, absolute_start=absolute_start)
+    return tuple(result)
+
+
 class EvidenceSpanRegistry:
     """Issues unforgeable span capabilities scoped to one run/extractor instance."""
 
@@ -121,11 +156,16 @@ class EvidenceSpanRegistry:
         self.last_registered_span_ids: tuple[str, ...] = ()
 
     def _register_range(
-        self, source: SourceDocument, *, start_offset: int, end_offset: int
+        self,
+        source: SourceDocument,
+        *,
+        start_offset: int,
+        end_offset: int,
+        segmenter=_segments,
     ) -> tuple[EvidenceSpan, ...]:
         spans = []
         text = source.text[start_offset:end_offset]
-        for start, end, exact_text in _segments(text, absolute_start=start_offset):
+        for start, end, exact_text in segmenter(text, absolute_start=start_offset):
             material = (
                 f"{source.id}\0{start}\0{end}\0".encode()
                 + hashlib.sha256(exact_text.encode("utf-8")).digest()
@@ -170,6 +210,7 @@ class EvidenceSpanRegistry:
             source,
             start_offset=start_offset,
             end_offset=end_offset,
+            segmenter=_section_segments,
         )
 
     def resolve(self, source_id: str, span_id: str) -> EvidenceSpan:

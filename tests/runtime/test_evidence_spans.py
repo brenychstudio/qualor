@@ -191,3 +191,86 @@ def test_live_750_character_span_can_reach_grounded_domain_claim():
     grounded = ground_extraction_payload(transport, document, registry)
 
     assert grounded.claims[0].excerpt == span.exact_text
+
+
+PERIOD_SECTION = (
+    "Submission Period:\n"
+    "Monday, August 10, 2026 (9:00 am Pacific Time) – Monday, September 14, 2026 "
+    "(5:00 pm Pacific Time) (“Submission Period”).\n"
+    "Judging Period:\n"
+    "Tuesday, September 15, 2026 (9:00 am Pacific Time) – Thursday, October 8, 2026 "
+    "(5:00 pm Pacific Time) (“Judging Period”).\n"
+)
+
+
+def section_spans(text):
+    from qualor.runtime.spans import EvidenceSpanRegistry
+
+    document = source(text=text)
+    return document, EvidenceSpanRegistry(secret=b"a" * 32).register_section(
+        document, start_offset=0, end_offset=len(text)
+    )
+
+
+def test_register_section_issues_structural_line_capabilities():
+    """A short multi-line section must not collapse into one coarse capability."""
+
+    from qualor.domain.evidence import MAX_EVIDENCE_EXCERPT_CHARS
+    from qualor.runtime.spans import MAX_EVIDENCE_SPAN_BYTES
+
+    document, spans = section_spans(PERIOD_SECTION)
+
+    assert len(spans) == 4
+    for span in spans:
+        assert document.text[span.start_offset : span.end_offset] == span.exact_text
+        assert span.exact_text == span.exact_text.strip()
+        assert len(span.exact_text) <= MAX_EVIDENCE_EXCERPT_CHARS
+        assert len(span.exact_text.encode("utf-8")) <= MAX_EVIDENCE_SPAN_BYTES
+    assert [span.start_offset for span in spans] == sorted(span.start_offset for span in spans)
+    rendered = "".join("".join(span.exact_text.split()) for span in spans)
+    assert rendered == "".join(PERIOD_SECTION.split())
+
+
+def test_register_section_allows_submission_period_without_judging_period():
+    """The submission label/value must be selectable without a neighbouring period."""
+
+    _document, spans = section_spans(PERIOD_SECTION)
+    selected = [
+        span for span in spans if span.end_offset <= PERIOD_SECTION.index("Judging Period:")
+    ]
+    quoted = " ".join(span.exact_text for span in selected)
+
+    assert len(selected) == 2
+    assert quoted.startswith("Submission Period:")
+    assert "Monday, August 10, 2026 (9:00 am Pacific Time)" in quoted
+    assert "Monday, September 14, 2026 (5:00 pm Pacific Time)" in quoted
+    assert "Judging" not in quoted
+
+
+def test_register_section_does_not_explode_dense_prose_into_sentences():
+    """Sentence and semicolon layout must not multiply capabilities past the job bound."""
+
+    from qualor.runtime.section_scheduler import MAX_EXTRACTION_JOB_SPAN_IDS
+
+    text = "An MIT license is required. " * 40
+    document, spans = section_spans(text)
+
+    assert len(spans) <= MAX_EXTRACTION_JOB_SPAN_IDS
+    assert "".join("".join(span.exact_text.split()) for span in spans) == "".join(text.split())
+    assert all(
+        document.text[span.start_offset : span.end_offset] == span.exact_text for span in spans
+    )
+
+
+def test_legacy_register_segmentation_is_unchanged():
+    """Task 5F must not alter the legacy broad-focus extraction path."""
+
+    from qualor.runtime.spans import EvidenceSpanRegistry
+
+    document = source(text=PERIOD_SECTION)
+    spans = EvidenceSpanRegistry(secret=b"a" * 32).register(document, "Submission Period")
+
+    assert len(spans) == 1
+    assert spans[0].exact_text == PERIOD_SECTION.strip()
+    assert spans[0].start_offset == 0
+    assert spans[0].end_offset == len(PERIOD_SECTION.rstrip())

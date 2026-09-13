@@ -480,7 +480,9 @@ def test_numbered_parent_qualifier_retains_separate_span_capability(document):
     assert parent.section_id in child.context_section_ids
     assert parent.span_ids
     assert all(span_id not in child.span_ids for span_id in parent.span_ids)
-    parent_quote = registry.resolve(source.id, parent.span_ids[0]).exact_text
+    parent_quote = " ".join(
+        registry.resolve(source.id, span_id).exact_text for span_id in parent.span_ids
+    )
     assert "These requirements apply only to teams." in parent_quote
 
 
@@ -497,13 +499,18 @@ def test_numbered_child_span_remains_an_exact_child_only_quote(document):
     registry = EvidenceSpanRegistry(secret=b"a" * 32)
     index = index_source(source, registry)
     child = index.sections[1]
-    child_quote = "".join(
-        registry.resolve(source.id, span_id).exact_text for span_id in child.span_ids
-    )
+    spans = [registry.resolve(source.id, span_id) for span_id in child.span_ids]
 
-    assert child_quote == source.text[child.start_offset : child.end_offset]
-    assert child_quote == "1.1 License\nAn MIT license is required."
-    assert "These requirements apply only to teams." not in child_quote
+    # Structural capabilities tile the child exactly: in order, inside its range, and
+    # separated only by the whitespace that laid the lines out.
+    assert [span.exact_text for span in spans] == ["1.1 License", "An MIT license is required."]
+    cursor = child.start_offset
+    for span in spans:
+        assert child.start_offset <= span.start_offset < span.end_offset <= child.end_offset
+        assert not source.text[cursor : span.start_offset].strip()
+        cursor = span.end_offset
+    assert not source.text[cursor : child.end_offset].strip()
+    assert all("These requirements apply only to teams." not in s.exact_text for s in spans)
 
 
 def test_explicit_reference_and_numbered_ancestry_are_both_preserved(document):

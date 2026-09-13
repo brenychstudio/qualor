@@ -367,7 +367,7 @@ def test_transport_overlapping_semantic_rejections_never_become_operational(harn
     }
     assert len(run.section_results) == 6
     authority = compile_section_authority(run.section_results)
-    assert len(authority.evidence) == 3
+    assert len(authority.evidence) == 6
     assert authority.supported_claim_count == 3
     assert run.bundle.evidence == authority.evidence == run.bundle.decision_input.evidence
     for record in authority.evidence:
@@ -714,7 +714,7 @@ def test_partial_category_cannot_terminate_before_later_contradictory_section(
     assert first_input.eligibility_rules[0].children[0].operands[0].value == "MIT"
     assert run.decision.candidates[0].eligibility_gate.state == "REVIEW_REQUIRED"
     assert run.termination_reason == "NO_PROGRESS"
-    assert len(run.bundle.evidence) == 2
+    assert len(run.bundle.evidence) == 4
 
 
 @pytest.mark.parametrize("unknown_first", [False, True])

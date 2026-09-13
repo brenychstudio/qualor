@@ -806,8 +806,8 @@ def test_compiler_branch_residual_ids_are_unique(grounded_candidate):
 
 
 def test_compiler_does_not_erase_first_line_as_heading(grounded_candidate):
-    quote = "Projects must use Copper SDK\nProjects must use Silver API."
-    result = compile_candidate(grounded_candidate("REQUIRED_TECHNOLOGY", "Silver API", quote))
+    quotes = ("Projects must use Copper SDK", "Projects must use Silver API.")
+    result = compile_candidate(grounded_candidate("REQUIRED_TECHNOLOGY", "Silver API", quotes))
     assert not result.rules[0].supported
 
 
@@ -1222,13 +1222,15 @@ def test_structural_heading_quote_parses_like_one_joined_quote(
 
     from qualor.runtime.adapters.base import body
 
-    joined = grounded_candidate(family, value, heading + "\n" + clause)
+    class LegacyQuotes:
+        """Legacy broad-focus grounding can still deliver heading and clause in one quote."""
+
+        quotes = (heading + "\n" + clause,)
+
     structural = grounded_candidate(family, value, (heading, clause))
 
-    assert body(joined) == body(structural) == clause.rstrip(".")
-    assert compile_candidate(structural).normalization_status == (
-        compile_candidate(joined).normalization_status
-    )
+    assert body(LegacyQuotes()) == body(structural) == clause.rstrip(".")
+    assert compile_candidate(structural).normalization_status == "SUPPORTED"
     assert compile_candidate(structural).normalized_value == value
 
 
