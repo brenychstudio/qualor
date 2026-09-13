@@ -1201,3 +1201,53 @@ def test_geography_named_scopes_are_retained_but_unresolved_without_positive_ont
     assert not result.rules[0].supported
     assert result.rules[0].subject_reference is None
     assert result.evidence[0].supporting_excerpt == quote
+
+
+@pytest.mark.parametrize(
+    "family,value,heading,clause",
+    [
+        ("LICENSE", "MIT", "License", "Projects must intend to use MIT licenses."),
+        (
+            "REQUIRED_TECHNOLOGY",
+            "Copper SDK",
+            "Technology requirements",
+            "Build a tool using Copper SDK.",
+        ),
+    ],
+)
+def test_structural_heading_quote_parses_like_one_joined_quote(
+    grounded_candidate, family, value, heading, clause
+):
+    """A heading arriving as its own capability must not change the parsing view."""
+
+    from qualor.runtime.adapters.base import body
+
+    joined = grounded_candidate(family, value, heading + "\n" + clause)
+    structural = grounded_candidate(family, value, (heading, clause))
+
+    assert body(joined) == body(structural) == clause.rstrip(".")
+    assert compile_candidate(structural).normalization_status == (
+        compile_candidate(joined).normalization_status
+    )
+    assert compile_candidate(structural).normalized_value == value
+
+
+@pytest.mark.parametrize(
+    "first,second",
+    [
+        ("Projects must use Widget SDK.", "Projects must use Silver API."),
+        ("Submission Period:", "Submissions close on January 2, 2026, 5:00 PM UTC."),
+        ("Judging Period:", "Judging closes on January 9, 2026, 5:00 PM UTC."),
+        ("Financial or Preferential Support", "Projects must have sponsor support."),
+    ],
+)
+def test_first_structural_quote_is_only_stripped_when_it_is_a_known_heading(
+    grounded_candidate, first, second
+):
+    """Only the bounded heading vocabulary may be dropped from the parsing view."""
+
+    from qualor.runtime.adapters.base import body
+
+    candidate = grounded_candidate("LICENSE", "MIT", (first, second))
+
+    assert body(candidate).startswith(first.rstrip("."))

@@ -50,19 +50,26 @@ def _digest(value) -> str:
     return hashlib.sha256(json.dumps(value, sort_keys=True, default=str).encode()).hexdigest()[:32]
 
 
+_SECTION_HEADING = re.compile(
+    r"(?:\d+(?:\.\d+)*[.)]?\s+)?(?:Requirements|Eligibility|Deadline|"
+    r"Entrant types?|Geography|Legal entity|Project policy|License|"
+    r"Technology requirements|Financial support|Reward conditions)",
+    re.IGNORECASE,
+)
+
+
 def body(candidate: GroundedSectionCandidate) -> str:
     """Parsing view only. Evidence always uses the original individual excerpts."""
-    text = " ".join(candidate.quotes).strip()
+    quotes = candidate.quotes
+    # A structural capability can carry the heading on its own, ahead of its clause.
+    # Only the bounded heading vocabulary is dropped, never an ordinary first line.
+    if len(quotes) > 1 and _SECTION_HEADING.fullmatch(quotes[0].strip()):
+        quotes = quotes[1:]
+    text = " ".join(quotes).strip()
     # Remove a standalone section heading, never any part of its clause.
-    if len(candidate.quotes) == 1 and "\n" in text:
+    if len(quotes) == 1 and "\n" in text:
         heading, remainder = text.split("\n", 1)
-        if re.fullmatch(
-            r"(?:\d+(?:\.\d+)*[.)]?\s+)?(?:Requirements|Eligibility|Deadline|"
-            r"Entrant types?|Geography|Legal entity|Project policy|License|"
-            r"Technology requirements|Financial support|Reward conditions)",
-            heading,
-            re.I,
-        ):
+        if _SECTION_HEADING.fullmatch(heading):
             text = remainder
     return " ".join(text.split()).rstrip(".")
 
