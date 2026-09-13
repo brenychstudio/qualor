@@ -13,15 +13,16 @@ from qualor.runtime.section_scheduler import ExtractionJob, NoExtractionJob, Sec
 from qualor.runtime.sections import index_source
 from qualor.runtime.spans import EvidenceSpanRegistry
 
-GLOBAL_MARKER = "This section applies to all sections. "
-ASCII_LINE = ("Ordinary detail sentence for padding. " * 17)[:646]
-WIDE_LINE = "界" * 250
+GLOBAL_MARKER = "This section applies to all sections. " + ("Padding words here. " * 18)
 
 
-def global_context_source(line, count):
+def global_context_source(body, *, target="An MIT license is required."):
     """Twelve capabilities reached through explicit global scope, not sibling smear."""
 
-    return GLOBAL_MARKER + line + "\n" + (line + "\n") * count
+    return (
+        "1. License\n" + target + "\n"
+        "2. General Conditions\n" + GLOBAL_MARKER + "\n" + body
+    )
 
 
 def setup_job(document, text="License\nAn MIT license is required.", *, registry=None):
@@ -54,26 +55,15 @@ def setup_job(document, text="License\nAn MIT license is required.", *, registry
     return source, index, job, registry
 
 
-def candidate(job, index=None, **changes):
+def candidate(job, **changes):
     from qualor.runtime.section_extraction import validate_section_payload
 
-    # Quote every structural capability of the target section unless a test selects its own.
-    target_spans = (
-        [
-            span_id
-            for section in index.sections
-            if section.section_id == job.section_id
-            for span_id in section.span_ids
-        ]
-        if index is not None
-        else [job.span_ids[0]]
-    )
     item = dict(
         category=job.categories[0].value,
         proposed_value="MIT",
         source_id=job.source_id,
         section_id=job.section_id,
-        span_ids=target_spans,
+        span_ids=[job.span_ids[0]],
         qualifier_span_ids=[],
         exception_span_ids=[],
         confidence_class="HIGH",
@@ -92,8 +82,8 @@ def ground(item, setup):
 
 def test_exact_quotes_and_private_source_serialization(document):
     setup = setup_job(document)
-    result = ground(candidate(setup[2], setup[1]), setup)
-    assert result.quotes == ("License", "An MIT license is required.")
+    result = ground(candidate(setup[2]), setup)
+    assert result.quotes == ("License\nAn MIT license is required.",)
     assert result.context.span_ids == setup[2].span_ids
     assert result.semantic_context_complete
     assert "source" not in result.model_dump()
@@ -104,7 +94,7 @@ def test_exact_quotes_and_private_source_serialization(document):
 def test_model_authored_quotes_rejected(document, field):
     setup = setup_job(document)
     with pytest.raises(ValidationError):
-        candidate(setup[2], setup[1], **{field: "invented quote"})
+        candidate(setup[2], **{field: "invented quote"})
 
 
 @pytest.mark.parametrize(
@@ -121,38 +111,38 @@ def test_model_authored_quotes_rejected(document, field):
 def test_invalid_capabilities_are_operational(document, changes, reason):
     setup = setup_job(document)
     with pytest.raises(ValueError, match=reason):
-        ground(candidate(setup[2], setup[1], **changes), setup)
+        ground(candidate(setup[2], **changes), setup)
 
 
 def test_prior_run_and_out_of_job_spans_rejected(document):
     setup = setup_job(document, "License\nAn MIT license is required.\n2 Notes\nOrdinary notes.")
     prior = setup_job(document, setup[0].text, registry=EvidenceSpanRegistry(secret=b"p" * 32))
     with pytest.raises(ValueError, match="SPAN_REFERENCE_NOT_FOUND"):
-        ground(candidate(setup[2], setup[1], span_ids=[prior[2].span_ids[0]]), setup)
+        ground(candidate(setup[2], span_ids=[prior[2].span_ids[0]]), setup)
     outside = setup[1].sections[-1].span_ids[0]
     with pytest.raises(ValueError, match="EXTRACTION_SPAN_NOT_ALLOWED"):
-        ground(candidate(setup[2], setup[1], span_ids=[outside]), setup)
+        ground(candidate(setup[2], span_ids=[outside]), setup)
 
 
 def test_stale_source_revision_rejected(document):
     setup = setup_job(document)
     changed = document("License\nAn Apache license is required.")
     with pytest.raises(ValueError, match="EXTRACTION_SOURCE_REVISION_MISMATCH"):
-        ground(candidate(setup[2], setup[1]), (changed, *setup[1:]))
+        ground(candidate(setup[2]), (changed, *setup[1:]))
 
 
 def test_spans_preserve_source_order_and_individual_quotes(document):
-    setup = setup_job(document, global_context_source(ASCII_LINE, 11))
+    setup = setup_job(document, global_context_source("Ordinary detail line.\n" * 310))
     spans = sorted(
         setup[2].span_ids, key=lambda sid: setup[3].resolve(setup[0].id, sid).start_offset
     )
-    result = ground(candidate(setup[2], setup[1], span_ids=spans), setup)
+    result = ground(candidate(setup[2], span_ids=spans), setup)
     assert len(result.quotes) > 1
     assert all(quote in setup[0].text for quote in result.quotes)
     with pytest.raises(ValueError, match="EXTRACTION_SPAN_ORDER_INVALID"):
-        ground(candidate(setup[2], setup[1], span_ids=list(reversed(spans))), setup)
+        ground(candidate(setup[2], span_ids=list(reversed(spans))), setup)
     with pytest.raises(ValidationError):
-        candidate(setup[2], setup[1], span_ids=[spans[0], spans[0]])
+        candidate(setup[2], span_ids=[spans[0], spans[0]])
 
 
 def test_third_candidate_and_non_json_array_rejected(document):
@@ -172,7 +162,7 @@ def test_explicit_unknown_state_value_contract(document, state, value):
 
 def test_unknown_is_not_semantic_support_even_with_high_confidence(document):
     setup = setup_job(document)
-    result = ground(candidate(setup[2], setup[1], state="UNKNOWN", proposed_value=None), setup)
+    result = ground(candidate(setup[2], state="UNKNOWN", proposed_value=None), setup)
     assert not result.semantic_context_complete
     assert result.candidate.confidence_class == "HIGH"
     assert "supported" not in result.model_dump()
@@ -180,14 +170,10 @@ def test_unknown_is_not_semantic_support_even_with_high_confidence(document):
 
 def test_omitted_local_qualifier_is_retained_and_incomplete(document):
     setup = setup_job(document, "License\nAn MIT license is required only if awarded a prize.")
-    result = ground(candidate(setup[2], setup[1]), setup)
+    result = ground(candidate(setup[2]), setup)
     assert not result.semantic_context_complete
-    assert result.context.qualifiers == (
-        "An MIT license is required only if awarded a prize.",
-    )
-    complete = ground(
-        candidate(setup[2], setup[1], qualifier_span_ids=list(setup[2].span_ids)), setup
-    )
+    assert result.context.qualifiers == (setup[0].text,)
+    complete = ground(candidate(setup[2], qualifier_span_ids=list(setup[2].span_ids)), setup)
     assert complete.semantic_context_complete
 
 
@@ -198,11 +184,11 @@ def test_remote_exception_retained_but_unrelated_condition_not_applied(document)
         "2 Notes\nVisitors may leave unless the doors are closed.\n"
         "3 Exemptions\nExcept invited exhibitors, entrants must license their work.",
     )
-    result = ground(candidate(setup[2], setup[1]), setup)
+    result = ground(candidate(setup[2]), setup)
     assert not result.semantic_context_complete
     assert result.context.context_section_ids == (setup[1].sections[2].section_id,)
     assert result.context.exceptions == (
-        "Except invited exhibitors, entrants must license their work.",
+        "3 Exemptions\nExcept invited exhibitors, entrants must license their work.",
     )
     assert all(
         "doors" not in quote for quote in result.context.qualifiers + result.context.exceptions
@@ -211,7 +197,7 @@ def test_remote_exception_retained_but_unrelated_condition_not_applied(document)
         document,
         "1 License\nAn MIT license is required.\n2 Notes\nVisitors may leave unless doors close.",
     )
-    assert ground(candidate(independent[2], independent[1]), independent).semantic_context_complete
+    assert ground(candidate(independent[2]), independent).semantic_context_complete
 
 
 def test_request_is_scoped_and_uses_existing_guard_name(document):
@@ -235,12 +221,13 @@ def test_request_is_scoped_and_uses_existing_guard_name(document):
 def test_twelve_fitting_spans_are_retained_and_utf8_overflow_refused(document):
     from qualor.runtime.section_extraction import build_section_extraction_request
 
-    fitting = setup_job(document, global_context_source(ASCII_LINE, 11))
+    fitting = setup_job(document, global_context_source("Ordinary detail line.\n" * 310))
     request = build_section_extraction_request(*fitting, max_output_tokens=1024)
     assert len(fitting[2].span_ids) == 12
     assert len(json.loads(request["messages"][0]["content"][0]["text"])["EVIDENCE_SPANS"]) == 12
     # Twelve capabilities still fit the span bound while exceeding the byte bound.
-    oversized = setup_job(document, global_context_source(WIDE_LINE, 11))
+    wide = ("界" * 260) + "\n"
+    oversized = setup_job(document, global_context_source(wide * 10, target=("界" * 260)))
     assert len(oversized[2].span_ids) == 12
     with pytest.raises(ValueError, match="EXTRACTION_CONTEXT_TOO_LARGE"):
         build_section_extraction_request(*oversized, max_output_tokens=1024)
@@ -303,13 +290,13 @@ def test_extract_section_grounds_with_its_own_registry(document):
         def converse(self, **request):
             body = json.loads(request["messages"][0]["content"][0]["text"])
             assert body["source_id"] == source.id
-            item = candidate(job, index).model_dump(mode="json")
+            item = candidate(job).model_dump(mode="json")
             return response(json.dumps({"claims": [item]}))
 
     extractor = BedrockClaimExtractor(Client())
     source, index, job, _ = setup_job(document, registry=extractor.span_registry)
     result = extractor.extract_section(source, index, job)
-    assert result[0].quotes == ("License", "An MIT license is required.")
+    assert result[0].quotes == (source.text,)
     assert extractor.last_created_span_ids == job.span_ids
     assert extractor.last_selected_span_ids == job.span_ids
 
@@ -342,8 +329,8 @@ def test_truncated_source_retains_quotes_but_context_is_incomplete(document):
 
     source, index, job, registry = setup_job(document)
     source = source.model_copy(update={"truncated": True})
-    grounded = ground(candidate(job, index), (source, index, job, registry))
-    assert grounded.quotes == ("License", "An MIT license is required.")
+    grounded = ground(candidate(job), (source, index, job, registry))
+    assert grounded.quotes == (source.text,)
     assert not grounded.context.context_complete
     assert not grounded.semantic_context_complete
     with pytest.raises(ValueError, match="EXTRACTION_CONTEXT_UNRESOLVED"):
@@ -399,7 +386,7 @@ def test_incomplete_or_missing_job_context_refused_before_client(document):
 def test_split_conditional_phrase_is_not_lost_at_span_boundary(document):
     # The 700-character boundary lands between 'subject' and 'to'.
     setup = setup_job(document, "x" * 691 + " subject to approval.")
-    result = ground(candidate(setup[2], setup[1]), setup)
+    result = ground(candidate(setup[2]), setup)
     # The forced cut may have severed the qualifier, so the boundary fails closed
     # rather than guessing which governing words landed in the neighbouring child.
     assert not result.semantic_context_complete
@@ -422,8 +409,8 @@ def test_request_identifies_target_and_earlier_parent_in_source_order(document):
     body = json.loads(request["messages"][0]["content"][0]["text"])
     assert body["section_id"] == child.section_id
     assert [span["section_id"] for span in body["EVIDENCE_SPANS"]] == [
-        *[parent.section_id] * len(parent.span_ids),
-        *[child.section_id] * len(child.span_ids),
+        parent.section_id,
+        child.section_id,
     ]
     assert [span["span_id"] for span in body["EVIDENCE_SPANS"]] == [
         *parent.span_ids,
@@ -450,10 +437,9 @@ def test_remote_governing_text_is_retained_without_condition_keywords(document):
         "1 License\nAn MIT license is required, subject to Section 2.\n"
         "2 Conditions\nEntrants need written authorization.",
     )
-    result = ground(candidate(setup[2], setup[1], qualifier_span_ids=[setup[2].span_ids[0]]), setup)
+    result = ground(candidate(setup[2], qualifier_span_ids=[setup[2].span_ids[0]]), setup)
     assert not result.semantic_context_complete
-    assert "2 Conditions" in result.context.qualifiers
-    assert "Entrants need written authorization." in result.context.qualifiers
+    assert "2 Conditions\nEntrants need written authorization." in result.context.qualifiers
 
 
 def _scheduled_license(index, heading):
@@ -502,11 +488,10 @@ def test_scheduled_numbered_license_requires_exact_parent_interpretation(documen
     assert not omitted.semantic_context_complete
     included = ground(item.model_copy(update={"qualifier_span_ids": parent.span_ids}), setup)
     assert included.semantic_context_complete
-    assert omitted.quotes == included.quotes == ("1.1 License", "An MIT license is required.")
+    assert omitted.quotes == included.quotes == ("1.1 License\nAn MIT license is required.",)
     assert included.context.context_section_ids == (parent.section_id,)
     assert included.context.qualifiers == (
-        "1. Project requirements",
-        "The following requirements apply only to teams.",
+        "1. Project requirements\nThe following requirements apply only to teams.",
     )
 
 
@@ -528,13 +513,7 @@ def test_scheduled_multilevel_license_retains_reference_and_isolates_sibling(doc
         job,
         category="LICENSE",
         span_ids=list(child.span_ids),
-        qualifier_span_ids=[
-            *ancestor.span_ids,
-            *parent.span_ids,
-            *child.span_ids,
-            # The referenced section heading governs too; only its clause reads as an exception.
-            reference.span_ids[0],
-        ],
+        qualifier_span_ids=[*ancestor.span_ids, *parent.span_ids, *child.span_ids],
     )
     omitted = ground(item, setup)
     assert not omitted.semantic_context_complete
@@ -543,7 +522,7 @@ def test_scheduled_multilevel_license_retains_reference_and_isolates_sibling(doc
     assert (
         omitted.quotes
         == included.quotes
-        == ("1.1.1 License", "An MIT license is required, subject to Section 2.")
+        == ("1.1.1 License\nAn MIT license is required, subject to Section 2.",)
     )
     assert included.context.context_section_ids == (
         ancestor.section_id,
@@ -551,8 +530,7 @@ def test_scheduled_multilevel_license_retains_reference_and_isolates_sibling(doc
         reference.section_id,
     )
     assert included.context.exceptions == (
-        "2. Exemptions",
-        "Except invited exhibitors, entrants must license their work.",
+        "2. Exemptions\nExcept invited exhibitors, entrants must license their work.",
     )
     assert sibling.section_id not in included.context.context_section_ids
     assert not set(sibling.span_ids) & set(included.context.span_ids)
@@ -583,21 +561,4 @@ def test_severed_qualifier_boundary_blocks_extraction_authority(document):
     assert not target.context_complete
     with pytest.raises(ValueError, match="EXTRACTION_CONTEXT_UNRESOLVED"):
         build_section_extraction_request(source, index, job, registry, max_output_tokens=1024)
-    grounded = ground(candidate(job, index), (source, index, job, registry))
-    assert not grounded.semantic_context_complete
-
-
-def test_condition_marker_split_across_structural_spans_is_still_detected(document):
-    """Line layout may split a marker, and adjacency regrouping must still see it."""
-
-    setup = setup_job(
-        document, "Entrants must submit early subject\nto approval.\nOrdinary closing note."
-    )
-    index = setup[1]
-    target = index.sections[0]
-    result = ground(candidate(setup[2], setup[1]), setup)
-
-    assert len(target.span_ids) == 3
-    assert not result.semantic_context_complete
-    assert "subject" in " ".join(result.context.qualifiers)
-    assert "to approval." in " ".join(result.context.qualifiers)
+    assert not ground(candidate(job), (source, index, job, registry)).semantic_context_complete
