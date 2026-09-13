@@ -1,13 +1,15 @@
 """Hash-bound archived source input for offline canonical-compiler tests only."""
 
+import copy
 import hashlib
 import json
 import os
 import re
 import socket
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
 from types import MappingProxyType, SimpleNamespace
 from urllib.parse import urlsplit
@@ -26,6 +28,10 @@ ARCHIVE_RAW_ARTIFACT = "official-rules.raw"
 ARCHIVE_TIMESTAMP = "2026-09-12T11:25:52Z"
 ARCHIVE_SHA256 = "e3f7640c0bd1e78e3858d7d5a2dfb78bb560cac9b7982c29c5e57796116794a5"
 _EXTERNAL_IO_DENIED = False
+# The Task 11 canonical archive path; a sequence missing any of it is not costable.
+CANONICAL_PLANNING_REQUESTS = 2
+CANONICAL_EXTRACTION_REQUESTS = 7
+BUDGET_EVENT_LABELS = ("INFERENCE", "SEARCH", "FETCH")
 
 
 class ArchiveInputError(ValueError):
@@ -58,6 +64,21 @@ class ArchivedCompilerReport:
     receipts: tuple[object, ...]
     request_sequence: tuple[MappingProxyType, ...]
     gate_values: MappingProxyType
+    # Test-memory only: exact captured production requests, never persisted, never
+    # serialized into a report, and kept out of repr so prompts cannot be printed.
+    model_requests: tuple[dict, ...] = field(default=(), repr=False)
+    # Safe physical budget order; kinds only, no query, URL or source text.
+    budget_events: tuple[str, ...] = field(default=())
+
+
+@dataclass(frozen=True)
+class CostSimulationReport:
+    expected_live_calls: int
+    projected_reserved_cost: Decimal
+    projected_worst_case_cost: Decimal
+    remaining_headroom: Decimal
+    admitted: bool
+    blocked_slot: int | None
 
 
 def _fail(code: str) -> None:
@@ -493,7 +514,7 @@ def run_archived_compiler(directory: Path, *, sink=None) -> ArchivedCompilerRepo
     raw = (archive.directory / ARCHIVE_RAW_ARTIFACT).read_bytes()
 
     from qualor.runtime.agent import BudgetedBedrockClient, run_agent
-    from qualor.runtime.budget import BudgetLimitExceeded
+    from qualor.runtime.budget import BudgetLimitExceeded, LiveCallKind
     from qualor.runtime.extraction import MODEL_ID, BedrockClaimExtractor
     from qualor.runtime.live_cli import live_budget
     from qualor.runtime.loop import OpportunityRun
@@ -552,14 +573,28 @@ def run_archived_compiler(directory: Path, *, sink=None) -> ArchivedCompilerRepo
 
     transport = SearchTransport()
     budget = live_budget()
+    # Record only admitted physical budget events, in source order, kinds alone.
+    budget_events: list[str] = []
+    original_reserve = budget.reserve
+
+    def observed_reserve(kind, **kwargs):
+        receipt = original_reserve(kind, **kwargs)
+        budget_events.append(LiveCallKind(kind).value)
+        return receipt
+
+    budget.reserve = observed_reserve
     controlled = ControlledCandidateClient(archive.source.final_url)
     client = BudgetedBedrockClient(controlled, budget)
     request_sequence: list[MappingProxyType] = []
+    model_requests: list[dict] = []
     original_converse = client.converse
 
     def observed_converse(**request):
         metadata = _safe_request_metadata(request)
         request_sequence.append(metadata)
+        # Snapshot the exact production request before dispatch so later mutation
+        # by the SDK cannot change what the cost simulation replays.
+        model_requests.append(copy.deepcopy(request))
         try:
             return original_converse(**request)
         except BudgetLimitExceeded:
@@ -724,4 +759,96 @@ def run_archived_compiler(directory: Path, *, sink=None) -> ArchivedCompilerRepo
         receipts=tuple(result.model_receipts),
         request_sequence=tuple(request_sequence),
         gate_values=gate_values,
+        model_requests=tuple(model_requests),
+        budget_events=tuple(budget_events),
+    )
+
+
+def _validated_model_request(request, policy) -> str:
+    """Confirm one captured request is still the current production shape."""
+
+    from qualor.runtime.agent import model_request_metrics
+    from qualor.runtime.extraction import MODEL_ID
+
+    if not isinstance(request, dict) or request.get("modelId") != MODEL_ID:
+        _fail("COMPILER_COST_REQUEST_INVALID")
+    kind = model_request_metrics(request)["request_kind"]
+    limit = (
+        policy.extraction_max_output_tokens
+        if kind == "EXTRACTION"
+        else policy.model_max_output_tokens
+    )
+    maximum = request.get("inferenceConfig", {}).get("maxTokens")
+    if type(maximum) is not int or not 1 <= maximum <= limit:
+        _fail("COMPILER_COST_REQUEST_INVALID")
+    return kind
+
+
+def simulate_request_sequence(report: ArchivedCompilerReport) -> CostSimulationReport:
+    """Replay the captured physical budget order against one fresh production guard.
+
+    Every admitted reservation is committed at its full amount and never reconciled,
+    so the projection is the conservative worst case rather than the controlled
+    responses' favorable token usage.
+    """
+
+    from qualor.runtime.agent import estimate_model_reservation
+    from qualor.runtime.budget import BudgetLimitExceeded, LiveCallKind
+    from qualor.runtime.live_cli import live_budget
+    from qualor.runtime.search import WEB_SEARCH_RESERVED_COST_USD
+
+    guard = live_budget()
+    requests = tuple(report.model_requests)
+    events = tuple(report.budget_events)
+    if any(event not in BUDGET_EVENT_LABELS for event in events):
+        _fail("COMPILER_COST_EVENT_UNSUPPORTED")
+    if events.count("INFERENCE") != len(requests):
+        _fail("COMPILER_COST_SEQUENCE_INCOMPLETE")
+    kinds = [_validated_model_request(item, guard.policy) for item in requests]
+    if (
+        kinds.count("PLANNING") < CANONICAL_PLANNING_REQUESTS
+        or kinds.count("EXTRACTION") < CANONICAL_EXTRACTION_REQUESTS
+        or not events.count("SEARCH")
+        or not events.count("FETCH")
+    ):
+        _fail("COMPILER_COST_SEQUENCE_INCOMPLETE")
+
+    reserved = Decimal("0")
+    slot = 0
+    blocked_slot = None
+    for position, event in enumerate(events, start=1):
+        estimate = None
+        if event == "INFERENCE":
+            slot += 1
+            estimate = estimate_model_reservation(requests[slot - 1])
+        elif event == "SEARCH":
+            estimate = WEB_SEARCH_RESERVED_COST_USD
+        before = guard.snapshot().reserved_cost_usd
+        try:
+            receipt = (
+                guard.reserve(LiveCallKind(event))
+                if estimate is None
+                else guard.reserve(LiveCallKind(event), estimated_cost_usd=estimate)
+            )
+        except BudgetLimitExceeded:
+            if event != "INFERENCE":
+                _fail(f"COMPILER_COST_NON_MODEL_RESERVATION_BLOCKED:{event}@{position}")
+            blocked_slot = slot
+            break
+        # Deliberately no reconcile(): a committed reservation retains its full cost.
+        guard.commit(receipt)
+        retained = guard.snapshot().reserved_cost_usd - before
+        if estimate is not None and retained != estimate:
+            _fail("COMPILER_COST_RESERVATION_DRIFT")
+        reserved += retained
+    snapshot = guard.snapshot()
+    if snapshot.reserved_cost_usd != reserved:
+        _fail("COMPILER_COST_RESERVATION_DRIFT")
+    return CostSimulationReport(
+        expected_live_calls=len(requests),
+        projected_reserved_cost=reserved,
+        projected_worst_case_cost=snapshot.reserved_cost_usd,
+        remaining_headroom=guard.policy.cost_cap_usd - snapshot.reserved_cost_usd,
+        admitted=blocked_slot is None,
+        blocked_slot=blocked_slot,
     )
