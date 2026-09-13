@@ -200,9 +200,46 @@ class OpportunityRun:
     def failure(
         self, exc, *, component="orchestration", event="TOOL_RESULT", input_value=None, code=None
     ):
+        return self._rejection(
+            exc,
+            component=component,
+            event=event,
+            input_value=input_value,
+            code=code,
+            operational_failure=True,
+        )
+
+    def semantic_rejection(
+        self,
+        exc: ClaimNormalizationError,
+        *,
+        component="claim_validation",
+        event="CLAIM_VALIDATION_RESULT",
+        input_value=None,
+    ):
+        """Record a deterministic non-admission without claiming a tool failure."""
+
+        return self._rejection(
+            exc,
+            component=component,
+            event=event,
+            input_value=input_value,
+            operational_failure=False,
+        )
+
+    def _rejection(
+        self,
+        exc,
+        *,
+        component,
+        event,
+        input_value,
+        code=None,
+        operational_failure,
+    ):
         if isinstance(exc, BudgetLimitExceeded):
             self.stop("BUDGET_EXHAUSTED")
-        else:
+        elif operational_failure:
             self.failures += 1
             if self.failures >= 3:
                 self.stop("TOOL_FAILURE_BOUND_REACHED")
@@ -568,7 +605,16 @@ class OpportunityRun:
                     normalizer_version=exc.result.normalizer_version,
                 )
             event = "EXTRACTION_RESULT" if stage == "extraction" else "CLAIM_VALIDATION_RESULT"
-            result = self.failure(exc, component=stage, event=event, input_value=claim)
+            result = (
+                self.semantic_rejection(
+                    exc,
+                    component=stage,
+                    event=event,
+                    input_value=claim,
+                )
+                if isinstance(exc, ClaimNormalizationError)
+                else self.failure(exc, component=stage, event=event, input_value=claim)
+            )
             if stage != "extraction":
                 self.diagnostic(
                     "EVIDENCE_ADMISSION_RESULT",

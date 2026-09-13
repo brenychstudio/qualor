@@ -273,6 +273,8 @@ def test_rejected_claim_exposes_bounded_normalization_result_without_value_or_ex
     assert event.normalizer_version == "1"
     assert "Different SDK" not in event.model_dump_json()
     assert "Projects must use" not in event.model_dump_json()
+    assert r.failures == 0
+    assert r.termination_reason is None
 
 
 def test_fetched_source_citation_survives_even_without_admitted_claims():
@@ -298,3 +300,148 @@ def test_equivalent_scalar_and_list_technology_claims_do_not_change_verdict():
     r.record_evidence(payload)
     assert r.evaluate_current_state()["recommendation"] == earlier
     assert r.contradictions == ()
+
+
+class _RealRunSemanticOutcomeExtractor:
+    """Offline reproduction of the three extraction batches from paid run 2."""
+
+    def extract(self, source, focus):
+        common = {
+            "source_id": source.id,
+            "source_url": source.final_url,
+            "state": "CANDIDATE",
+            "confidence": "HIGH",
+        }
+        if focus == "batch-1":
+            return (
+                {
+                    **common,
+                    "field": "entrant_type",
+                    "value": "INDIVIDUAL",
+                    "excerpt": "Applicants may enter.",
+                },
+                {
+                    **common,
+                    "field": "geography",
+                    "value": "United States",
+                    "excerpt": "The challenge is open worldwide.",
+                },
+            )
+        if focus == "batch-2":
+            return (
+                {
+                    **common,
+                    "field": "required_technology",
+                    "value": ["Widget SDK"],
+                    "excerpt": "Projects can use Widget SDK.",
+                },
+                {
+                    **common,
+                    "field": "required_technology",
+                    "value": ["Widget SDK"],
+                    "excerpt": "Projects must use Widget SDK or another tool.",
+                },
+            )
+        return (
+            {
+                **common,
+                "field": "deadline",
+                "value": "2030-10-01T17:00:00Z",
+                "excerpt": "Submissions close October 1, 2030.",
+            },
+        )
+
+
+def _semantic_outcome_run():
+    from qualor.runtime.sources import SourceDocument
+
+    run = make_run(extractor=_RealRunSemanticOutcomeExtractor())
+    run.sources["source_real_shape"] = SourceDocument(
+        id="source_real_shape",
+        original_url="https://example.org/rules",
+        final_url="https://example.org/rules",
+        retrieved_at=datetime.now(UTC),
+        content_hash="c" * 64,
+        authority="OFFICIAL_RULES",
+        text=(
+            "Applicants may enter. The challenge is open worldwide. "
+            "Projects can use Widget SDK. "
+            "Projects must use Widget SDK or another tool. "
+            "Submissions close October 1, 2030."
+        ),
+    )
+    return run
+
+
+def test_three_semantic_rejection_batches_do_not_reach_tool_failure_bound():
+    run = _semantic_outcome_run()
+
+    results = [
+        run.extract_official_claims("source_real_shape", focus)
+        for focus in ("batch-1", "batch-2", "batch-3")
+    ]
+
+    assert all(result["status"] == "EXTRACTED" for result in results)
+    assert run.failures == 0
+    assert run.termination_reason is None
+    assert sorted(claim.normalization_status for claim in run.claims.values()) == [
+        "AMBIGUOUS",
+        "AMBIGUOUS",
+    ]
+    rejected = [
+        event
+        for event in run.boundary_events
+        if event.event == "EVIDENCE_ADMISSION_RESULT" and event.status == "REJECTED"
+    ]
+    assert [event.reason_code for event in rejected] == [
+        "CLAIM_VALUE_UNSUPPORTED",
+        "CLAIM_VALUE_UNSUPPORTED",
+        "CLAIM_VALUE_UNSUPPORTED",
+    ]
+
+
+def test_three_ambiguous_claims_remain_unknown_without_operational_failures():
+    run = _semantic_outcome_run()
+
+    for confidence in ("HIGH", "MEDIUM", "LOW"):
+        result = run.record_evidence(
+            {
+                "source_id": "source_real_shape",
+                "source_url": "https://example.org/rules",
+                "field": "entrant_type",
+                "value": "INDIVIDUAL",
+                "excerpt": "Applicants may enter.",
+                "state": "CANDIDATE",
+                "confidence": confidence,
+            }
+        )
+        assert result["status"] == "UNKNOWN"
+
+    assert run.failures == 0
+    assert run.termination_reason is None
+    assert all(claim.normalized_value is None for claim in run.claims.values())
+    assert all(claim.support_state == "UNKNOWN" for claim in run.claims.values())
+
+
+@pytest.mark.parametrize("failure_shape", ["provider", "schema", "source_reference"])
+def test_three_operational_failures_still_reach_tool_failure_bound(failure_shape):
+    class BrokenExtractor:
+        def extract(self, source, focus):
+            del source, focus
+            if failure_shape == "provider":
+                raise RuntimeError("provider unavailable")
+            return ({"not": "an ExtractedClaim"},)
+
+    run = make_run(extractor=BrokenExtractor())
+    if failure_shape == "source_reference":
+        for index in range(3):
+            result = run.extract_official_claims(f"source_missing_{index}", "technology")
+    else:
+        discover_and_fetch(run)
+        source_id = next(iter(run.sources))
+        for index in range(3):
+            result = run.extract_official_claims(source_id, f"technology-{index}")
+
+    assert result["status"] == "REJECTED"
+    assert run.failures == 3
+    assert run.termination_reason == "TOOL_FAILURE_BOUND_REACHED"
