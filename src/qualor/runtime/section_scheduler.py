@@ -75,19 +75,28 @@ class SectionScheduler:
         self._ledger.reconcile_index_absence(authority_revision)
 
         contexts: dict[str, tuple[tuple[str, ...], tuple[str, ...]] | None] = {}
-        candidates: dict[Category, tuple[SourceSection, ...]] = {}
+        explicit_candidates: dict[Category, tuple[SourceSection, ...]] = {}
+        fallback_candidates: dict[Category, tuple[SourceSection, ...]] = {}
         context_unresolved = False
         for category in Category:
             if self._ledger.state(category) is not AcquisitionState.SECTION_AVAILABLE:
                 continue
-            safe_sections = []
-            for section in self._unattempted_sections(category):
-                context = contexts.setdefault(section.section_id, self._context_for(section))
-                if context is None:
-                    context_unresolved = True
-                    continue
-                safe_sections.append(section)
-            candidates[category] = tuple(safe_sections)
+            explicit_sections, fallback_sections = self._unattempted_sections(category)
+            for sections, candidates in (
+                (explicit_sections, explicit_candidates),
+                (fallback_sections, fallback_candidates),
+            ):
+                safe_sections = []
+                for section in sections:
+                    context = contexts.setdefault(section.section_id, self._context_for(section))
+                    if context is None:
+                        context_unresolved = True
+                        continue
+                    safe_sections.append(section)
+                candidates[category] = tuple(safe_sections)
+        candidates = (
+            explicit_candidates if any(explicit_candidates.values()) else fallback_candidates
+        )
         selected = next(
             (sections[0] for category in Category if (sections := candidates.get(category))),
             None,
@@ -132,13 +141,19 @@ class SectionScheduler:
     def _inference_available(self, snapshot: BudgetSnapshot) -> bool:
         return snapshot.inference_calls < self._budget.policy.inference_max_calls
 
-    def _unattempted_sections(self, category: Category) -> tuple[SourceSection, ...]:
+    def _unattempted_sections(
+        self, category: Category
+    ) -> tuple[tuple[SourceSection, ...], tuple[SourceSection, ...]]:
         attempts = self._ledger.attempts
-        return tuple(
+        relevant = tuple(
             section
             for section in self._ordered_sections
             if (not section.candidate_categories or category in section.candidate_categories)
             and (self._index.source_revision, section.section_id, category) not in attempts
+        )
+        return (
+            tuple(section for section in relevant if section.candidate_categories),
+            tuple(section for section in relevant if not section.candidate_categories),
         )
 
     def _context_for(self, target: SourceSection) -> tuple[tuple[str, ...], tuple[str, ...]] | None:

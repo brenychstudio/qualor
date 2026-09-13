@@ -42,6 +42,76 @@ def _replace_contexts(
     )
 
 
+def _priority_index(document) -> SectionIndex:
+    return _index(
+        document,
+        "Ordinary introduction with general background notes.\n"
+        "License\nMIT license terms apply.\n"
+        "Technology\nThe Widget SDK is required.\n"
+        "Geography\nResidents of Spain may enter.\n"
+        "Residency\nLocal residents may enter.",
+    )
+
+
+def _record_operational_failure(
+    scheduler: SectionScheduler,
+    ledger: CoverageLedger,
+    job: ExtractionJob,
+) -> None:
+    scheduler.begin(job)
+    ledger.operational_failure(job.section_id, job.categories, "EXTRACTION_PROVIDER_ERROR")
+
+
+def test_later_explicit_license_precedes_earlier_unclassified_fallback(document):
+    index = _index(
+        document,
+        "Ordinary introduction with general background notes.\n"
+        "License\nMIT license terms apply.\n"
+        "Technology\nThe Widget SDK is required.",
+    )
+    scheduler = SectionScheduler(index, CoverageLedger(index), live_budget())
+
+    job = scheduler.next_job(authority_revision=0, steps_remaining=24, terminated=False)
+
+    assert isinstance(job, ExtractionJob)
+    assert job.section_id == index.sections[1].section_id
+    assert job.categories == (Category.LICENSE,)
+
+
+def test_all_explicit_pairs_are_ordered_before_unclassified_fallback(document):
+    index = _priority_index(document)
+    ledger = CoverageLedger(index)
+    scheduler = SectionScheduler(index, ledger, live_budget())
+    scheduled = []
+
+    for authority_revision in range(4):
+        job = scheduler.next_job(
+            authority_revision=authority_revision,
+            steps_remaining=24 - authority_revision,
+            terminated=False,
+        )
+        assert isinstance(job, ExtractionJob)
+        scheduled.append((job.section_id, job.categories))
+        _record_operational_failure(scheduler, ledger, job)
+
+    fallback = scheduler.next_job(
+        authority_revision=4,
+        steps_remaining=20,
+        terminated=False,
+    )
+
+    assert scheduled == [
+        (index.sections[3].section_id, (Category.GEOGRAPHY,)),
+        (index.sections[4].section_id, (Category.GEOGRAPHY,)),
+        (index.sections[1].section_id, (Category.LICENSE,)),
+        (index.sections[2].section_id, (Category.REQUIRED_TECHNOLOGY,)),
+    ]
+    assert len(ledger.attempts) == len(set(ledger.attempts)) == 4
+    assert isinstance(fallback, ExtractionJob)
+    assert fallback.section_id == index.sections[0].section_id
+    assert fallback.categories == (Category.DEADLINE, Category.ENTRANT_TYPE)
+
+
 def test_category_enumeration_precedes_source_offsets(document):
     index = _index(
         document,
