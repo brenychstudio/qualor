@@ -333,6 +333,77 @@ export type SourceId = string;
 export type SourceUrl = string;
 export type State = "CANDIDATE" | "UNKNOWN" | "NOT_APPLICABLE";
 export type Value3 = string | string[] | null;
+export type ContextComplete = boolean;
+/**
+ * @maxItems 12
+ */
+export type ContextSectionIds =
+  | []
+  | [string]
+  | [string, string]
+  | [string, string, string]
+  | [string, string, string, string]
+  | [string, string, string, string, string]
+  | [string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string, string, string];
+/**
+ * @maxItems 12
+ */
+export type Exceptions =
+  | []
+  | [string]
+  | [string, string]
+  | [string, string, string]
+  | [string, string, string, string]
+  | [string, string, string, string, string]
+  | [string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string, string, string];
+/**
+ * @maxItems 12
+ */
+export type Qualifiers =
+  | []
+  | [string]
+  | [string, string]
+  | [string, string, string]
+  | [string, string, string, string]
+  | [string, string, string, string, string]
+  | [string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string, string, string];
+export type SectionId = string;
+export type SourceId1 = string;
+/**
+ * @maxItems 12
+ */
+export type SpanIds =
+  | []
+  | [string]
+  | [string, string]
+  | [string, string, string]
+  | [string, string, string, string]
+  | [string, string, string, string, string]
+  | [string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string, string]
+  | [string, string, string, string, string, string, string, string, string, string, string, string];
 export type ContentHash = string;
 export type CreatedAt1 = string;
 export type ExtractionState = "REVIEWED" | "UNVERIFIED" | "FAILED";
@@ -352,7 +423,7 @@ export type Category =
 export type OriginalUrl = string;
 export type RetrievedAt = string;
 export type SchemaVersion1 = "1";
-export type SourceId1 = string | null;
+export type SourceId2 = string | null;
 export type SourceType =
   | "OFFICIAL_RULES"
   | "OFFICIAL_FAQ"
@@ -626,7 +697,7 @@ export type NormalizedField = string | null;
 export type NormalizerVersion1 = string | null;
 export type ReasonCode3 = string;
 export type SourceIds2 = string[];
-export type SpanIds = string[];
+export type SpanIds1 = string[];
 /**
  * @maxItems 100
  */
@@ -997,10 +1068,10 @@ export type EvidenceVersion = number;
 export type Excerpt1 = string;
 export type OriginalUrl1 = string;
 export type RetrievedAt2 = string;
-export type SourceId2 = string | null;
+export type SourceId3 = string | null;
 export type SourceVersion = string;
 export type PolicyVersion12 = number | null;
-export type SourceId3 = string | null;
+export type SourceId4 = string | null;
 export type Url = string;
 /**
  * @maxItems 100
@@ -1055,14 +1126,14 @@ export type NormalizedField1 =
   | "reward_conditions"
   | "deliverables";
 export type NotApplicableReason2 = string | null;
-export type SourceId4 = string;
+export type SourceId5 = string;
 export type SupportingSpanId = string;
 export type BoundedExcerpt = string;
 export type CandidateId = string;
 export type ContentLength = number;
 export type ContentType = string;
 export type RetrievedAt3 = string;
-export type SourceId5 = string;
+export type SourceId6 = string;
 export type SourceUrl1 = string;
 export type Title1 = string | null;
 export type Url1 = string;
@@ -1440,6 +1511,7 @@ export interface ExtractedClaim {
   value: Value3;
 }
 export interface EvidenceRecord {
+  clause_context?: ClauseContext | null;
   content_hash: ContentHash;
   created_at: CreatedAt1;
   extraction_state: ExtractionState;
@@ -1451,11 +1523,23 @@ export interface EvidenceRecord {
   provenance: Provenance3;
   retrieved_at: RetrievedAt;
   schema_version: SchemaVersion1;
-  source_id?: SourceId1;
+  source_id?: SourceId2;
   source_type: SourceType;
   supporting_excerpt: SupportingExcerpt;
   updated_at: UpdatedAt1;
   version: Version1;
+}
+/**
+ * Bounded exact excerpts and identities of applicable governing clauses.
+ */
+export interface ClauseContext {
+  context_complete: ContextComplete;
+  context_section_ids: ContextSectionIds;
+  exceptions: Exceptions;
+  qualifiers: Qualifiers;
+  section_id: SectionId;
+  source_id: SourceId1;
+  span_ids: SpanIds;
 }
 export interface DecisionOutput {
   affordability: AffordabilityAssessment | null;
@@ -1658,7 +1742,7 @@ export interface TraceEvent {
   normalizer_version?: NormalizerVersion1;
   reason_code: ReasonCode3;
   source_ids?: SourceIds2;
-  span_ids?: SpanIds;
+  span_ids?: SpanIds1;
 }
 export interface ApprovalConfirmRequest {
   expected_versions: ApprovalRequest;
@@ -1752,6 +1836,7 @@ export interface DecisionFixture {
 }
 export interface RuleCandidate {
   children?: Children1;
+  clause_context?: ClauseContext | null;
   contradiction?: Contradiction;
   created_at: CreatedAt5;
   criticality: Criticality;
@@ -2221,7 +2306,7 @@ export interface EvidenceProofView {
   freshness: FreshnessStatus;
   original_url: OriginalUrl1;
   retrieved_at: RetrievedAt2;
-  source_id: SourceId2;
+  source_id: SourceId3;
   source_type: SourceType;
   source_version: SourceVersion;
   technical_provenance?: TechnicalProvenanceView | null;
@@ -2230,7 +2315,7 @@ export interface EvidenceProofView {
 export interface TechnicalProvenanceView {
   extraction_state: ExtractionState;
   policy_version: PolicyVersion12;
-  source_id: SourceId3;
+  source_id: SourceId4;
 }
 export interface RewardDeadlineWhyView {
   deadline: DeadlineView;
@@ -2256,7 +2341,7 @@ export interface ExtractedClaimTransport {
   extraction_state: ExtractionState1;
   normalized_field: NormalizedField1;
   not_applicable_reason?: NotApplicableReason2;
-  source_id: SourceId4;
+  source_id: SourceId5;
   supporting_span_id: SupportingSpanId;
 }
 export interface FetchedSourceRef {
@@ -2265,7 +2350,7 @@ export interface FetchedSourceRef {
   content_length: ContentLength;
   content_type: ContentType;
   retrieved_at: RetrievedAt3;
-  source_id: SourceId5;
+  source_id: SourceId6;
   source_type: SourceType;
   source_url: SourceUrl1;
   title?: Title1;

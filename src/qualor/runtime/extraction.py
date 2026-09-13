@@ -2,7 +2,7 @@
 
 import json
 from dataclasses import replace
-from typing import Annotated, Literal, Protocol, Self
+from typing import TYPE_CHECKING, Annotated, Literal, Protocol, Self
 
 from pydantic import BeforeValidator, Field, StrictStr, ValidationError, model_validator
 
@@ -15,6 +15,11 @@ from .model_policy import EXTRACTION_MAX_OUTPUT_TOKENS
 from .sources import SourceDocument
 from .spans import MAX_EXTRACTION_SOURCE_BYTES as SPAN_EXTRACTION_SOURCE_BYTES
 from .spans import EvidenceSpanRegistry, extraction_window
+
+if TYPE_CHECKING:
+    from .section_extraction import GroundedSectionCandidate
+    from .section_scheduler import ExtractionJob
+    from .sections import SectionIndex
 
 MODEL_ID = "global.anthropic.claude-sonnet-4-6"
 EXTRACTION_TOOL_NAME = "return_extracted_claims"
@@ -189,9 +194,28 @@ def build_extraction_request(
             {"span_id": span.span_id, "exact_text": span.exact_text} for span in spans
         ],
     }
+    return _structured_extraction_request(
+        payload, ExtractedClaimBatchTransport, max_output_tokens=max_output_tokens
+    )
+
+
+def _structured_extraction_request(
+    payload: dict,
+    transport: type[Contract],
+    *,
+    max_output_tokens: int,
+    system: str = EXTRACTION_SYSTEM_CONTRACT,
+) -> dict:
+    """The shared provider envelope and token guard for both extraction contracts."""
+
+    if (
+        type(max_output_tokens) is not int
+        or not 64 <= max_output_tokens <= EXTRACTION_MAX_OUTPUT_TOKENS
+    ):
+        raise ValueError("EXTRACTION_OUTPUT_LIMIT_INVALID")
     return {
         "modelId": MODEL_ID,
-        "system": [{"text": EXTRACTION_SYSTEM_CONTRACT}],
+        "system": [{"text": system}],
         "messages": [
             {
                 "role": "user",
@@ -206,7 +230,7 @@ def build_extraction_request(
                         "name": EXTRACTION_TOOL_NAME,
                         "description": "Return only typed claims supported by this source.",
                         "schema": json.dumps(
-                            _bedrock_json_schema(ExtractedClaimBatchTransport.model_json_schema()),
+                            _bedrock_json_schema(transport.model_json_schema()),
                             ensure_ascii=False,
                             separators=(",", ":"),
                         ),
@@ -239,6 +263,63 @@ class BedrockClaimExtractor:
             span_registry=self.span_registry,
         )
         self.last_created_span_ids = self.span_registry.last_registered_span_ids
+
+        def ground(transport):
+            batch = ground_extraction_payload(transport, source, self.span_registry)
+            self.last_selected_span_ids = tuple(
+                item.supporting_span_id for item in transport.claims
+            )
+            for claim in batch.claims:
+                if claim.source_id != source.id or claim.source_url not in {
+                    source.original_url,
+                    source.final_url,
+                }:
+                    raise ValueError("EXTRACTION_SOURCE_REFERENCE_MISMATCH")
+            return batch.claims
+
+        return self._run_extraction(request, validate_extraction_payload, ground)
+
+    def extract_section(
+        self, source: SourceDocument, index: "SectionIndex", job: "ExtractionJob"
+    ) -> tuple["GroundedSectionCandidate", ...]:
+        from .section_extraction import (
+            build_section_extraction_request,
+            ground_section_claim,
+            validate_section_payload,
+        )
+
+        self.last_created_span_ids = ()
+        self.last_selected_span_ids = ()
+        request = build_section_extraction_request(
+            source, index, job, self.span_registry, max_output_tokens=self.max_output_tokens
+        )
+        self.last_created_span_ids = job.span_ids
+
+        def ground(transport):
+            candidates = tuple(
+                ground_section_claim(
+                    item, source=source, index=index, job=job, registry=self.span_registry
+                )
+                for item in transport.claims
+            )
+            self.last_selected_span_ids = tuple(
+                dict.fromkeys(
+                    span_id
+                    for item in transport.claims
+                    for span_id in (
+                        *item.span_ids,
+                        *item.qualifier_span_ids,
+                        *item.exception_span_ids,
+                    )
+                )
+            )
+            return candidates
+
+        return self._run_extraction(request, validate_section_payload, ground)
+
+    def _run_extraction(self, request, validate, ground):
+        """Decode one physical provider response; never retry or switch wire schemas."""
+
         receipt, _ = response_metadata(None, model_id=MODEL_ID, maximum=self.max_output_tokens)
         try:
             try:
@@ -267,22 +348,12 @@ class BedrockClaimExtractor:
                 raise ValueError("JSON_DECODE_FAILED") from None
             receipt = replace(receipt, json_decode_state="PASS")
             try:
-                transport = validate_extraction_payload(payload)
+                transport = validate(payload)
             except ValidationError:
                 receipt = replace(receipt, schema_validation_state="FAILED")
                 raise ValueError("EXTRACTION_SCHEMA_REJECTED") from None
             receipt = replace(receipt, schema_validation_state="PASS")
-            batch = ground_extraction_payload(transport, source, self.span_registry)
-            self.last_selected_span_ids = tuple(
-                item.supporting_span_id for item in transport.claims
-            )
-            for claim in batch.claims:
-                if claim.source_id != source.id or claim.source_url not in {
-                    source.original_url,
-                    source.final_url,
-                }:
-                    raise ValueError("EXTRACTION_SOURCE_REFERENCE_MISMATCH")
-            return batch.claims
+            return ground(transport)
         finally:
             self.receipts.append(receipt)
             del self.receipts[:-6]

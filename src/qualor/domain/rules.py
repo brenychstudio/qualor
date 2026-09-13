@@ -15,6 +15,7 @@ from .enums import (
     RuleStatus,
     SubjectReference,
 )
+from .evidence import ClauseContext
 from .values import Scalar
 
 
@@ -30,6 +31,7 @@ class RuleCandidate(Record):
     source_text_summary: NonEmpty
     not_applicable_reason: NonEmpty | None = None
     contradiction: StrictBool = False
+    clause_context: ClauseContext | None = None
 
     @model_validator(mode="after")
     def explicit_non_applicability(self) -> Self:

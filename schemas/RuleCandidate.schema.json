@@ -35,6 +35,75 @@
       "title": "Category",
       "type": "string"
     },
+    "ClauseContext": {
+      "additionalProperties": false,
+      "description": "Bounded exact excerpts and identities of applicable governing clauses.",
+      "properties": {
+        "context_complete": {
+          "title": "Context Complete",
+          "type": "boolean"
+        },
+        "context_section_ids": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 12,
+          "title": "Context Section Ids",
+          "type": "array"
+        },
+        "exceptions": {
+          "items": {
+            "maxLength": 700,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 12,
+          "title": "Exceptions",
+          "type": "array"
+        },
+        "qualifiers": {
+          "items": {
+            "maxLength": 700,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 12,
+          "title": "Qualifiers",
+          "type": "array"
+        },
+        "section_id": {
+          "minLength": 1,
+          "title": "Section Id",
+          "type": "string"
+        },
+        "source_id": {
+          "minLength": 1,
+          "title": "Source Id",
+          "type": "string"
+        },
+        "span_ids": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 12,
+          "title": "Span Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "source_id",
+        "section_id",
+        "span_ids",
+        "qualifiers",
+        "exceptions",
+        "context_section_ids",
+        "context_complete"
+      ],
+      "title": "ClauseContext",
+      "type": "object"
+    },
     "Criticality": {
       "enum": [
         "CRITICAL",
@@ -141,6 +210,17 @@
           },
           "title": "Children",
           "type": "array"
+        },
+        "clause_context": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ClauseContext"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "contradiction": {
           "default": false,
