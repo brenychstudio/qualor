@@ -59,6 +59,8 @@ _GLOBAL_SCOPE = (
     "governs all sections",
     "throughout these rules",
 )
+_SEMANTIC_SEPARATORS = ("\n\n", "\n", ". ", "; ")
+_WEAK_SEPARATORS = (" ",)
 _UNBOUNDED_CONTEXT = (
     "unless otherwise stated",
     "unless otherwise specified",
@@ -245,7 +247,14 @@ def _maximum_end(text: str, start: int, end: int) -> int:
     return cursor
 
 
-def _bounded_ranges(text: str, start: int, end: int) -> tuple[tuple[int, int], ...]:
+def _bounded_ranges(text: str, start: int, end: int) -> tuple[tuple[int, int, bool], ...]:
+    """Split an oversized region, recording whether each cut is a structural boundary.
+
+    A paragraph, line, sentence or semicolon cut ends a clause. An ordinary space or
+    the hard size cap can sever one, so the caller must fail closed on those instead
+    of guessing which governing text was cut in half.
+    """
+
     ranges = []
     cursor = start
     while cursor < end:
@@ -253,16 +262,20 @@ def _bounded_ranges(text: str, start: int, end: int) -> tuple[tuple[int, int], .
         if maximum <= cursor:
             raise ValueError("SECTION_CHARACTER_EXCEEDS_BYTE_LIMIT")
         boundary = maximum
+        # The region's own end is not a cut, so it never severs a clause.
+        boundary_safe = True
         if maximum < end:
+            boundary_safe = False
             minimum = cursor + max(1, (maximum - cursor) // 2)
             region = text[cursor:maximum]
-            for separator in ("\n\n", "\n", ". ", "; ", " "):
+            for separator in (*_SEMANTIC_SEPARATORS, *_WEAK_SEPARATORS):
                 position = region.rfind(separator)
                 candidate = cursor + position + len(separator)
                 if position >= 0 and candidate >= minimum:
                     boundary = candidate
+                    boundary_safe = separator in _SEMANTIC_SEPARATORS
                     break
-        ranges.append((cursor, boundary))
+        ranges.append((cursor, boundary, boundary_safe))
         cursor = boundary
     return tuple(ranges)
 
@@ -348,12 +361,13 @@ def index_source(source: SourceDocument, registry: EvidenceSpanRegistry) -> Sect
     revision = _source_revision(source)
     drafts = []
     logical_groups = []
+    severed = set()
     for logical_start, logical_end, heading in _logical_regions(source.text):
         ranges = _bounded_ranges(source.text, logical_start, logical_end)
         group_indexes = []
         logical_categories = _categories(source.text[logical_start:logical_end])
         parent_id = None
-        for position, (start, end) in enumerate(ranges):
+        for position, (start, end, boundary_safe) in enumerate(ranges):
             exact_text = source.text[start:end]
             section_hash = hashlib.sha256(exact_text.encode("utf-8")).hexdigest()
             identifier = _section_id(revision, start, end, section_hash)
@@ -375,6 +389,9 @@ def index_source(source: SourceDocument, registry: EvidenceSpanRegistry) -> Sect
                 }
             )
             group_indexes.append(len(drafts) - 1)
+            if not boundary_safe:
+                # Either side of a forced cut may hold half of a governing clause.
+                severed.update({len(drafts) - 1, len(drafts)})
         logical_groups.append((group_indexes, logical_start, logical_end, heading))
 
     numbered = {}
@@ -415,9 +432,11 @@ def index_source(source: SourceDocument, registry: EvidenceSpanRegistry) -> Sect
         for draft_index in indexes:
             draft = drafts[draft_index]
             ordered_context = []
+            # A bounded child inherits its parent, not every sibling that happened to
+            # fit beside it. Structural ancestry, explicit references and expressly
+            # global sections remain governing context in their own right.
             for context_id in (
                 ([draft["parent_id"]] if draft["parent_id"] is not None else [])
-                + group_ids
                 + list(ancestry_ids)
                 + global_ids
                 + referenced_ids
@@ -434,6 +453,7 @@ def index_source(source: SourceDocument, registry: EvidenceSpanRegistry) -> Sect
                 or ancestry_incomplete
                 or inherited_incomplete
                 or overflow
+                or draft_index in severed
             )
 
     sections = tuple(SourceSection(**draft) for draft in drafts)

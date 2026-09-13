@@ -572,3 +572,86 @@ def test_canonical_source_text_preserves_existing_parser_behavior(monkeypatch):
     assert not json_truncated
     assert clipped == "abcd"
     assert clipped_flag
+
+
+def test_unsafe_bounded_boundary_fails_closed_on_both_children(document):
+    """A forced cut can sever a qualifier, so neither side may claim complete context."""
+
+    from qualor.runtime.sections import index_source
+    from qualor.runtime.spans import EvidenceSpanRegistry
+
+    source = document("x" * 691 + " subject to approval.")
+    index = index_source(source, EvidenceSpanRegistry(secret=b"a" * 32))
+    before, after = index.sections[0], index.sections[1]
+
+    assert len(index.sections) >= 2
+    assert source.text[before.start_offset : before.end_offset].endswith("subject ")
+    assert source.text[after.start_offset : after.end_offset].startswith("to approval.")
+    assert not before.context_complete
+    assert not after.context_complete
+
+
+@pytest.mark.parametrize(
+    "filler",
+    [
+        "Detail line.\n",
+        "An MIT license is required. ",
+        "an MIT license is required; ",
+    ],
+)
+def test_semantic_boundaries_keep_bounded_children_complete(document, filler):
+    """Paragraph, sentence and semicolon cuts are structural, so they stay resolvable."""
+
+    from qualor.runtime.sections import index_source
+    from qualor.runtime.spans import EvidenceSpanRegistry
+
+    source = document("License\n" + filler * 80)
+    index = index_source(source, EvidenceSpanRegistry(secret=b"a" * 32))
+
+    assert len(index.sections) >= 2
+    assert all(section.context_complete for section in index.sections)
+
+
+def test_unrelated_same_group_sibling_is_not_governing_context(document):
+    """Bounded children share a parent, not every sibling that happened to fit beside them."""
+
+    from qualor.runtime.sections import index_source
+    from qualor.runtime.spans import EvidenceSpanRegistry
+
+    source = document(
+        "Project requirements\n"
+        + ("Alpha background detail.\n" * 30)
+        + ("Beta background detail.\n" * 30)
+        + ("Gamma background detail.\n" * 30)
+    )
+    index = index_source(source, EvidenceSpanRegistry(secret=b"a" * 32))
+    children = [section for section in index.sections if section.parent_id is not None]
+    first, last = children[0], children[-1]
+
+    assert len(children) >= 2
+    assert last.parent_id in last.context_section_ids
+    assert first.section_id not in last.context_section_ids
+    assert last.section_id not in first.context_section_ids
+
+
+def test_parent_ancestry_reference_and_global_context_are_all_retained(document):
+    """Removing sibling smear must not weaken any canonically governing channel."""
+
+    from qualor.runtime.sections import index_source
+    from qualor.runtime.spans import EvidenceSpanRegistry
+
+    source = document(
+        "1. General Conditions\n"
+        "This section applies to all sections. Entrants must be adults.\n"
+        "3. Eligibility\nTeams may enter.\n"
+        "2. Project requirements\nRequirements apply to projects.\n"
+        "2.1 License\nSubject to section 3, projects must use MIT.\n"
+    )
+    index = index_source(source, EvidenceSpanRegistry(secret=b"a" * 32))
+    by_heading = {section.heading: section for section in index.sections if section.heading}
+    child = by_heading["2.1 License"]
+
+    assert by_heading["2. Project requirements"].section_id in child.context_section_ids
+    assert by_heading["3. Eligibility"].section_id in child.context_section_ids
+    assert by_heading["1. General Conditions"].section_id in child.context_section_ids
+    assert child.context_complete

@@ -13,6 +13,17 @@ from qualor.runtime.section_scheduler import ExtractionJob, NoExtractionJob, Sec
 from qualor.runtime.sections import index_source
 from qualor.runtime.spans import EvidenceSpanRegistry
 
+GLOBAL_MARKER = "This section applies to all sections. " + ("Padding words here. " * 18)
+
+
+def global_context_source(body, *, target="An MIT license is required."):
+    """Twelve capabilities reached through explicit global scope, not sibling smear."""
+
+    return (
+        "1. License\n" + target + "\n"
+        "2. General Conditions\n" + GLOBAL_MARKER + "\n" + body
+    )
+
 
 def setup_job(document, text="License\nAn MIT license is required.", *, registry=None):
     source = document(text)
@@ -121,7 +132,7 @@ def test_stale_source_revision_rejected(document):
 
 
 def test_spans_preserve_source_order_and_individual_quotes(document):
-    setup = setup_job(document, "License\n" + "An MIT license is required. " * 40)
+    setup = setup_job(document, global_context_source("Ordinary detail line.\n" * 310))
     spans = sorted(
         setup[2].span_ids, key=lambda sid: setup[3].resolve(setup[0].id, sid).start_offset
     )
@@ -210,10 +221,13 @@ def test_request_is_scoped_and_uses_existing_guard_name(document):
 def test_twelve_fitting_spans_are_retained_and_utf8_overflow_refused(document):
     from qualor.runtime.section_extraction import build_section_extraction_request
 
-    fitting = setup_job(document, "x" * 8400)
+    fitting = setup_job(document, global_context_source("Ordinary detail line.\n" * 310))
     request = build_section_extraction_request(*fitting, max_output_tokens=1024)
+    assert len(fitting[2].span_ids) == 12
     assert len(json.loads(request["messages"][0]["content"][0]["text"])["EVIDENCE_SPANS"]) == 12
-    oversized = setup_job(document, "界" * (266 * 12))
+    # Twelve capabilities still fit the span bound while exceeding the byte bound.
+    wide = ("界" * 260) + "\n"
+    oversized = setup_job(document, global_context_source(wide * 10, target=("界" * 260)))
     assert len(oversized[2].span_ids) == 12
     with pytest.raises(ValueError, match="EXTRACTION_CONTEXT_TOO_LARGE"):
         build_section_extraction_request(*oversized, max_output_tokens=1024)
@@ -373,8 +387,10 @@ def test_split_conditional_phrase_is_not_lost_at_span_boundary(document):
     # The 700-character boundary lands between 'subject' and 'to'.
     setup = setup_job(document, "x" * 691 + " subject to approval.")
     result = ground(candidate(setup[2]), setup)
+    # The forced cut may have severed the qualifier, so the boundary fails closed
+    # rather than guessing which governing words landed in the neighbouring child.
     assert not result.semantic_context_complete
-    assert len(result.context.qualifiers) == 2
+    assert not result.context.context_complete
 
 
 def test_request_identifies_target_and_earlier_parent_in_source_order(document):
@@ -532,3 +548,17 @@ def test_scheduled_license_cannot_bypass_unresolved_inherited_reference(document
     outcome = _scheduled_license(index, "1.1.1 License")
     assert isinstance(outcome, NoExtractionJob)
     assert outcome.reason_code == "CONTEXT_UNRESOLVED"
+
+
+def test_severed_qualifier_boundary_blocks_extraction_authority(document):
+    """A forced cut must fail closed before any semantic support can be claimed."""
+
+    from qualor.runtime.section_extraction import build_section_extraction_request
+
+    source, index, job, registry = setup_job(document, "x" * 691 + " subject to approval.")
+    target = next(s for s in index.sections if s.section_id == job.section_id)
+
+    assert not target.context_complete
+    with pytest.raises(ValueError, match="EXTRACTION_CONTEXT_UNRESOLVED"):
+        build_section_extraction_request(source, index, job, registry, max_output_tokens=1024)
+    assert not ground(candidate(job), (source, index, job, registry)).semantic_context_complete
