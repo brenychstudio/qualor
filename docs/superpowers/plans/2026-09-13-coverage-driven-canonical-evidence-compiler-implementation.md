@@ -10,6 +10,34 @@
 
 **Spec:** [docs/superpowers/specs/2026-09-13-coverage-driven-canonical-evidence-compiler-design.md](../specs/2026-09-13-coverage-driven-canonical-evidence-compiler-design.md), owner-approved and normative.
 
+## 2026-09-14 owner-authorized cost envelope amendment
+
+This amendment has precedence over every cost-cap statement in this plan for
+current Task 5F work, from Task 12B onward.
+
+Task 12 measured, with the exact captured Task 11 requests and the production
+estimator, a conservative canonical worst case of **USD 0.306591** (model
+reservations 0.297591 + search 0.009000 + fetch 0.000000) with no reconciliation
+assumed. Under `QUALOR_03B3`'s USD 0.20 ceiling the guard refused the sixth model
+request. That measured blocker is accepted evidence and is not rewritten.
+
+On 2026-09-14 the owner authorized a new explicitly named current policy,
+`QUALOR_5F`: inference ceiling 9 (unchanged), cost ceiling **USD 0.35**,
+measured headroom USD 0.043409. The historical `QUALOR_03B3` USD 0.20
+authorization remains intact and unchanged, as does the diagnostic policy.
+
+Task ownership:
+
+- Task 12 owns the original measurement and its recorded blocker.
+- Task 12B owns the policy transition and the re-verification against `QUALOR_5F`.
+
+Task 1-11 reports stating USD 0.20 describe the authorization in force when they
+were written and are NOT retroactively restated. Every other limit in the Global
+Constraints below - `INFERENCE_CALL_CEILING=9`, `MAX_EXTRACTED_CLAIMS_PER_CALL=2`,
+max steps 24, failure threshold 3, model/extraction output bounds, scheduler,
+coverage, adapters, evaluator, and completion policy - remains frozen. A fourth
+paid LIVE run still requires separate explicit owner authorization.
+
 ## Global Constraints
 
 - Planning baseline: branch `feature/qualor-live-production`, HEAD `1942690072c58a3fe37e840180025c81d8ed115f`, clean before this plan commit. Implementation starts from the owner-approved plan commit on that branch; inspect it, do not reset/rebase/stash.

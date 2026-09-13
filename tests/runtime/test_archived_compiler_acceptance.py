@@ -10,6 +10,7 @@ from archived_compiler_support import (
 )
 
 from qualor.domain.enums import Category, Operator, Provenance, SubjectReference
+from qualor.runtime.budget import QUALOR_5F_COST_CAP_USD
 from qualor.runtime.canonical_compilation import compile_section_authority
 
 ARCHIVE_ROOT = Path(
@@ -154,5 +155,5 @@ def test_archived_canonical_compiler_preserves_authority_and_unknowns(monkeypatc
     assert sum(item["request_kind"] == "PLANNING" for item in report.request_sequence) == 2
     assert sum(item["request_kind"] == "EXTRACTION" for item in report.request_sequence) == 7
     assert report.gate_values["dispatched_model_requests"] == 9
-    assert report.gate_values["model_cost_cap_usd"] == "0.20"
+    assert report.gate_values["model_cost_cap_usd"] == str(QUALOR_5F_COST_CAP_USD)
     assert report.gate_values["max_steps"] == 24

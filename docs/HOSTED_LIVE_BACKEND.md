@@ -25,8 +25,20 @@ Operator-owned runtime configuration for `HOSTED_DEMO`:
 | `QUALOR_LIVE_MAX_RUNS` | 5 per process lifetime; configurable 1–100 |
 | `QUALOR_LIVE_COOLDOWN_SECONDS` | 60 after terminal execution; configurable 0–86400 |
 
-The unchanged physical `live_budget()` guard caps each run at USD 0.20, with its
-existing model/search/fetch limits and reservation/reconciliation rules. The
+The physical `live_budget()` guard caps each run under the current `QUALOR_5F`
+authorization at USD 0.35, with its existing model/search/fetch limits and
+reservation/reconciliation rules unchanged. Two named authorizations exist:
+
+| Authorization | Inference calls | Cost ceiling | Status |
+| --- | --- | --- | --- |
+| `QUALOR_03B3` | 9 | up to USD 0.20 | Historical; still used by `diagnostic_policy()` (6 calls, USD 0.15) |
+| `QUALOR_5F` | 9 | USD 0.35 | Current canonical LIVE ceiling returned by `live_budget()` |
+
+The USD 0.35 ceiling was set on 2026-09-14 from the Task 12 measurement of the
+canonical nine-request sequence: a conservative worst case of USD 0.306591 with
+no reconciliation assumed, leaving USD 0.043409 of headroom. The inference count
+remains 9 and no other runtime limit changed. Raising the ceiling authorizes
+potential maximum spend only; it is not authorization to execute a paid run. The
 process-wide guard counts every admitted execution, including failed runs. Rejected
 requests make no paid call. Restart resets process-local limits; the later Cloudflare
 layer must enforce access sessions and coarse rate limiting independently. Do not

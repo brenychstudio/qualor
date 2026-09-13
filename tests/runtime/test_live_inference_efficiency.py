@@ -11,7 +11,12 @@ from qualor.domain.base import Fact
 from qualor.domain.profiles import FounderProfile, ProjectProfile
 from qualor.effort import EffortAssumptions
 from qualor.runtime.agent import run_agent
-from qualor.runtime.budget import LiveBudgetGuard, LiveBudgetPolicy, LiveCallKind
+from qualor.runtime.budget import (
+    QUALOR_5F_COST_CAP_USD,
+    LiveBudgetGuard,
+    LiveBudgetPolicy,
+    LiveCallKind,
+)
 from qualor.runtime.live_cli import live_budget
 from qualor.runtime.loop import OpportunityRun
 from qualor.runtime.providers import SearchCandidate
@@ -298,7 +303,8 @@ def test_live_policy_allows_trace_proven_work_and_outcome_neutral_completion():
     assert result.termination_reason == "NO_PROGRESS"
     assert budget.snapshot().inference_calls == 9
     assert budget.snapshot().reserved_cost_usd == Decimal(".09")
-    assert budget.policy.cost_cap_usd == Decimal(".20")
+    # Track the current production authorization rather than a parallel literal.
+    assert budget.policy.cost_cap_usd == QUALOR_5F_COST_CAP_USD
     assert metrics["tool_names"] == [
         "search_web",
         "fetch_official_source",

@@ -7,7 +7,8 @@ from pathlib import Path
 from uuid import uuid4
 
 from .budget import (
-    QUALOR_03B3_INFERENCE_MAX_CALLS_PER_RUN,
+    QUALOR_5F_COST_CAP_USD,
+    QUALOR_5F_INFERENCE_MAX_CALLS_PER_RUN,
     LiveBudgetGuard,
     LiveBudgetPolicy,
 )
@@ -30,9 +31,9 @@ def live_budget(diagnostic: bool = False) -> LiveBudgetGuard:
         diagnostic_policy()
         if diagnostic
         else LiveBudgetPolicy(
-            inference_max_calls=QUALOR_03B3_INFERENCE_MAX_CALLS_PER_RUN,
-            cost_cap_usd=Decimal(".20"),
-            authorization="QUALOR_03B3",
+            inference_max_calls=QUALOR_5F_INFERENCE_MAX_CALLS_PER_RUN,
+            cost_cap_usd=QUALOR_5F_COST_CAP_USD,
+            authorization="QUALOR_5F",
         )
     )
 

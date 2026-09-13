@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import StrEnum
+from types import MappingProxyType
 from typing import Literal
 
 from .model_policy import EXTRACTION_MAX_OUTPUT_TOKENS, STRANDS_MAX_OUTPUT_TOKENS
@@ -14,6 +15,25 @@ QUALOR_03_DEVELOPMENT_COST_CAP_USD = Decimal("2.00")
 # Six observed calls plus the pending extraction, deterministic evaluation,
 # and one terminal planner turn. The independent USD ceiling still wins first.
 QUALOR_03B3_INFERENCE_MAX_CALLS_PER_RUN = 9
+# The historical QUALOR-03B3 authorization, unchanged and still used by the
+# diagnostic policy. It never gains a later authorization's higher ceiling.
+QUALOR_03B3_COST_CAP_USD = Decimal("0.20")
+# QUALOR-5F, owner-authorized 2026-09-14. The call ceiling is deliberately the
+# same nine as QUALOR-03B3; only the USD ceiling rises, from the Task 12
+# measurement of the canonical sequence (worst case USD 0.306591, no
+# reconciliation assumed). This raises potential spend, not any other limit.
+QUALOR_5F_INFERENCE_MAX_CALLS_PER_RUN = QUALOR_03B3_INFERENCE_MAX_CALLS_PER_RUN
+QUALOR_5F_COST_CAP_USD = Decimal("0.35")
+
+
+# Each authorization carries its own independent (inference call, USD) ceiling.
+AUTHORIZED_ENVELOPES = MappingProxyType(
+    {
+        "BASELINE": (LIVE_INFERENCE_MAX_CALLS_PER_RUN, QUALOR_03_DEVELOPMENT_COST_CAP_USD),
+        "QUALOR_03B3": (QUALOR_03B3_INFERENCE_MAX_CALLS_PER_RUN, QUALOR_03B3_COST_CAP_USD),
+        "QUALOR_5F": (QUALOR_5F_INFERENCE_MAX_CALLS_PER_RUN, QUALOR_5F_COST_CAP_USD),
+    }
+)
 
 
 class LiveCallKind(StrEnum):
@@ -57,7 +77,7 @@ class LiveBudgetPolicy:
     cost_cap_usd: Decimal = QUALOR_03_DEVELOPMENT_COST_CAP_USD
     model_max_output_tokens: int = STRANDS_MAX_OUTPUT_TOKENS
     extraction_max_output_tokens: int = EXTRACTION_MAX_OUTPUT_TOKENS
-    authorization: Literal["BASELINE", "QUALOR_03B3"] = "BASELINE"
+    authorization: Literal["BASELINE", "QUALOR_03B3", "QUALOR_5F"] = "BASELINE"
 
     def limit_for(self, kind: LiveCallKind) -> int:
         return {
@@ -86,29 +106,28 @@ class LiveBudgetGuard:
     _next_receipt: int = field(default=0, init=False, repr=False)
 
     def __post_init__(self) -> None:
-        if self.policy.authorization not in {"BASELINE", "QUALOR_03B3"}:
+        envelope = AUTHORIZED_ENVELOPES.get(self.policy.authorization)
+        if envelope is None:
             raise ValueError("Unknown budget authorization")
-        b3 = self.policy.authorization == "QUALOR_03B3"
-        if b3 and self.policy.cost_cap_usd > Decimal("0.20"):
-            raise ValueError("QUALOR-03B3 hard ceiling is USD 0.20")
+        inference_ceiling, cost_ceiling = envelope
+        # Type-check the cap before comparing it against any authorization ceiling.
+        if (
+            not isinstance(self.policy.cost_cap_usd, Decimal)
+            or not self.policy.cost_cap_usd.is_finite()
+            or self.policy.cost_cap_usd < 0
+            or self.policy.cost_cap_usd > cost_ceiling
+        ):
+            raise ValueError(
+                f"Configured cost cap exceeds the {self.policy.authorization} "
+                f"hard ceiling of USD {cost_ceiling}"
+            )
         ceilings = (
-            (
-                self.policy.inference_max_calls,
-                QUALOR_03B3_INFERENCE_MAX_CALLS_PER_RUN
-                if b3
-                else LIVE_INFERENCE_MAX_CALLS_PER_RUN,
-            ),
+            (self.policy.inference_max_calls, inference_ceiling),
             (self.policy.search_max_calls, LIVE_SEARCH_MAX_CALLS_PER_RUN),
             (self.policy.fetch_max_documents, LIVE_FETCH_MAX_DOCUMENTS_PER_RUN),
         )
         if any(configured < 0 or configured > maximum for configured, maximum in ceilings):
             raise ValueError("Configured call limit exceeds a QUALOR-03 hard ceiling")
-        if (
-            not isinstance(self.policy.cost_cap_usd, Decimal)
-            or self.policy.cost_cap_usd < 0
-            or self.policy.cost_cap_usd > QUALOR_03_DEVELOPMENT_COST_CAP_USD
-        ):
-            raise ValueError("Configured cost cap exceeds a QUALOR-03 hard ceiling")
         if type(self.policy.model_max_output_tokens) is not int or not (
             64 <= self.policy.model_max_output_tokens <= 1600
         ):

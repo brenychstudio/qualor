@@ -4,10 +4,19 @@ from decimal import Decimal
 import pytest
 
 from qualor.runtime.budget import (
+    LIVE_FETCH_MAX_DOCUMENTS_PER_RUN,
+    LIVE_SEARCH_MAX_CALLS_PER_RUN,
+    QUALOR_03B3_INFERENCE_MAX_CALLS_PER_RUN,
+    QUALOR_5F_COST_CAP_USD,
+    QUALOR_5F_INFERENCE_MAX_CALLS_PER_RUN,
     BudgetLimitExceeded,
     LiveBudgetGuard,
     LiveBudgetPolicy,
     LiveCallKind,
+)
+from qualor.runtime.model_policy import (
+    EXTRACTION_MAX_OUTPUT_TOKENS,
+    STRANDS_MAX_OUTPUT_TOKENS,
 )
 
 
@@ -34,6 +43,93 @@ def test_explicit_b3_budget_allows_nine_calls_only_with_smaller_cost_ceiling():
                 authorization="QUALOR_03B3",
             )
         )
+
+
+def test_explicit_5f_budget_allows_nine_calls_under_the_authorized_035_ceiling():
+    """The owner-authorized current policy; 0.35 is reachable only through QUALOR_5F."""
+
+    policy = LiveBudgetPolicy(
+        inference_max_calls=9, cost_cap_usd=Decimal("0.35"), authorization="QUALOR_5F"
+    )
+    guard = LiveBudgetGuard(policy)
+    for _ in range(9):
+        guard.reserve(LiveCallKind.INFERENCE)
+    with pytest.raises(BudgetLimitExceeded):
+        guard.reserve(LiveCallKind.INFERENCE)
+
+    spending = LiveBudgetGuard(policy)
+    spending.commit(
+        spending.reserve(LiveCallKind.INFERENCE, estimated_cost_usd=Decimal("0.35"))
+    )
+    assert spending.snapshot().reserved_cost_usd == Decimal("0.35")
+
+    with pytest.raises(BudgetLimitExceeded):
+        LiveBudgetGuard(policy).reserve(
+            LiveCallKind.INFERENCE, estimated_cost_usd=Decimal("0.36")
+        )
+    with pytest.raises(ValueError):
+        LiveBudgetGuard(
+            LiveBudgetPolicy(
+                inference_max_calls=9,
+                cost_cap_usd=Decimal("0.36"),
+                authorization="QUALOR_5F",
+            )
+        )
+    with pytest.raises(ValueError):
+        LiveBudgetGuard(
+            LiveBudgetPolicy(
+                inference_max_calls=10,
+                cost_cap_usd=Decimal("0.35"),
+                authorization="QUALOR_5F",
+            )
+        )
+
+
+def test_qualor_5f_ceiling_is_not_reachable_through_the_historical_b3_authorization():
+    """The raised ceiling must not leak into QUALOR_03B3 or the baseline policy."""
+
+    with pytest.raises(ValueError):
+        LiveBudgetGuard(
+            LiveBudgetPolicy(
+                inference_max_calls=9,
+                cost_cap_usd=QUALOR_5F_COST_CAP_USD,
+                authorization="QUALOR_03B3",
+            )
+        )
+    b3 = LiveBudgetGuard(
+        LiveBudgetPolicy(
+            inference_max_calls=9, cost_cap_usd=Decimal("0.20"), authorization="QUALOR_03B3"
+        )
+    )
+    b3.commit(b3.reserve(LiveCallKind.INFERENCE, estimated_cost_usd=Decimal("0.20")))
+    assert b3.snapshot().reserved_cost_usd == Decimal("0.20")
+    with pytest.raises(BudgetLimitExceeded):
+        b3.reserve(LiveCallKind.SEARCH, estimated_cost_usd=Decimal("0.000001"))
+    with pytest.raises(ValueError):
+        LiveBudgetGuard(LiveBudgetPolicy(authorization="QUALOR_UNKNOWN"))
+
+
+def test_current_live_budget_is_the_authorized_5f_policy():
+    """live_budget() carries the current policy; diagnostic mode is untouched."""
+
+    from qualor.runtime.live_cli import diagnostic_policy, live_budget
+
+    policy = live_budget().policy
+
+    assert policy.authorization == "QUALOR_5F"
+    assert policy.inference_max_calls == QUALOR_5F_INFERENCE_MAX_CALLS_PER_RUN == 9
+    assert policy.cost_cap_usd == QUALOR_5F_COST_CAP_USD == Decimal("0.35")
+    assert policy.model_max_output_tokens == STRANDS_MAX_OUTPUT_TOKENS
+    assert policy.extraction_max_output_tokens == EXTRACTION_MAX_OUTPUT_TOKENS
+    assert policy.search_max_calls == LIVE_SEARCH_MAX_CALLS_PER_RUN
+    assert policy.fetch_max_documents == LIVE_FETCH_MAX_DOCUMENTS_PER_RUN
+
+    # The historical diagnostic envelope must not rise with the canonical one.
+    assert diagnostic_policy() == live_budget(diagnostic=True).policy
+    assert diagnostic_policy().authorization == "QUALOR_03B3"
+    assert diagnostic_policy().cost_cap_usd == Decimal("0.15")
+    assert diagnostic_policy().inference_max_calls == 6
+    assert QUALOR_03B3_INFERENCE_MAX_CALLS_PER_RUN == 9
 
 
 def test_reconciliation_releases_only_once_and_never_resets_call_count():

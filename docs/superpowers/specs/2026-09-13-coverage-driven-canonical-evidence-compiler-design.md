@@ -26,6 +26,45 @@ Normative requirements use MUST and MUST NOT. Conceptual contract names below
 describe responsibilities, not permission to duplicate existing domain models.
 Recorded historical observations and future acceptance requirements are distinct.
 
+## 2026-09-14 owner-authorized cost envelope amendment
+
+This amendment has precedence over every cost-cap statement below for current
+Task 5F work, from Task 12B onward. It changes the authorized maximum potential
+LIVE spend only.
+
+Every `USD 0.20` cost-cap statement in the remainder of this document describes
+the original `QUALOR_03B3` authorization. That authorization remains intact and
+is not retroactively restated; it was correct before the Task 12 measurement.
+
+Task 12 measured the conservative worst case of the exact Task 11 request
+sequence using the production estimator and production reservation authorities,
+with no reconciliation assumed:
+
+| Component | Measured reservation (USD) |
+| --- | --- |
+| 9 model requests (2 planning, 7 extraction) | 0.297591 |
+| 1 web search (`WEB_SEARCH_RESERVED_COST_USD`) | 0.009000 |
+| 1 official-source fetch (production default) | 0.000000 |
+| **Canonical worst case** | **0.306591** |
+
+That exceeds `QUALOR_03B3`'s USD 0.20 ceiling by USD 0.106591, and the guard
+refused the sixth model request. The measurement is accepted evidence.
+
+On 2026-09-14 the owner authorized a new, explicitly named current policy:
+
+- `QUALOR_5F` inference ceiling: 9 model calls (unchanged).
+- `QUALOR_5F` cost ceiling: USD 0.35.
+- Measured canonical worst case: USD 0.306591.
+- Conservative headroom: USD 0.043409.
+
+No semantic, extraction, coverage, scheduler, evaluator, or completion limit
+changes. `MAX_EXTRACTED_CLAIMS_PER_CALL`, `MAX_STEPS`, model and extraction
+output-token bounds, and search/fetch limits all remain frozen. Requests MUST
+NOT be altered to lower cost.
+
+A fourth paid LIVE run still requires separate explicit owner authorization.
+This amendment authorizes the ceiling, not spending it.
+
 ## 1. Context and problem
 
 Tasks 5 through 5D established real identity/access, AgentCore network search,

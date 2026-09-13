@@ -605,7 +605,11 @@ def test_nine_call_ceiling_and_step_guard_are_shared(harness):
 def test_cost_blocked_job_is_not_dispatched_or_inspected(harness):
     run, client, _, _ = harness()
     source_id = fetch_source(run)
-    run.budget.reserve(LiveCallKind.INFERENCE, estimated_cost_usd=Decimal(".18"))
+    # Leave too little headroom for a job under the current production cap.
+    run.budget.reserve(
+        LiveCallKind.INFERENCE,
+        estimated_cost_usd=run.budget.policy.cost_cap_usd - Decimal(".02"),
+    )
     run.acquire_official_sections(source_id)
     assert run.termination_reason == "BUDGET_EXHAUSTED"
     assert run.failures == 0

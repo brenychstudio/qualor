@@ -5,7 +5,6 @@ import json
 import threading
 import time
 from datetime import UTC, datetime
-from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
@@ -16,7 +15,7 @@ from qualor.decisions.fixture import ProjectDecisionInput
 from qualor.domain.profiles import FounderProfile, ProjectProfile
 from qualor.effort import EffortAssumptions
 from qualor.persistence import Database
-from qualor.runtime.budget import BudgetLimitExceeded
+from qualor.runtime.budget import QUALOR_5F_COST_CAP_USD, BudgetLimitExceeded
 from qualor.runtime.claims import ExtractedClaim
 from qualor.runtime.extraction import BedrockClaimExtractor
 from qualor.runtime.loop import OpportunityRun
@@ -150,7 +149,7 @@ class ControlledRunner:
         self.calls += 1
         self.inputs = inputs
         assert gateway_id == "controlled-gateway"
-        assert budget.policy.cost_cap_usd == Decimal(".20")
+        assert budget.policy.cost_cap_usd == QUALOR_5F_COST_CAP_USD
         self.entered.set()
         if self.pause:
             assert self.continue_research.wait(10)
