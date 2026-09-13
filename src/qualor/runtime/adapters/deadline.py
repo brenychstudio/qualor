@@ -16,19 +16,28 @@ _MONTHS = (
 _WEEKDAYS = "Monday Tuesday Wednesday Thursday Friday Saturday Sunday".split()
 
 
+_DATED_INSTANT_FORMS = (
+    r"(?:(?P<weekday>Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),? )?"
+    r"(?P<month>[A-Za-z]+) (?P<day>\d{1,2}),? (?P<year>\d{4})(?: at|,) "
+    r"(?P<hour>\d{1,2}):(?P<minute>\d{2})(?::(?P<second>\d{2}))?"
+    r"(?: (?P<ampm>AM|PM))? (?P<zone>.+)",
+    # An official schedule often prints the clock and its zone in parentheses.
+    r"(?:(?P<weekday>Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),? )?"
+    r"(?P<month>[A-Za-z]+) (?P<day>\d{1,2}),? (?P<year>\d{4}) \("
+    r"(?P<hour>\d{1,2}):(?P<minute>\d{2})(?::(?P<second>\d{2}))?"
+    r"(?: (?P<ampm>AM|PM))? (?P<zone>[^()]+)\)",
+)
+
+
 def parse_dated_instant(text: str) -> datetime | None:
     if text.endswith("-00:00"):
         return None  # RFC3339 unknown local offset is not UTC authority.
     if instant := parse_absolute_deadline(text):
         return instant
-    match = fullmatch(
-        r"(?:(?P<weekday>Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),? )?"
-        r"(?P<month>[A-Za-z]+) (?P<day>\d{1,2}),? (?P<year>\d{4})(?: at|,) "
-        r"(?P<hour>\d{1,2}):(?P<minute>\d{2})(?::(?P<second>\d{2}))?"
-        r"(?: (?P<ampm>AM|PM))? (?P<zone>.+)",
-        text,
-    )
-    if not match:
+    for form in _DATED_INSTANT_FORMS:
+        if match := fullmatch(form, text):
+            break
+    else:
         return None
     try:
         month = [name.casefold() for name in _MONTHS].index(match["month"].casefold()) + 1
@@ -85,11 +94,21 @@ class DeadlineAdapter:
         interval = fullmatch(
             r"(?:Submissions are accepted|Submission period is) from (.+) to (.+)", text
         )
+        # A schedule may instead label the range and name itself, as in
+        # `Submission Period: <opening> - <closing> ("Submission Period")`. The
+        # self-definition is what distinguishes it from a neighbouring period.
+        submission = fullmatch(
+            r"(?:Submission Period:\s+)?(?P<opening>.+?)\s[–—-]\s(?P<closing>.+?)"
+            r"\s*\(\s*[“”\"]?Submission Period[“”\"]?\s*\)",
+            text,
+        )
         closing = fullmatch(
             r"(?:The )?deadline(?::| is) (.+)|Submissions close (?:on |at )?(.+)", text
         )
         if interval:
             source_values = (interval[1], interval[2])
+        elif submission:
+            source_values = (submission["opening"], submission["closing"])
         elif closing:
             source_values = (next(value for value in closing.groups() if value),)
         else:
@@ -108,7 +127,7 @@ class DeadlineAdapter:
             return c.finish(c.unresolved("DEADLINE_PROPOSAL_SOURCE_MISMATCH"))
         operands = tuple(InstantValue(value=value) for value in instants)
         value = tuple(instant.isoformat() for instant in instants)
-        if interval:
+        if interval or submission:
             rule = c.rule(Operator.DATE_BETWEEN, SubjectReference.EVALUATED_AT, operands)
         else:
             value = value[0]

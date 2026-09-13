@@ -1253,3 +1253,121 @@ def test_first_structural_quote_is_only_stripped_when_it_is_a_known_heading(
     candidate = grounded_candidate("LICENSE", "MIT", (first, second))
 
     assert body(candidate).startswith(first.rstrip("."))
+
+
+@pytest.fixture
+def real_timezone_database(monkeypatch):
+    """Use the packaged IANA database instead of the two synthetic 2027 tables."""
+
+    from zoneinfo import ZoneInfo
+
+    monkeypatch.setattr("qualor.runtime.adapters.deadline.ZoneInfo", ZoneInfo)
+    return ZoneInfo
+
+
+SUBMISSION_OPENING = "Monday, August 10, 2026 (9:00 am Pacific Time)"
+SUBMISSION_CLOSING = "Monday, September 14, 2026 (5:00 pm Pacific Time)"
+SUBMISSION_VALUE = (
+    SUBMISSION_OPENING + " – " + SUBMISSION_CLOSING + " (“Submission Period”)."
+)
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        (SUBMISSION_OPENING, datetime(2026, 8, 10, 16, tzinfo=UTC)),
+        (SUBMISSION_CLOSING, datetime(2026, 9, 15, 0, tzinfo=UTC)),
+    ],
+)
+def test_parenthesized_dated_instant_resolves_through_zoneinfo(
+    real_timezone_database, text, expected
+):
+    from qualor.runtime.adapters.deadline import parse_dated_instant
+
+    assert parse_dated_instant(text) == expected
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Tuesday, August 10, 2026 (9:00 am Pacific Time)",
+        "Monday, August 10 (9:00 am Pacific Time)",
+        "Monday, August 10, 2026 (9:00 am)",
+        "Monday, August 10, 2026 (9:00 am CST)",
+        "08/10/2026 (9:00 am Pacific Time)",
+        "Sunday, March 8, 2026 (2:30 am Pacific Time)",
+        "Sunday, November 1, 2026 (1:30 am Pacific Time)",
+    ],
+)
+def test_unresolvable_dated_instants_stay_none(real_timezone_database, text):
+    from qualor.runtime.adapters.deadline import parse_dated_instant
+
+    assert parse_dated_instant(text) is None
+
+
+def test_submission_period_interval_compiles_to_executable_authority(
+    grounded_candidate, real_timezone_database
+):
+    candidate = grounded_candidate(
+        "DEADLINE",
+        (SUBMISSION_OPENING, SUBMISSION_CLOSING),
+        ("Submission Period:", SUBMISSION_VALUE),
+    )
+    result = compile_candidate(candidate)
+    rule = result.rules[0]
+
+    assert result.normalization_status == "SUPPORTED"
+    assert rule.supported
+    assert rule.operator is Operator.DATE_BETWEEN
+    assert rule.subject_reference is SubjectReference.EVALUATED_AT
+    assert [operand.value for operand in rule.operands] == [
+        datetime(2026, 8, 10, 16, tzinfo=UTC),
+        datetime(2026, 9, 15, 0, tzinfo=UTC),
+    ]
+    assert all(record.supporting_excerpt in candidate.source.text for record in result.evidence)
+
+
+@pytest.mark.parametrize(
+    "label,term",
+    [("Judging Period:", "Judging Period"), ("Review Period:", "Review Period")],
+)
+def test_other_labelled_periods_are_not_submission_authority(
+    grounded_candidate, real_timezone_database, label, term
+):
+    value = (
+        SUBMISSION_OPENING + " – " + SUBMISSION_CLOSING + f" (“{term}”)."
+    )
+    candidate = grounded_candidate(
+        "DEADLINE", (SUBMISSION_OPENING, SUBMISSION_CLOSING), (label, value)
+    )
+
+    assert compile_candidate(candidate).normalization_status != "SUPPORTED"
+
+
+def test_winners_announced_is_not_submission_authority(
+    grounded_candidate, real_timezone_database
+):
+    candidate = grounded_candidate(
+        "DEADLINE",
+        SUBMISSION_CLOSING,
+        ("Winners Announced:", "On or around " + SUBMISSION_CLOSING + "."),
+    )
+
+    assert compile_candidate(candidate).normalization_status != "SUPPORTED"
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        SUBMISSION_OPENING + " (“Submission Period”).",
+        SUBMISSION_CLOSING + " – " + SUBMISSION_OPENING + " (“Submission Period”).",
+    ],
+)
+def test_incomplete_or_reversed_submission_intervals_stay_unresolved(
+    grounded_candidate, real_timezone_database, value
+):
+    candidate = grounded_candidate(
+        "DEADLINE", (SUBMISSION_OPENING, SUBMISSION_CLOSING), ("Submission Period:", value)
+    )
+
+    assert compile_candidate(candidate).normalization_status != "SUPPORTED"
