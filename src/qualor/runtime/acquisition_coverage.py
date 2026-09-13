@@ -91,6 +91,7 @@ class CoverageLedger:
         self._outcomes: dict[AttemptKey, AcquisitionOutcome] = {}
         self._active_authority_revisions: dict[AttemptKey, int] = {}
         self._seen_revisions = {index.source_revision}
+        self._absence_exhausted: set[tuple[str, Category]] = set()
 
     @property
     def transitions(self) -> tuple[CoverageTransition, ...]:
@@ -106,6 +107,30 @@ class CoverageLedger:
 
     def state(self, category: Category) -> AcquisitionState:
         return self._states[category]
+
+    def reconcile_index_absence(self, authority_revision: int) -> None:
+        """Exhaust categories whose absence is proven by the current complete index."""
+
+        absent = tuple(
+            category
+            for category in Category
+            if self._states[category] is AcquisitionState.UNSEEN
+            and not any(
+                self._is_relevant(section, category) for section in self._index.sections
+            )
+        )
+        for category in absent:
+            self._absence_exhausted.add((self._index.source_revision, category))
+            self._record_transition(
+                None,
+                AcquisitionState.UNSEEN,
+                AcquisitionState.EXHAUSTED,
+                None,
+                authority_revision,
+                "NO_RELEVANT_SECTION_INDEXED",
+                source_revision=self._index.source_revision,
+                category=category,
+            )
 
     def begin(
         self,
@@ -270,7 +295,11 @@ class CoverageLedger:
             category: (
                 self._derived_state(category)
                 if any(self._is_relevant(section, category) for section in index.sections)
-                else AcquisitionState.UNSEEN
+                else (
+                    AcquisitionState.EXHAUSTED
+                    if (index.source_revision, category) in self._absence_exhausted
+                    else AcquisitionState.UNSEEN
+                )
             )
             for category in Category
         }
@@ -321,7 +350,7 @@ class CoverageLedger:
 
     def _record_transition(
         self,
-        key: AttemptKey,
+        key: AttemptKey | None,
         before: AcquisitionState,
         after: AcquisitionState,
         outcome: AcquisitionOutcome | None,
