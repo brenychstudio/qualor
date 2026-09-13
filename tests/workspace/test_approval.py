@@ -115,6 +115,35 @@ def test_a_pending_requires_confirmation_and_exact_snapshot_becomes_actionable(t
     assert reopened(service).validate_approval(approved.id, bindings, NOW).actionable
 
 
+def test_identical_approval_requests_reuse_one_snapshot_authority(tmp_path):
+    service, bindings, _, _ = setup(tmp_path)
+
+    first = request(service, bindings)
+    second = request(reopened(service), bindings)
+
+    assert second == first
+    with service.database.transaction() as connection:
+        current = WorkspaceStore(connection).approvals.list_current()
+    assert [item.id for item in current] == [first.id]
+
+
+def test_concurrent_identical_approval_requests_create_one_snapshot_authority(tmp_path):
+    service, bindings, _, _ = setup(tmp_path)
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        approvals = tuple(
+            executor.map(
+                lambda _: request(reopened(service), bindings),
+                range(4),
+            )
+        )
+
+    assert len({item.id for item in approvals}) == 1
+    with service.database.transaction() as connection:
+        current = WorkspaceStore(connection).approvals.list_current()
+    assert len(current) == 1
+
+
 def test_b_wrong_action_is_denied(tmp_path):
     service, bindings, _, _ = setup(tmp_path)
     wrong = bindings.model_copy(update={"action": "SUBMIT"})
@@ -326,15 +355,20 @@ def test_naive_time_is_rejected(tmp_path):
         request(service, bindings, now=datetime(2026, 9, 5, 12))
 
 
-def test_key_cannot_be_reused_for_different_approval(tmp_path):
+def test_repeated_snapshot_request_cannot_create_a_second_pack_authority(tmp_path):
     service, bindings, _, _ = setup(tmp_path)
     first = confirm(service, bindings)
     second = request(service, bindings)
-    denied(lambda: confirm(service, bindings, second), "IDEMPOTENCY_CONFLICT")
+    assert second == first
+    assert confirm(service, bindings, second) == first
     consumed = consume(service, bindings, first)
     assert not consumed.replayed
-    second = confirm(service, bindings, second, key="second-confirm")
-    denied(lambda: consume(service, bindings, second), "IDEMPOTENCY_CONFLICT")
+    assert request(service, bindings) == consumed.record
+    denied(
+        lambda: confirm(service, bindings, second, key="second-confirm"),
+        "CONSUMED",
+    )
+    denied(lambda: consume(service, bindings, second, key="second-consume"), "CONSUMED")
 
 
 def test_stale_conflict_only_evidence_cannot_authorize(tmp_path):

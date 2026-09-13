@@ -141,6 +141,11 @@ def create_app(
     application.state.action_token = (
         None if hosted or config.qualor_read_only_demo else config.new_action_token()
     )
+    application.state.hosted_action_capabilities = None
+    if hosted and not config.qualor_read_only_demo:
+        from qualor.hosted.capabilities import HostedActionCapabilities
+
+        application.state.hosted_action_capabilities = HostedActionCapabilities(clock=clock)
 
     def bounded(code, status):
         try:
@@ -160,16 +165,25 @@ def create_app(
             if hosted:
                 require_hosted_proxy(request)
                 segments = request.url.path.strip("/").split("/")
-                if segments[2:3] in (
-                    ["session"],
-                    ["portfolio"],
-                    ["approvals"],
-                    ["draft-packs"],
-                ) or (
-                    request.method not in {"GET", "HEAD", "OPTIONS"}
-                    and request.url.path != "/api/v1/live-runs"
-                ):
+                if segments[2:3] == ["portfolio"]:
                     return bounded("NOT_FOUND", 404)
+                if request.method not in {"GET", "HEAD", "OPTIONS"}:
+                    if config.qualor_read_only_demo:
+                        return bounded("NOT_FOUND", 404)
+                    approval_request = (
+                        len(segments) == 5
+                        and segments[:3] == ["api", "v1", "opportunities"]
+                        and segments[4] == "approvals"
+                    )
+                    approval_confirm = (
+                        len(segments) == 5
+                        and segments[:3] == ["api", "v1", "approvals"]
+                        and segments[4] == "confirm"
+                    )
+                    if approval_request or approval_confirm:
+                        require_action(request)
+                    elif request.url.path != "/api/v1/live-runs":
+                        return bounded("NOT_FOUND", 404)
             if request.method not in {"GET", "HEAD", "OPTIONS"}:
                 if config.qualor_read_only_demo:
                     return bounded("NOT_FOUND", 404)
@@ -233,8 +247,10 @@ def create_app(
         application.include_router(fixture_router)
     application.include_router(
         workspace_router(
-            read_only=hosted or config.qualor_read_only_demo,
+            read_only=config.qualor_read_only_demo,
             live_research_available=hosted and config.qualor_hosted_live_enabled,
+            hosted_approval=hosted and not config.qualor_read_only_demo,
+            security_mode=config.qualor_security_mode,
         )
     )
     # Last installed middleware wraps guard errors as well as successful responses.

@@ -31,10 +31,10 @@ export function selectedProof(workspace: OpportunityWorkspaceResponse) {
 }
 
 // Shared presentation frame; the isolated design proof supplies read-only content.
-export function WorkspaceFrame({ children, queue, context, proof, previewLabel, evidenceContent, previewNav, qaLabel, proofSubject, opticalPreview = false }: {
+export function WorkspaceFrame({ children, queue, context, proof, previewLabel, evidenceContent, previewNav, qaLabel, proofSubject, opticalPreview = false, securityMode = 'LOCAL' }: {
   children: ReactNode; queue: ReactNode; context: ReactNode; proof: ReactNode; previewLabel?: string; evidenceContent?: ReactNode; previewNav?: ReactNode; qaLabel?: string;
   // Already-typed workspace facts the caller holds. The reader never fetches for its own strip.
-  proofSubject?: { title: string; mode: string | null }; opticalPreview?: boolean;
+  proofSubject?: { title: string; mode: string | null }; opticalPreview?: boolean; securityMode?: 'LOCAL' | 'HOSTED_DEMO';
 }) {
   const [proofOpen, setProofOpen] = useState(false);
   const [narrow, setNarrow] = useState(window.innerWidth < 768);
@@ -76,7 +76,7 @@ export function WorkspaceFrame({ children, queue, context, proof, previewLabel, 
     <header className="workspace-header" inert={proofOpen && narrow}>
       <div className="identity">{previewLabel ? <a className="wordmark" href="/design-preview.html" aria-label="QUALOR home">QUALOR</a> : <Link className="wordmark" to="/inbox" aria-label="QUALOR home">QUALOR</Link>}<span className="identity-caption">Opportunity intelligence</span></div>
       <nav aria-label="Primary">{previewNav ?? (previewLabel ? <><a href="/design-preview.html" aria-current="page">Inbox</a><a href="/design-preview.html?view=portfolio">Portfolio</a><a href="/design-preview.html?view=activity">Activity</a></> : <><NavLink to="/inbox">Inbox</NavLink><NavLink to="/portfolio">Portfolio</NavLink><NavLink to="/activity">Activity</NavLink></>)}</nav>
-      <div className="header-utilities"><label className="header-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><circle cx="10" cy="10" r="6" /><path d="m15 15 6 6" /></svg><input disabled aria-label="Search unavailable" placeholder="Search unavailable" /></label><span className="workspace-label"><span className="runtime-marker" aria-hidden="true" />{previewLabel ? opticalPreview ? 'DESIGN PREVIEW · SYNTHETIC · READ ONLY' : 'FIXTURE' : <><span>LOCAL</span><span className="visually-hidden">Local workspace</span></>}</span></div>
+      <div className="header-utilities"><label className="header-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><circle cx="10" cy="10" r="6" /><path d="m15 15 6 6" /></svg><input disabled aria-label="Search unavailable" placeholder="Search unavailable" /></label><span className="workspace-label"><span className="runtime-marker" aria-hidden="true" />{previewLabel ? opticalPreview ? 'DESIGN PREVIEW · SYNTHETIC · READ ONLY' : 'FIXTURE' : securityMode === 'HOSTED_DEMO' ? <><span>HOSTED DEMO</span><span className="visually-hidden">Secure hosted demo workspace</span></> : <><span>LOCAL</span><span className="visually-hidden">Local workspace</span></>}</span></div>
     </header>
     <div className="workspace-grid workspace-grid--four-zone" inert={proofOpen && narrow}>
       <aside className="workspace-queue" aria-label="Opportunity inbox">{queue}</aside>
@@ -152,14 +152,16 @@ export function WorkspaceShell() {
     return () => controller.abort();
   }, [selectedOpportunityPath]);
   const modes = [...new Set(inbox?.items.flatMap(item => item.mode ? [item.mode] : []) ?? [])];
+  const hosted = inbox?.security_mode === 'HOSTED_DEMO';
   const qaLabel = import.meta.env.DEV && new URLSearchParams(location.search).get('qa') === 'synthetic-fixture'
     ? 'LOCAL API QA · SYNTHETIC FIXTURE DATA · NO LIVE DATA' : undefined;
   return <WorkspaceFrame
     qaLabel={qaLabel}
+    securityMode={hosted ? 'HOSTED_DEMO' : 'LOCAL'}
     queue={<OpportunityInbox inbox={inbox} error={error} onOpportunityCreated={() => setInboxRevision(value => value + 1)} />}
     context={<>
       <IntelligenceRail revision={inboxRevision} />
-      <section className="rail-section"><h3>Local controller</h3><p className="connection-state" role="status">{error ?? (inbox ? 'Local controller connected' : 'Connecting to local controller…')}</p><p className="quiet">A local connection does not indicate LIVE research.</p></section>
+      <section className="rail-section"><h3>{hosted ? 'Secure demo session' : 'Local controller'}</h3><p className="connection-state" role="status">{error ?? (inbox ? hosted ? 'Secure demo session connected' : 'Local controller connected' : 'Connecting to workspace…')}</p><p className="quiet">{hosted ? 'Mutations require the trusted proxy and this browser session.' : 'A local connection does not indicate LIVE research.'}</p></section>
       {selectedWorkspace ? <>
         <section className="rail-section"><h3>Current decision</h3><p>{selectedWorkspace.decision.recommendation ?? 'UNKNOWN'} · {stateText(selectedWorkspace.presentation_state)}</p><dl className="context-facts"><div><dt>Freshness</dt><dd>{selectedWorkspace.freshness}</dd></div><div><dt>Primary blocker</dt><dd>{selectedWorkspace.decision.primary_blocker ? stateText(selectedWorkspace.decision.primary_blocker) : 'None recorded'}</dd></div></dl></section>
         <section className="rail-section"><h3>Selected run</h3><p>{selectedWorkspace.run_state ? stateText(selectedWorkspace.run_state) : 'No current run'}</p><dl className="context-facts"><div><dt>Research mode</dt><dd>{selectedWorkspace.mode ?? 'Unavailable'}</dd></div><div><dt>Critical coverage</dt><dd>{selectedWorkspace.coverage.length} recorded</dd></div></dl>{selectedWorkspace.last_refresh_failed_at && <p className="quiet state-stale">Refresh failed at <time dateTime={selectedWorkspace.last_refresh_failed_at}>{selectedWorkspace.last_refresh_failed_at}</time></p>}<Link className="inline-link" to="/activity">View activity <span aria-hidden="true">↗</span></Link></section>

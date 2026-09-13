@@ -250,7 +250,9 @@ test('the wide workspace body keeps its canonical four zones', async ({ page }) 
 test('the browser never receives an action token it could leak', async ({ page }) => {
   await page.getByRole('link', { name: /AWS Agents for Humans/ }).click();
   await page.getByRole('button', { name: 'Approve application' }).click();
-  await expect(page.getByRole('region', { name: 'Human approval' })).toContainText('PENDING_APPROVAL');
+  await expect(page.getByRole('region', { name: 'Human approval' })).toContainText(
+    /PENDING_APPROVAL|DRAFT_READY/,
+  );
 
   // The token travels in a request header only: never a URL, never browser storage.
   expect(page.url()).not.toMatch(/token/i);
@@ -1303,7 +1305,9 @@ test('the prepared pack is the subject of its own view, not a panel inside the w
     await page.getByRole('link', { name: /AWS Agents for Humans/ }).click();
     await page.getByRole('button', { name: 'Approve application' }).click();
     const checkpoint = page.getByRole('region', { name: 'Human approval' });
-    await checkpoint.getByRole('button', { name: /confirm approval/i }).click();
+    const confirm = checkpoint.getByRole('button', { name: /confirm approval/i });
+    if (await confirm.count()) await confirm.click();
+    await expect(checkpoint).toContainText('DRAFT_READY');
     await checkpoint.getByRole('link', { name: /open draft pack/i }).click();
 
     const pack = page.getByRole('article', { name: 'Application pack' });
@@ -1350,7 +1354,9 @@ test('the prepared document shows what was prepared in its first viewport', asyn
   await page.getByRole('link', { name: /AWS Agents for Humans/ }).click();
   await page.getByRole('button', { name: 'Approve application' }).click();
   const checkpoint = page.getByRole('region', { name: 'Human approval' });
-  await checkpoint.getByRole('button', { name: /confirm approval/i }).click();
+  const confirm = checkpoint.getByRole('button', { name: /confirm approval/i });
+  if (await confirm.count()) await confirm.click();
+  await expect(checkpoint).toContainText('DRAFT_READY');
   await checkpoint.getByRole('link', { name: /open draft pack/i }).click();
   const pack = page.getByRole('article', { name: 'Application pack' });
   await expect(pack).toBeVisible();
@@ -1433,12 +1439,13 @@ test('the judge sequence survives itself: decision, proof, activity, approval, p
     // --- Approval ---------------------------------------------------------------------
     await primaryAction.click();
     const checkpoint = page.getByRole('region', { name: 'Human approval' });
-    await expect(checkpoint).toContainText('PENDING_APPROVAL');
+    await expect(checkpoint).toContainText(/PENDING_APPROVAL|DRAFT_READY/);
     // The boundary is stated while the person can still decline, not after.
     await expect(checkpoint).toContainText(/nothing is submitted externally/i);
 
     // --- Confirm, and the state the server moves to -----------------------------------
-    await checkpoint.getByRole('button', { name: /confirm approval/i }).click();
+    const confirm = checkpoint.getByRole('button', { name: /confirm approval/i });
+    if (await confirm.count()) await confirm.click();
     await expect(checkpoint).toContainText('DRAFT_READY');
 
     // --- Application Pack -------------------------------------------------------------

@@ -112,7 +112,7 @@ export function apiRequest<T>(path: string, options: RequestOptions = {}): Promi
   return requestJson<T>(path, options, true);
 }
 
-/** Hosted trust is injected by the same-origin edge. The browser sends no capability header. */
+/** Hosted origin trust is injected by the same-origin edge; its proxy secret stays server-side. */
 export function startLiveRun(officialUrl: string, signal?: AbortSignal) {
   const body: LiveRunRequest = { official_url: officialUrl };
   return requestJson<LiveRunAccepted>('/live-runs', { method: 'POST', body, signal }, false);

@@ -49,7 +49,13 @@ def _without_action_authority(result):
     return result.model_copy(update=updates)
 
 
-def workspace_router(*, read_only=False, live_research_available=False) -> APIRouter:
+def workspace_router(
+    *,
+    read_only=False,
+    live_research_available=False,
+    hosted_approval=False,
+    security_mode="LOCAL",
+) -> APIRouter:
     router = APIRouter(
         prefix="/api/v1",
         responses={status: {"model": ProductError} for status in (403, 404, 409, 422, 500)},
@@ -59,7 +65,10 @@ def workspace_router(*, read_only=False, live_research_available=False) -> APIRo
     def inbox(request: Request, limit: Limit = 50, offset: Offset = 0):
         result = request.app.state.workspace.inbox(limit=limit, offset=offset)
         result = result.model_copy(
-            update={"live_research_available": bool(live_research_available)}
+            update={
+                "live_research_available": bool(live_research_available),
+                "security_mode": security_mode,
+            }
         )
         return _without_action_authority(result) if read_only else result
 
@@ -111,6 +120,11 @@ def workspace_router(*, read_only=False, live_research_available=False) -> APIRo
 
     @router.get("/session", response_model=SessionView)
     def session(request: Request):
+        if hosted_approval:
+            return SessionView(
+                read_only=False,
+                action_token=request.app.state.hosted_action_capabilities.issue(),
+            )
         require_local_origin(request)
         return SessionView(read_only=read_only, action_token=request.app.state.action_token)
 
@@ -122,7 +136,7 @@ def workspace_router(*, read_only=False, live_research_available=False) -> APIRo
     def pack(pack_id: str, request: Request):
         return request.app.state.workspace.draft_pack(pack_id)
 
-    if not read_only:
+    if not read_only and not hosted_approval:
 
         @router.put("/profile", response_model=PortfolioView)
         def update_profile(body: ProfileUpdateRequest, request: Request):
@@ -131,6 +145,8 @@ def workspace_router(*, read_only=False, live_research_available=False) -> APIRo
         @router.put("/projects/{project_id}", response_model=PortfolioView)
         def update_project(project_id: str, body: ProjectUpdateRequest, request: Request):
             return request.app.state.workspace.update_project(project_id, body)
+
+    if not read_only:
 
         @router.post("/opportunities/{opportunity_id}/approvals", response_model=ApprovalView)
         def request_approval(opportunity_id: str, body: ApprovalRequest, request: Request):

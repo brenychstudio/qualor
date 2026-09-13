@@ -131,7 +131,7 @@ test('shows actual setup facts from the protected portfolio read', async () => {
 });
 test('uses the server-advertised hosted research context instead of asking for a local profile', async () => {
   const fetchMock = vi.fn(async (url: string) => Response.json(url.endsWith('/inbox')
-    ? { items: [], profile_present: false, live_research_available: true, page: { offset: 0, limit: 50, total: 0, has_more: false } }
+    ? { items: [], profile_present: false, live_research_available: true, security_mode: 'HOSTED_DEMO', page: { offset: 0, limit: 50, total: 0, has_more: false } }
     : url.endsWith('/runs') ? { runs: [], events: [], runs_page: { offset: 0, limit: 50, total: 0, has_more: false }, events_page: { offset: 0, limit: 50, total: 0, has_more: false } }
     : { founder: null, projects: [] }));
   vi.stubGlobal('fetch', fetchMock);
@@ -140,6 +140,10 @@ test('uses the server-advertised hosted research context instead of asking for a
   expect(screen.queryByText('Profile required')).not.toBeInTheDocument();
   expect(screen.queryByRole('link', { name: /complete profile/i })).not.toBeInTheDocument();
   expect(fetchMock.mock.calls.some(([request]) => String(request).endsWith('/portfolio'))).toBe(false);
+  expect(screen.getByText('HOSTED DEMO')).toBeVisible();
+  expect(screen.getByRole('heading', { name: 'Secure demo session' })).toBeVisible();
+  expect(screen.getByText('Secure demo session connected')).toBeVisible();
+  expect(screen.queryByText('Local controller connected')).not.toBeInTheDocument();
 });
 test('proof summary never falls back to a raw missing-information path', () => {
   const workspace = {

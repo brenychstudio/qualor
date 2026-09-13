@@ -1131,6 +1131,7 @@ export type ProductState =
   | "PENDING_APPROVAL"
   | "FINISHED_PACK";
 export type ProfilePresent = boolean;
+export type SecurityMode = "LOCAL" | "HOSTED_DEMO";
 export type RunId1 = string;
 export type Status1 = "STARTING";
 export type Code =
@@ -2296,6 +2297,7 @@ export interface InboxResponse {
   page: PageInfo;
   product_state?: ProductStateView | null;
   profile_present: ProfilePresent;
+  security_mode?: SecurityMode;
 }
 /**
  * Server-owned presentation and allowed-action policy for the current situation.

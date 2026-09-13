@@ -21,6 +21,13 @@ def require_local_origin(request: Request) -> None:
 
 
 def require_action(request: Request) -> None:
+    if request.app.state.settings.qualor_security_mode == "HOSTED_DEMO":
+        supplied = request.headers.getlist("x-qualor-action-token")
+        if len(supplied) != 1 or not request.app.state.hosted_action_capabilities.validate(
+            supplied[0]
+        ):
+            raise ProductFailure("ACTION_FORBIDDEN", 403)
+        return
     require_local_origin(request)
     supplied = request.headers.get("x-qualor-action-token", "")
     expected = request.app.state.action_token

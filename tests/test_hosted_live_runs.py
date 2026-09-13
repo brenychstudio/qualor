@@ -95,9 +95,10 @@ def test_hosted_inbox_advertises_server_owned_live_research_context(tmp_path):
 
     assert response.status_code == 200
     assert response.json()["live_research_available"] is True
+    assert response.json()["security_mode"] == "HOSTED_DEMO"
 
 
-def test_hosted_read_models_never_advertise_approval_authority(tmp_path, monkeypatch):
+def test_hosted_read_model_preserves_server_owned_approval_authority(tmp_path, monkeypatch):
     settings = config(tmp_path)
     with TestClient(make_app(settings, ControlledRunner())) as client:
         accepted = client.post("/api/v1/live-runs", headers=AUTH, json={"official_url": URL})
@@ -126,12 +127,10 @@ def test_hosted_read_models_never_advertise_approval_authority(tmp_path, monkeyp
         ).json()
         inbox = client.get("/api/v1/inbox", headers=AUTH).json()
 
-    assert workspace["decision"]["primary_action"] == {
-        "available": False,
-        "reason": "MODE_MISMATCH",
-        "approval_request": None,
-    }
-    assert workspace["product_state"]["approval_available"] is False
+    assert workspace["decision"]["primary_action"]["available"] is True
+    assert workspace["decision"]["primary_action"]["reason"] == "VALID"
+    assert workspace["decision"]["primary_action"]["approval_request"] is not None
+    assert workspace["product_state"]["approval_available"] is True
     assert all(item["human_action_available"] is False for item in inbox["items"])
 
 
@@ -382,20 +381,28 @@ def test_hosted_requires_proxy_auth_for_reads_and_mutations(tmp_path, headers):
             assert response.json() == {"code": "ACTION_FORBIDDEN"}
 
 
-def test_hosted_action_token_and_owner_mutations_unavailable_even_to_proxy(tmp_path):
+def test_hosted_capability_is_separate_and_owner_mutations_remain_unavailable(tmp_path):
     with TestClient(make_app(config(tmp_path), ControlledRunner())) as client:
         assert client.app.state.action_token is None
+        session = client.get("/api/v1/session", headers=AUTH)
+        assert session.status_code == 200
+        assert session.json()["read_only"] is False
+        assert session.json()["action_token"]
         for method, route in (
-            ("get", "session"),
             ("get", "portfolio"),
             ("put", "profile"),
             ("put", "projects/qualor"),
-            ("post", "opportunities/opportunity/approvals"),
-            ("post", "approvals/approval/confirm"),
         ):
             response = getattr(client, method)("/api/v1/" + route, headers=AUTH)
             assert response.status_code == 404
             assert SECRET not in response.text
+        for route in (
+            "opportunities/opportunity/approvals",
+            "approvals/approval/confirm",
+        ):
+            response = client.post("/api/v1/" + route, headers=AUTH)
+            assert response.status_code == 403
+            assert response.json() == {"code": "ACTION_FORBIDDEN"}
 
 
 @pytest.mark.parametrize(

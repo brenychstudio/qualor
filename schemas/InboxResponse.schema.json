@@ -743,6 +743,15 @@
     "profile_present": {
       "title": "Profile Present",
       "type": "boolean"
+    },
+    "security_mode": {
+      "default": "LOCAL",
+      "enum": [
+        "LOCAL",
+        "HOSTED_DEMO"
+      ],
+      "title": "Security Mode",
+      "type": "string"
     }
   },
   "required": [

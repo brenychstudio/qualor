@@ -26,7 +26,7 @@ execFileSync('uv', ['run', 'qualor', 'seed-workspace-fixture', fixture], {
 
 export default defineConfig({
   testDir: './e2e',
-  testIgnore: 'live-research.spec.ts',
+  testIgnore: ['live-research.spec.ts', 'hosted-approval.spec.ts'],
   fullyParallel: false,
   workers: 1,
   forbidOnly: !!process.env.CI,

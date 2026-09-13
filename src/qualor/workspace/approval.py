@@ -510,6 +510,25 @@ class ApprovalService:
             verified_deadline = min(opportunity.deadlines)
             if deadline is not None and deadline != verified_deadline:
                 raise ApprovalDenied(ApprovalReason.DEADLINE_MISMATCH)
+            existing = tuple(
+                candidate
+                for candidate in store.approvals.list_current()
+                if _bindings(candidate) == binding and candidate.mode == self.mode
+            )
+            reusable = tuple(
+                candidate
+                for candidate in existing
+                if candidate.consumed_at is not None
+                or (
+                    candidate.state != ApprovalState.REVOKED_APPROVAL
+                    and instant < candidate.expires_at
+                )
+            )
+            if reusable:
+                # The binding is the authority boundary. Repeated or concurrent
+                # requests for one immutable decision snapshot must converge on
+                # one approval instead of minting parallel pack capabilities.
+                return min(reusable, key=lambda candidate: (candidate.created_at, candidate.id))
             record = ApprovalRecord(
                 **binding.model_dump(),
                 schema_version="1",
