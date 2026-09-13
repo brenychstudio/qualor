@@ -6,7 +6,11 @@ from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
 
-from .budget import LiveBudgetGuard, LiveBudgetPolicy
+from .budget import (
+    QUALOR_03B3_INFERENCE_MAX_CALLS_PER_RUN,
+    LiveBudgetGuard,
+    LiveBudgetPolicy,
+)
 from .run_models import StudioInput
 
 
@@ -26,7 +30,9 @@ def live_budget(diagnostic: bool = False) -> LiveBudgetGuard:
         diagnostic_policy()
         if diagnostic
         else LiveBudgetPolicy(
-            inference_max_calls=6, cost_cap_usd=Decimal(".20"), authorization="QUALOR_03B3"
+            inference_max_calls=QUALOR_03B3_INFERENCE_MAX_CALLS_PER_RUN,
+            cost_cap_usd=Decimal(".20"),
+            authorization="QUALOR_03B3",
         )
     )
 

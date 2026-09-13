@@ -11,19 +11,27 @@ from qualor.runtime.budget import (
 )
 
 
-def test_explicit_b3_budget_allows_six_calls_only_with_smaller_cost_ceiling():
+def test_explicit_b3_budget_allows_nine_calls_only_with_smaller_cost_ceiling():
     policy = LiveBudgetPolicy(
-        inference_max_calls=6, cost_cap_usd=Decimal("0.20"), authorization="QUALOR_03B3"
+        inference_max_calls=9, cost_cap_usd=Decimal("0.20"), authorization="QUALOR_03B3"
     )
     g = LiveBudgetGuard(policy)
-    for _ in range(6):
+    for _ in range(9):
         g.reserve(LiveCallKind.INFERENCE)
     with pytest.raises(BudgetLimitExceeded):
         g.reserve(LiveCallKind.INFERENCE)
     with pytest.raises(ValueError):
         LiveBudgetGuard(
             LiveBudgetPolicy(
-                inference_max_calls=6, cost_cap_usd=Decimal("0.21"), authorization="QUALOR_03B3"
+                inference_max_calls=9, cost_cap_usd=Decimal("0.21"), authorization="QUALOR_03B3"
+            )
+        )
+    with pytest.raises(ValueError):
+        LiveBudgetGuard(
+            LiveBudgetPolicy(
+                inference_max_calls=10,
+                cost_cap_usd=Decimal("0.20"),
+                authorization="QUALOR_03B3",
             )
         )
 

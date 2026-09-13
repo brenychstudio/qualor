@@ -11,6 +11,9 @@ LIVE_INFERENCE_MAX_CALLS_PER_RUN = 3
 LIVE_SEARCH_MAX_CALLS_PER_RUN = 5
 LIVE_FETCH_MAX_DOCUMENTS_PER_RUN = 10
 QUALOR_03_DEVELOPMENT_COST_CAP_USD = Decimal("2.00")
+# Six observed calls plus the pending extraction, deterministic evaluation,
+# and one terminal planner turn. The independent USD ceiling still wins first.
+QUALOR_03B3_INFERENCE_MAX_CALLS_PER_RUN = 9
 
 
 class LiveCallKind(StrEnum):
@@ -89,7 +92,12 @@ class LiveBudgetGuard:
         if b3 and self.policy.cost_cap_usd > Decimal("0.20"):
             raise ValueError("QUALOR-03B3 hard ceiling is USD 0.20")
         ceilings = (
-            (self.policy.inference_max_calls, 6 if b3 else LIVE_INFERENCE_MAX_CALLS_PER_RUN),
+            (
+                self.policy.inference_max_calls,
+                QUALOR_03B3_INFERENCE_MAX_CALLS_PER_RUN
+                if b3
+                else LIVE_INFERENCE_MAX_CALLS_PER_RUN,
+            ),
             (self.policy.search_max_calls, LIVE_SEARCH_MAX_CALLS_PER_RUN),
             (self.policy.fetch_max_documents, LIVE_FETCH_MAX_DOCUMENTS_PER_RUN),
         )
