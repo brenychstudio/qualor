@@ -159,6 +159,19 @@ class _ReadableHTML(HTMLParser):
             self.parts.append(" ".join(data.split()))
 
 
+def canonical_source_text(body: bytes, content_type: str) -> tuple[str, bool]:
+    """Return the retained canonical text using the fetcher's existing parser rules."""
+
+    text = body.decode("utf-8", errors="replace")
+    if content_type == "text/html":
+        parser = _ReadableHTML()
+        parser.feed(text)
+        text = "\n".join(parser.parts)
+    elif content_type == "application/json":
+        text = json.dumps(json.loads(text), ensure_ascii=False)
+    return text[:MAX_SOURCE_CHARACTERS], len(text) > MAX_SOURCE_CHARACTERS
+
+
 def source_authority(url: str, allowed_hosts: tuple[str, ...]) -> SourceType:
     host, path = urlsplit(url).hostname or "", urlsplit(url).path.lower().rstrip("/")
     if not any(host == d or host.endswith("." + d) for d in allowed_hosts):
@@ -207,13 +220,7 @@ class OfficialSourceFetcher:
                 raise ValueError("UNSUPPORTED_SOURCE_TYPE")
             if len(body) > MAX_SOURCE_BYTES:
                 raise ValueError("SOURCE_SIZE_LIMIT")
-            text = body.decode("utf-8", errors="replace")
-            if mime == "text/html":
-                parser = _ReadableHTML()
-                parser.feed(text)
-                text = "\n".join(parser.parts)
-            elif mime == "application/json":
-                text = json.dumps(json.loads(text), ensure_ascii=False)
+            text, truncated = canonical_source_text(body, mime)
             digest = hashlib.sha256(body).hexdigest()
             source = SourceDocument(
                 id="source_" + hashlib.sha256(current.encode()).hexdigest()[:20],
@@ -223,8 +230,8 @@ class OfficialSourceFetcher:
                 content_hash=digest,
                 authority=source_authority(current, self.allowed_hosts),
                 content_type=mime,
-                text=text[:MAX_SOURCE_CHARACTERS],
-                truncated=len(text) > MAX_SOURCE_CHARACTERS,
+                text=text,
+                truncated=truncated,
             )
             self.budget.commit(receipt)
             return source

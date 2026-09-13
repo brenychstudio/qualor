@@ -120,10 +120,12 @@ class EvidenceSpanRegistry:
         self._spans: dict[str, EvidenceSpan] = {}
         self.last_registered_span_ids: tuple[str, ...] = ()
 
-    def register(self, source: SourceDocument, focus: str) -> tuple[EvidenceSpan, ...]:
-        window_start, window = extraction_window(source.text, focus)
+    def _register_range(
+        self, source: SourceDocument, *, start_offset: int, end_offset: int
+    ) -> tuple[EvidenceSpan, ...]:
         spans = []
-        for start, end, exact_text in _segments(window, absolute_start=window_start):
+        text = source.text[start_offset:end_offset]
+        for start, end, exact_text in _segments(text, absolute_start=start_offset):
             material = (
                 f"{source.id}\0{start}\0{end}\0".encode()
                 + hashlib.sha256(exact_text.encode("utf-8")).digest()
@@ -140,6 +142,35 @@ class EvidenceSpanRegistry:
             spans.append(span)
         self.last_registered_span_ids = tuple(span.span_id for span in spans)
         return tuple(spans)
+
+    def register(self, source: SourceDocument, focus: str) -> tuple[EvidenceSpan, ...]:
+        window_start, window = extraction_window(source.text, focus)
+        return self._register_range(
+            source,
+            start_offset=window_start,
+            end_offset=window_start + len(window),
+        )
+
+    def register_section(
+        self, source: SourceDocument, *, start_offset: int, end_offset: int
+    ) -> tuple[EvidenceSpan, ...]:
+        """Issue capabilities only for an explicit exact section range."""
+
+        if (
+            isinstance(start_offset, bool)
+            or isinstance(end_offset, bool)
+            or not isinstance(start_offset, int)
+            or not isinstance(end_offset, int)
+            or start_offset < 0
+            or end_offset <= start_offset
+            or end_offset > len(source.text)
+        ):
+            raise ValueError("SECTION_OFFSETS_INVALID")
+        return self._register_range(
+            source,
+            start_offset=start_offset,
+            end_offset=end_offset,
+        )
 
     def resolve(self, source_id: str, span_id: str) -> EvidenceSpan:
         span = self._spans.get(span_id)
