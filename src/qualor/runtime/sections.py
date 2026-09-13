@@ -286,6 +286,45 @@ def _heading_number(heading: str | None) -> str | None:
     return match.group("number") if match else None
 
 
+def _number_depth(number: str) -> int:
+    return number.count(".") + 1
+
+
+def _ancestor_numbers(number: str) -> tuple[str, ...]:
+    parts = number.split(".")
+    return tuple(".".join(parts[:depth]) for depth in range(len(parts) - 1, 0, -1))
+
+
+def _structural_ancestry(
+    number: str | None,
+    start_offset: int,
+    numbered: dict[str, list[tuple[int, list[str]]]],
+    numbered_sequence: list[tuple[int, str]],
+) -> tuple[tuple[str, ...], bool]:
+    if number is None or "." not in number:
+        return (), False
+
+    context_ids = []
+    incomplete = False
+    for ancestor_number in _ancestor_numbers(number):
+        candidates = numbered.get(ancestor_number, [])
+        preceding = [group_ids for start, group_ids in candidates if start < start_offset]
+        if not candidates or len(candidates) > 1 or not preceding:
+            incomplete = True
+        context_ids.extend(context_id for group_ids in preceding for context_id in group_ids)
+
+        ancestor_depth = _number_depth(ancestor_number)
+        preceding_at_depth = [
+            preceding_number
+            for preceding_start, preceding_number in numbered_sequence
+            if preceding_start < start_offset and _number_depth(preceding_number) <= ancestor_depth
+        ]
+        if not preceding_at_depth or preceding_at_depth[-1] != ancestor_number:
+            incomplete = True
+
+    return tuple(context_ids), incomplete
+
+
 def _section_references(text: str) -> tuple[tuple[str, ...], bool]:
     references = []
     numeric_matches = tuple(_SECTION_REFERENCE.finditer(text))
@@ -339,28 +378,37 @@ def index_source(source: SourceDocument, registry: EvidenceSpanRegistry) -> Sect
         logical_groups.append((group_indexes, logical_start, logical_end, heading))
 
     numbered = {}
+    numbered_sequence = []
     global_ids = []
     for indexes, logical_start, logical_end, heading in logical_groups:
         group_ids = [drafts[index]["section_id"] for index in indexes]
         number = _heading_number(heading)
         if number is not None:
-            numbered.setdefault(number, []).append(group_ids)
+            numbered.setdefault(number, []).append((logical_start, group_ids))
+            numbered_sequence.append((logical_start, number))
         folded = source.text[logical_start:logical_end].casefold()
         if any(marker in folded for marker in _GLOBAL_SCOPE):
             global_ids.extend(group_ids)
 
-    sections = []
-    for indexes, logical_start, logical_end, _heading in logical_groups:
+    drafts_by_id = {draft["section_id"]: draft for draft in drafts}
+    for indexes, logical_start, logical_end, heading in logical_groups:
         folded = source.text[logical_start:logical_end].casefold()
         references, unsupported_reference = _section_references(folded)
         unresolved = any(reference not in numbered for reference in references)
         ambiguous = any(len(numbered.get(reference, ())) > 1 for reference in references)
         unbounded = any(marker in folded for marker in _UNBOUNDED_CONTEXT)
+        ancestry_ids, ancestry_incomplete = _structural_ancestry(
+            _heading_number(heading), logical_start, numbered, numbered_sequence
+        )
+        inherited_incomplete = any(
+            not drafts_by_id[context_id].get("context_complete", True)
+            for context_id in ancestry_ids
+        )
         referenced_ids = [
             context_id
             for reference in references
             if reference in numbered
-            for target_group in numbered[reference]
+            for _target_start, target_group in numbered[reference]
             for context_id in target_group
         ]
         group_ids = [drafts[index]["section_id"] for index in indexes]
@@ -370,6 +418,7 @@ def index_source(source: SourceDocument, registry: EvidenceSpanRegistry) -> Sect
             for context_id in (
                 ([draft["parent_id"]] if draft["parent_id"] is not None else [])
                 + group_ids
+                + list(ancestry_ids)
                 + global_ids
                 + referenced_ids
             ):
@@ -382,13 +431,16 @@ def index_source(source: SourceDocument, registry: EvidenceSpanRegistry) -> Sect
                 or ambiguous
                 or unsupported_reference
                 or unbounded
+                or ancestry_incomplete
+                or inherited_incomplete
                 or overflow
             )
-            sections.append(SourceSection(**draft))
+
+    sections = tuple(SourceSection(**draft) for draft in drafts)
 
     return SectionIndex(
         source_id=source.id,
         source_revision=revision,
         indexer_version=INDEXER_VERSION,
-        sections=tuple(sections),
+        sections=sections,
     )

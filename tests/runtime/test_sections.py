@@ -1,5 +1,7 @@
 import hashlib
 
+import pytest
+
 from qualor.domain.enums import Category
 
 
@@ -300,6 +302,243 @@ def test_unparsed_compound_section_reference_remains_incomplete(document):
     )
 
     assert not license_section.context_complete
+
+
+def test_numbered_child_inherits_direct_parent_context(document):
+    from qualor.runtime.sections import index_source
+    from qualor.runtime.spans import EvidenceSpanRegistry
+
+    source = document(
+        "1. Project requirements\n"
+        "These requirements apply only to teams.\n"
+        "1.1 License\n"
+        "An MIT license is required."
+    )
+    index = index_source(source, EvidenceSpanRegistry(secret=b"a" * 32))
+    parent = next(
+        section for section in index.sections if section.heading == "1. Project requirements"
+    )
+    child = next(section for section in index.sections if section.heading == "1.1 License")
+
+    assert child.context_section_ids == (parent.section_id,)
+    assert child.context_complete
+    assert child.parent_id is None
+
+
+def test_numbered_child_inherits_each_multilevel_ancestor_nearest_first(document):
+    from qualor.runtime.sections import index_source
+    from qualor.runtime.spans import EvidenceSpanRegistry
+
+    source = document(
+        "2. Project requirements\nRequirements apply to submitted projects.\n"
+        "2.4 License\nProjects must use an approved license.\n"
+        "2.4.3 Technology\nProjects must use Widget SDK.\n"
+        "2.4.3.1 Financial support\nCredits are available."
+    )
+    index = index_source(source, EvidenceSpanRegistry(secret=b"a" * 32))
+    by_heading = {section.heading: section for section in index.sections if section.heading}
+    child = by_heading["2.4.3.1 Financial support"]
+
+    assert child.context_section_ids == (
+        by_heading["2.4.3 Technology"].section_id,
+        by_heading["2.4 License"].section_id,
+        by_heading["2. Project requirements"].section_id,
+    )
+    assert child.context_complete
+
+
+def test_numbered_sibling_is_not_inherited_as_ancestry(document):
+    from qualor.runtime.sections import index_source
+    from qualor.runtime.spans import EvidenceSpanRegistry
+
+    source = document(
+        "1. Project requirements\nRequirements apply to projects.\n"
+        "1.1 License\nProjects must use MIT.\n"
+        "1.2 Technology\nProjects must use Widget SDK."
+    )
+    index = index_source(source, EvidenceSpanRegistry(secret=b"a" * 32))
+    by_heading = {section.heading: section for section in index.sections if section.heading}
+    sibling = by_heading["1.1 License"]
+    child = by_heading["1.2 Technology"]
+
+    assert child.context_section_ids == (by_heading["1. Project requirements"].section_id,)
+    assert sibling.section_id not in child.context_section_ids
+    assert child.context_complete
+
+
+def test_numbered_child_with_missing_parent_is_incomplete(document):
+    from qualor.runtime.sections import index_source
+    from qualor.runtime.spans import EvidenceSpanRegistry
+
+    source = document("1.1 License\nProjects must use MIT.")
+    index = index_source(source, EvidenceSpanRegistry(secret=b"a" * 32))
+    child = index.sections[0]
+
+    assert child.context_section_ids == ()
+    assert not child.context_complete
+
+
+def test_numbered_child_with_ambiguous_ancestor_keeps_all_candidates(document):
+    from qualor.runtime.sections import index_source
+    from qualor.runtime.spans import EvidenceSpanRegistry
+
+    source = document(
+        "1. Project requirements\nRequirements apply to projects.\n"
+        "1. Additional requirements\nAdditional requirements apply.\n"
+        "1.1 License\nProjects must use MIT."
+    )
+    index = index_source(source, EvidenceSpanRegistry(secret=b"a" * 32))
+    ancestors = tuple(section.section_id for section in index.sections[:2])
+    child = index.sections[2]
+
+    assert child.context_section_ids == ancestors
+    assert not child.context_complete
+
+
+@pytest.mark.parametrize(
+    ("text", "child_heading"),
+    [
+        (
+            "1.1 License\nProjects must use MIT.\n"
+            "1. Project requirements\nRequirements apply to projects.",
+            "1.1 License",
+        ),
+        (
+            "1. Project requirements\nRequirements apply to projects.\n"
+            "2. Eligibility\nTeams may enter.\n"
+            "1.1 License\nProjects must use MIT.",
+            "1.1 License",
+        ),
+    ],
+)
+def test_structurally_inconsistent_numbered_ancestry_is_incomplete(
+    document, text: str, child_heading: str
+):
+    from qualor.runtime.sections import index_source
+    from qualor.runtime.spans import EvidenceSpanRegistry
+
+    source = document(text)
+    index = index_source(source, EvidenceSpanRegistry(secret=b"a" * 32))
+    child = next(section for section in index.sections if section.heading == child_heading)
+
+    assert not child.context_complete
+    assert all(
+        context.start_offset < child.start_offset
+        for context in index.sections
+        if context.section_id in child.context_section_ids
+    )
+
+
+def test_numbered_ancestry_over_context_bound_is_incomplete(document):
+    from qualor.runtime.sections import MAX_CONTEXT_SECTION_IDS, index_source
+    from qualor.runtime.spans import EvidenceSpanRegistry
+
+    source = document(
+        "1. Project requirements\n"
+        + ("This qualifier applies only to participating teams. " * 240)
+        + "\n1.1 License\nProjects must use MIT."
+    )
+    index = index_source(source, EvidenceSpanRegistry(secret=b"a" * 32))
+    child = next(section for section in index.sections if section.heading == "1.1 License")
+
+    assert len(child.context_section_ids) == MAX_CONTEXT_SECTION_IDS
+    assert not child.context_complete
+
+
+def test_numbered_child_inherits_unresolved_parent_context_state(document):
+    from qualor.runtime.sections import index_source
+    from qualor.runtime.spans import EvidenceSpanRegistry
+
+    source = document(
+        "1. Project requirements\n"
+        "Subject to the preceding section, these requirements apply to teams.\n"
+        "1.1 License\n"
+        "Projects must use MIT."
+    )
+    index = index_source(source, EvidenceSpanRegistry(secret=b"a" * 32))
+    parent, child = index.sections
+
+    assert not parent.context_complete
+    assert parent.section_id in child.context_section_ids
+    assert not child.context_complete
+
+
+def test_numbered_parent_qualifier_retains_separate_span_capability(document):
+    from qualor.runtime.sections import index_source
+    from qualor.runtime.spans import EvidenceSpanRegistry
+
+    source = document(
+        "1. Project requirements\n"
+        "These requirements apply only to teams.\n"
+        "1.1 License\n"
+        "An MIT license is required."
+    )
+    registry = EvidenceSpanRegistry(secret=b"a" * 32)
+    index = index_source(source, registry)
+    parent, child = index.sections
+
+    assert parent.section_id in child.context_section_ids
+    assert parent.span_ids
+    assert all(span_id not in child.span_ids for span_id in parent.span_ids)
+    parent_quote = registry.resolve(source.id, parent.span_ids[0]).exact_text
+    assert "These requirements apply only to teams." in parent_quote
+
+
+def test_numbered_child_span_remains_an_exact_child_only_quote(document):
+    from qualor.runtime.sections import index_source
+    from qualor.runtime.spans import EvidenceSpanRegistry
+
+    source = document(
+        "1. Project requirements\n"
+        "These requirements apply only to teams.\n"
+        "1.1 License\n"
+        "An MIT license is required."
+    )
+    registry = EvidenceSpanRegistry(secret=b"a" * 32)
+    index = index_source(source, registry)
+    child = index.sections[1]
+    child_quote = "".join(
+        registry.resolve(source.id, span_id).exact_text for span_id in child.span_ids
+    )
+
+    assert child_quote == source.text[child.start_offset : child.end_offset]
+    assert child_quote == "1.1 License\nAn MIT license is required."
+    assert "These requirements apply only to teams." not in child_quote
+
+
+def test_explicit_reference_and_numbered_ancestry_are_both_preserved(document):
+    from qualor.runtime.sections import index_source
+    from qualor.runtime.spans import EvidenceSpanRegistry
+
+    source = document(
+        "3. Eligibility\nTeams may enter.\n"
+        "1. Project requirements\nRequirements apply to projects.\n"
+        "1.1 License\nSubject to section 3, projects must use MIT."
+    )
+    index = index_source(source, EvidenceSpanRegistry(secret=b"a" * 32))
+    by_heading = {section.heading: section for section in index.sections if section.heading}
+    child = by_heading["1.1 License"]
+
+    assert child.context_section_ids == (
+        by_heading["1. Project requirements"].section_id,
+        by_heading["3. Eligibility"].section_id,
+    )
+    assert child.context_complete
+
+
+def test_nonnumbered_headings_do_not_gain_structural_ancestry(document):
+    from qualor.runtime.sections import index_source
+    from qualor.runtime.spans import EvidenceSpanRegistry
+
+    source = document(
+        "Project requirements\nRequirements apply to projects.\nLicense\nProjects must use MIT."
+    )
+    index = index_source(source, EvidenceSpanRegistry(secret=b"a" * 32))
+    parent, child = index.sections
+
+    assert parent.section_id not in child.context_section_ids
+    assert child.context_section_ids == ()
+    assert child.context_complete
 
 
 def test_submit_does_not_route_to_license_from_mit_substring(document):
