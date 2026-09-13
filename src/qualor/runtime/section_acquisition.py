@@ -44,6 +44,18 @@ def authority_fingerprint(results: tuple[AdapterResult, ...]) -> str:
     return hashlib.sha256(json.dumps(keys).encode()).hexdigest()
 
 
+def retained_section_observation_count(results: tuple[AdapterResult, ...]) -> int:
+    """Count unique retained non-rejected section observations for legacy telemetry."""
+
+    return len(
+        {
+            _authority_key(result)
+            for result in results
+            if result.normalization_status in {"SUPPORTED", "AMBIGUOUS", "UNKNOWN"}
+        }
+    )
+
+
 class SectionAcquisition:
     def __init__(self, run: "OpportunityRun"):
         self.run = run
@@ -254,102 +266,111 @@ class SectionAcquisition:
                 return self._result(False)
             self.scheduler.begin(job)
             dispatched_before = run.budget.snapshot().inference_calls
+            receipt_context = run.extractor.client.extraction_receipt(
+                source_id=job.source_id,
+                section_id=job.section_id,
+                categories=job.categories,
+            )
+            coverage_completed = False
             try:
-                candidates = run.extractor.extract_section(source, self.index, job)
-                results = tuple(
-                    adapt_candidate(candidate, evaluated_at=source.retrieved_at)
-                    for candidate in candidates
-                )
+                with receipt_context:
+                    candidates = run.extractor.extract_section(source, self.index, job)
+                    results = tuple(
+                        adapt_candidate(candidate, evaluated_at=source.retrieved_at)
+                        for candidate in candidates
+                    )
+
+                    interpreted = (
+                        self._retain_conflicts((*self._observations, *results))[-len(results) :]
+                        if results
+                        else ()
+                    )
+                    retained = self._without_redundant_unknown(interpreted)
+                    retained_ids = {id(result) for result in retained}
+                    retained_candidates = tuple(
+                        candidate
+                        for candidate, interpretation in zip(candidates, interpreted, strict=True)
+                        if id(interpretation) in retained_ids
+                    )
+                    if len(retained) != len(interpreted):
+                        reason = "MODEL_RETAINED_UNKNOWN"
+                        run.semantic_rejection(
+                            ClaimNormalizationError(
+                                reason,
+                                NormalizedSupportResult(
+                                    status="UNKNOWN", canonical_value=None, reason_code=reason
+                                ),
+                            )
+                        )
+                    interpreted = retained
+                    outcomes = {}
+                    for category in job.categories:
+                        matching = tuple(
+                            result for result in interpreted if result.category == category
+                        )
+                        statuses = {result.normalization_status for result in matching}
+                        status = next(
+                            (
+                                value
+                                for value in ("AMBIGUOUS", "UNKNOWN", "UNSUPPORTED")
+                                if value in statuses
+                            ),
+                            "SUPPORTED" if matching else "UNKNOWN",
+                        )
+                        outcomes[category] = AcquisitionOutcome(
+                            normalization_status=status,
+                            supported_rule_ids=tuple(
+                                dict.fromkeys(
+                                    rule.id
+                                    for result in matching
+                                    if result.normalization_status == "SUPPORTED"
+                                    for rule in result.rules
+                                )
+                            ),
+                            conditional=any(result.conditional for result in matching),
+                            context_complete=bool(matching)
+                            and all(
+                                candidate.semantic_context_complete
+                                for candidate in retained_candidates
+                                if candidate.candidate.category == category
+                            ),
+                            reason_code="SECTION_CANDIDATES_ADMITTED"
+                            if matching
+                            else "NO_SECTION_CANDIDATES",
+                        )
+                        if status != "SUPPORTED":
+                            reason = next(
+                                (
+                                    result.reason_codes[0]
+                                    for result in matching
+                                    if result.normalization_status == status
+                                ),
+                                "NO_SECTION_CANDIDATES",
+                            )
+                            run.semantic_rejection(
+                                ClaimNormalizationError(
+                                    reason,
+                                    NormalizedSupportResult(
+                                        status=status, canonical_value=None, reason_code=reason
+                                    ),
+                                )
+                            )
+                    self.ledger.complete(job.section_id, outcomes, job.authority_revision)
+                    coverage_completed = True
+                    changed = self._admit(results)
+                    receipt_context.complete(
+                        outcomes=results, authority_revision=run._authority_revision
+                    )
             except Exception as exc:
                 if (
                     isinstance(exc, BudgetLimitExceeded)
                     and run.budget.snapshot().inference_calls == dispatched_before
                 ):
                     self.ledger.budget_blocked(job.section_id, job.categories)
-                else:
+                elif not coverage_completed:
                     self.ledger.operational_failure(
                         job.section_id, job.categories, "SECTION_OPERATION_FAILED"
                     )
-                run.failure(exc, component="extract_official_claims", event="EXTRACTION_RESULT")
-                continue
-
-            interpreted = (
-                self._retain_conflicts((*self._observations, *results))[-len(results) :]
-                if results
-                else ()
-            )
-            retained = self._without_redundant_unknown(interpreted)
-            retained_ids = {id(result) for result in retained}
-            retained_candidates = tuple(
-                candidate
-                for candidate, interpretation in zip(candidates, interpreted, strict=True)
-                if id(interpretation) in retained_ids
-            )
-            if len(retained) != len(interpreted):
-                reason = "MODEL_RETAINED_UNKNOWN"
-                run.semantic_rejection(
-                    ClaimNormalizationError(
-                        reason,
-                        NormalizedSupportResult(
-                            status="UNKNOWN", canonical_value=None, reason_code=reason
-                        ),
-                    )
-                )
-            interpreted = retained
-            outcomes = {}
-            for category in job.categories:
-                matching = tuple(result for result in interpreted if result.category == category)
-                statuses = {result.normalization_status for result in matching}
-                status = next(
-                    (
-                        value
-                        for value in ("AMBIGUOUS", "UNKNOWN", "UNSUPPORTED")
-                        if value in statuses
-                    ),
-                    "SUPPORTED" if matching else "UNKNOWN",
-                )
-                outcomes[category] = AcquisitionOutcome(
-                    normalization_status=status,
-                    supported_rule_ids=tuple(
-                        dict.fromkeys(
-                            rule.id
-                            for result in matching
-                            if result.normalization_status == "SUPPORTED"
-                            for rule in result.rules
-                        )
-                    ),
-                    conditional=any(result.conditional for result in matching),
-                    context_complete=bool(matching)
-                    and all(
-                        candidate.semantic_context_complete
-                        for candidate in retained_candidates
-                        if candidate.candidate.category == category
-                    ),
-                    reason_code="SECTION_CANDIDATES_ADMITTED"
-                    if matching
-                    else "NO_SECTION_CANDIDATES",
-                )
-                if status != "SUPPORTED":
-                    reason = next(
-                        (
-                            result.reason_codes[0]
-                            for result in matching
-                            if result.normalization_status == status
-                        ),
-                        "NO_SECTION_CANDIDATES",
-                    )
-                    run.semantic_rejection(
-                        ClaimNormalizationError(
-                            reason,
-                            NormalizedSupportResult(
-                                status=status, canonical_value=None, reason_code=reason
-                            ),
-                        )
-                    )
-            self.ledger.complete(job.section_id, outcomes, job.authority_revision)
-            try:
-                changed = self._admit(results)
-            except Exception as exc:
                 run.failure(exc, component="extract_official_claims", event="EXTRACTION_RESULT")
                 continue
             run.event("STRUCTURED_EXTRACTION", "MODEL_POWERED_TOOL", (source_id,), len(candidates))

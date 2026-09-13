@@ -1,6 +1,7 @@
 """One Strands information-planning agent with physically budgeted Bedrock calls."""
 
 import json
+from contextlib import AbstractContextManager
 from dataclasses import asdict
 from decimal import Decimal
 
@@ -13,8 +14,9 @@ from strands.tools.executors import SequentialToolExecutor
 
 from .budget import BudgetLimitExceeded, LiveCallKind
 from .context import bounded_agent_result
-from .diagnostics import reject
+from .diagnostics import receipt_failure_code, reject
 from .extraction import MODEL_ID, BedrockClaimExtractor
+from .model_receipts import ReceiptLedger
 from .search_transport import REGION, _temporary_credentials
 
 INPUT_RATE = Decimal("0.000003")
@@ -116,11 +118,86 @@ def model_request_metrics(request: dict) -> dict:
     }
 
 
+class _ReceiptContext(AbstractContextManager):
+    def __init__(self, client, *, source_id, section_id, categories):
+        self.client = client
+        self.source_id = source_id
+        self.section_id = section_id
+        self.categories = tuple(categories)
+        self.slot = None
+        self.reconciled = None
+        self.completed = False
+
+    def __enter__(self):
+        if self.client._receipt_context is not None:
+            raise RuntimeError("Nested model receipt context is forbidden")
+        self.client._receipt_context = self
+        return self
+
+    def complete(self, *, outcomes, authority_revision):
+        if self.slot is None or self.completed:
+            raise RuntimeError("No dispatched extraction receipt is available")
+        current = self.client.receipt_ledger.snapshot()[self.slot - 1]
+        if current.execution_state != "DISPATCHED":
+            raise RuntimeError("Extraction receipt is not dispatch-completable")
+        self.client.receipt_ledger.complete(
+            self.slot,
+            outcomes=tuple(outcomes),
+            authority_revision=authority_revision,
+            reconciled=self.reconciled,
+        )
+        self.completed = True
+
+    def fail(self, exc):
+        if self.slot is None or self.completed:
+            return
+        current = self.client.receipt_ledger.snapshot()[self.slot - 1]
+        if current.execution_state == "DISPATCHED":
+            self.client.receipt_ledger.fail(
+                self.slot,
+                code=receipt_failure_code(exc, default="SECTION_OPERATION_FAILED"),
+                budget_blocked=False,
+            )
+        self.completed = True
+
+    def __exit__(self, exc_type, exc, traceback):
+        try:
+            if exc is not None and self.slot is not None and not self.completed:
+                current = self.client.receipt_ledger.snapshot()[self.slot - 1]
+                if current.execution_state == "DISPATCHED":
+                    code = receipt_failure_code(exc, default="SECTION_OPERATION_FAILED")
+                    self.client.receipt_ledger.fail(
+                        self.slot, code=code, budget_blocked=False
+                    )
+        finally:
+            self.client._receipt_context = None
+        return False
+
+
 class BudgetedBedrockClient:
     def __init__(self, client, budget):
         self.client, self.budget = client, budget
         self.usage = []
         self.request_metrics = []
+        self.receipt_ledger: ReceiptLedger | None = None
+        self._authority_revision = lambda: 0
+        self._receipt_context: _ReceiptContext | None = None
+
+    def bind_receipts(self, ledger: ReceiptLedger, *, authority_revision) -> None:
+        if self.receipt_ledger not in {None, ledger}:
+            raise RuntimeError("Budgeted client is already bound to another receipt ledger")
+        self.receipt_ledger = ledger
+        self._authority_revision = authority_revision
+
+    def extraction_receipt(self, *, source_id, section_id, categories):
+        if self.receipt_ledger is None:
+            raise RuntimeError("Model receipt ledger is not bound")
+        return _ReceiptContext(
+            self,
+            source_id=source_id,
+            section_id=section_id,
+            categories=categories,
+        )
 
     def __getattr__(self, name):
         if name not in {"meta"}:
@@ -146,26 +223,77 @@ class BudgetedBedrockClient:
         # Text/tools only: no image, document, cache or reasoning modes are enabled.
         self.request_metrics.append(model_request_metrics(request))
         reservation = estimate_model_reservation(request)
-        receipt = self.budget.reserve(LiveCallKind.INFERENCE, estimated_cost_usd=reservation)
-        response = self.client.converse(**request)
-        usage = response.get("usage", {})
-        if any(
-            type(usage.get(k)) is not int or usage[k] < 0 for k in ("inputTokens", "outputTokens")
-        ):
-            raise RuntimeError("MODEL_USAGE_UNVERIFIED")
-        actual = (
-            Decimal(usage["inputTokens"]) * INPUT_RATE
-            + Decimal(usage["outputTokens"]) * OUTPUT_RATE
-        )
-        self.usage.append(
-            {
-                "input_tokens": usage["inputTokens"],
-                "output_tokens": usage["outputTokens"],
-                "estimated_cost_usd": str(actual),
-            }
-        )
-        self.budget.reconcile(receipt, actual_cost_usd=actual)
-        return response
+        slot = None
+        context = self._receipt_context
+        if self.receipt_ledger is not None:
+            slot = self.receipt_ledger.plan(
+                "EXTRACTION" if context is not None else "PLANNING",
+                source_id=context.source_id if context is not None else None,
+                section_id=context.section_id if context is not None else None,
+                categories=context.categories if context is not None else (),
+                authority_revision=self._authority_revision(),
+            )
+            if context is not None:
+                context.slot = slot
+        try:
+            receipt = self.budget.reserve(
+                LiveCallKind.INFERENCE, estimated_cost_usd=reservation
+            )
+        except BudgetLimitExceeded:
+            if slot is not None:
+                self.receipt_ledger.fail(
+                    slot, code="BUDGET_EXHAUSTED", budget_blocked=True
+                )
+            raise
+        if slot is not None:
+            self.receipt_ledger.dispatch(slot, reservation=reservation)
+        failure_code = "MODEL_CALL_FAILED"
+        try:
+            response = self.client.converse(**request)
+            failure_code = "MODEL_USAGE_UNVERIFIED"
+            if not isinstance(response, dict) or not isinstance(response.get("usage"), dict):
+                raise RuntimeError("MODEL_USAGE_UNVERIFIED")
+            usage = response["usage"]
+            if any(
+                type(usage.get(k)) is not int or usage[k] < 0
+                for k in ("inputTokens", "outputTokens")
+            ):
+                raise RuntimeError("MODEL_USAGE_UNVERIFIED")
+            actual = (
+                Decimal(usage["inputTokens"]) * INPUT_RATE
+                + Decimal(usage["outputTokens"]) * OUTPUT_RATE
+            )
+            self.usage.append(
+                {
+                    "input_tokens": usage["inputTokens"],
+                    "output_tokens": usage["outputTokens"],
+                    "estimated_cost_usd": str(actual),
+                }
+            )
+            failure_code = "MODEL_COST_RECONCILIATION_FAILED"
+            self.budget.reconcile(receipt, actual_cost_usd=actual)
+            if slot is not None:
+                self.receipt_ledger.reconcile(slot, reconciled=actual)
+            if context is not None:
+                context.reconciled = actual
+            elif slot is not None:
+                self.receipt_ledger.complete(
+                    slot,
+                    outcomes=(),
+                    authority_revision=self._authority_revision(),
+                    reconciled=actual,
+                )
+            return response
+        except Exception as exc:
+            if slot is not None:
+                current = self.receipt_ledger.snapshot()[slot - 1]
+                if current.execution_state == "DISPATCHED":
+                    self.receipt_ledger.fail(
+                        slot,
+                        code=receipt_failure_code(exc, default=failure_code),
+                        budget_blocked=False,
+                    )
+            raise
 
 
 def live_model(budget):
@@ -209,6 +337,10 @@ def run_agent(run, *, model):
         raise ValueError("LIVE requires the explicitly budgeted Bedrock provider")
     if run.mode != "LIVE" and isinstance(model, BedrockModel):
         raise ValueError("Offline runs cannot use Bedrock")
+    if run.mode == "LIVE":
+        model.client.bind_receipts(
+            run.receipt_ledger, authority_revision=lambda: run._authority_revision
+        )
     metrics = {"strands_tool_calls": 0, "model_turns": 0, "agent_instantiated": False}
     metrics["tool_names"] = []
     metrics["sdk_tool_errors"] = []

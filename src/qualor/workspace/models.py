@@ -16,6 +16,7 @@ from qualor.decisions.model import PolicyVersions
 from qualor.domain.base import Contract, NonEmpty, PositiveInt, Record, UtcInstant
 from qualor.domain.money import NonNegativeDecimal
 from qualor.runtime import RuntimeMode
+from qualor.runtime.model_receipts import ModelCallReceipt
 
 NonNegativeInt = Annotated[StrictInt, Field(ge=0)]
 Hash = Annotated[str, StringConstraints(strict=True, pattern=r"^[a-f0-9]{64}$")]
@@ -78,6 +79,7 @@ class RunEventPayload(Contract):
     estimated_cost_usd: NonNegativeDecimal | None = None
     reported_cost_usd: NonNegativeDecimal | None = None
     failure_reason: ShortText | None = None
+    receipt: ModelCallReceipt | None = None
 
 
 class RunEvent(Contract):

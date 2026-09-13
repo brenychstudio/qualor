@@ -149,6 +149,22 @@ CODEBOOK = {
         "The bounded model invocation failed; raw SDK error text is withheld.",
         "NO",
     ),
+    "MODEL_USAGE_UNVERIFIED": (
+        "Model usage accounting was missing or invalid; reservation remains authoritative.",
+        "NO",
+    ),
+    "MODEL_COST_RECONCILIATION_FAILED": (
+        "Model cost reconciliation failed; reservation remains authoritative.",
+        "NO",
+    ),
+    "SECTION_OPERATION_FAILED": (
+        "Section extraction failed after dispatch; raw error text is withheld.",
+        "NO",
+    ),
+    "DUPLICATE_PROPOSAL": (
+        "A repeated model proposal was excluded from retained observations.",
+        "NO",
+    ),
     "CLAIM_BATCH_LIMIT": ("At most two claims may be sent in one tool call.", "YES"),
     "CLAIM_LIMIT": ("The bounded run claim inventory is full; stop recording claims.", "NO"),
     "UNSUPPORTED_SOURCE_ENCODING": (
@@ -269,6 +285,21 @@ ALIASES = {
     "NA_REASON_NOT_SUPPORTED": "CLAIM_VALUE_UNSUPPORTED",
     "UNSUPPORTED_SOURCE_TYPE": "FETCH_CONTENT_TYPE_REJECTED",
 }
+
+
+def receipt_failure_code(exc: BaseException, *, default: str = "MODEL_CALL_FAILED") -> str:
+    """Return a codebook code without copying arbitrary exception text into a receipt."""
+
+    current: BaseException | None = exc
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if len(current.args) == 1 and isinstance(current.args[0], str):
+            candidate = ALIASES.get(current.args[0], current.args[0])
+            if candidate in CODEBOOK:
+                return candidate
+        current = current.__cause__
+    return default if default in CODEBOOK else "MODEL_CALL_FAILED"
 
 
 def reject(exc: Exception, *, component: Component, code: str | None = None) -> Rejection:

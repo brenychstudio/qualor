@@ -1561,6 +1561,197 @@
       "title": "MaterialKind",
       "type": "string"
     },
+    "ModelCallReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "ambiguous_count": {
+          "default": 0,
+          "maximum": 40,
+          "minimum": 0,
+          "title": "Ambiguous Count",
+          "type": "integer"
+        },
+        "authority_revision_after": {
+          "minimum": 0,
+          "title": "Authority Revision After",
+          "type": "integer"
+        },
+        "authority_revision_before": {
+          "minimum": 0,
+          "title": "Authority Revision Before",
+          "type": "integer"
+        },
+        "call_index": {
+          "anyOf": [
+            {
+              "maximum": 9,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Call Index"
+        },
+        "call_slot": {
+          "maximum": 24,
+          "minimum": 1,
+          "title": "Call Slot",
+          "type": "integer"
+        },
+        "conditional_count": {
+          "default": 0,
+          "maximum": 40,
+          "minimum": 0,
+          "title": "Conditional Count",
+          "type": "integer"
+        },
+        "cost_reconciled": {
+          "anyOf": [
+            {
+              "ge": 0,
+              "le": "0.20",
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cost Reconciled"
+        },
+        "cost_reserved": {
+          "anyOf": [
+            {
+              "ge": 0,
+              "le": "0.20",
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cost Reserved"
+        },
+        "duplicate_count": {
+          "default": 0,
+          "maximum": 40,
+          "minimum": 0,
+          "title": "Duplicate Count",
+          "type": "integer"
+        },
+        "execution_state": {
+          "enum": [
+            "PLANNED",
+            "DISPATCHED",
+            "COMPLETED",
+            "FAILED",
+            "BUDGET_BLOCKED"
+          ],
+          "title": "Execution State",
+          "type": "string"
+        },
+        "proposal_count": {
+          "default": 0,
+          "maximum": 40,
+          "minimum": 0,
+          "title": "Proposal Count",
+          "type": "integer"
+        },
+        "rejection_codes": {
+          "default": [],
+          "items": {
+            "maxLength": 80,
+            "minLength": 1,
+            "pattern": "^[A-Z][A-Z0-9_]*$",
+            "type": "string"
+          },
+          "maxItems": 40,
+          "title": "Rejection Codes",
+          "type": "array"
+        },
+        "requested_categories": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Category"
+          },
+          "maxItems": 2,
+          "title": "Requested Categories",
+          "type": "array"
+        },
+        "role": {
+          "enum": [
+            "PLANNING",
+            "EXTRACTION"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "section_id": {
+          "anyOf": [
+            {
+              "pattern": "^section_[a-f0-9]{32}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Section Id"
+        },
+        "source_id": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "minLength": 8,
+              "pattern": "^source_[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Id"
+        },
+        "supported_count": {
+          "default": 0,
+          "maximum": 40,
+          "minimum": 0,
+          "title": "Supported Count",
+          "type": "integer"
+        },
+        "unknown_count": {
+          "default": 0,
+          "maximum": 40,
+          "minimum": 0,
+          "title": "Unknown Count",
+          "type": "integer"
+        },
+        "unsupported_count": {
+          "default": 0,
+          "maximum": 40,
+          "minimum": 0,
+          "title": "Unsupported Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "call_slot",
+        "role",
+        "authority_revision_before",
+        "authority_revision_after",
+        "execution_state"
+      ],
+      "title": "ModelCallReceipt",
+      "type": "object"
+    },
     "Money": {
       "additionalProperties": false,
       "properties": {
@@ -2201,6 +2392,7 @@
             "ELIGIBILITY_EVALUATED",
             "DECISION_EVALUATED",
             "HUMAN_REVIEW_NEEDED",
+            "MODEL_CALL_RECEIPT",
             "RUN_TERMINATED"
           ],
           "title": "Event",
@@ -2254,6 +2446,17 @@
           "minLength": 1,
           "title": "Reason Code",
           "type": "string"
+        },
+        "receipt": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ModelCallReceipt"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "source_ids": {
           "default": [],
@@ -2404,12 +2607,28 @@
       "title": "Mode",
       "type": "string"
     },
+    "model_receipts": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ModelCallReceipt"
+      },
+      "maxItems": 24,
+      "title": "Model Receipts",
+      "type": "array"
+    },
     "official_source_count": {
       "title": "Official Source Count",
       "type": "integer"
     },
     "search_calls": {
       "title": "Search Calls",
+      "type": "integer"
+    },
+    "section_observation_count": {
+      "default": 0,
+      "maximum": 18,
+      "minimum": 0,
+      "title": "Section Observation Count",
       "type": "integer"
     },
     "sources": {

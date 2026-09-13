@@ -2,7 +2,7 @@
 
 from typing import Annotated, Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, StrictInt, model_validator
 from pydantic.json_schema import SkipJsonSchema
 
 from qualor.decisions.fixture import DecisionInput, ProjectDecisionInput
@@ -15,6 +15,7 @@ from qualor.domain.profiles import FounderProfile
 
 from .claims import ValidatedClaim
 from .diagnostics import BoundaryEvent
+from .model_receipts import MAX_PLANNED_SLOTS, ModelCallReceipt
 
 
 class StudioInput(Contract):
@@ -44,6 +45,7 @@ class TraceEvent(Contract):
         "ELIGIBILITY_EVALUATED",
         "DECISION_EVALUATED",
         "HUMAN_REVIEW_NEEDED",
+        "MODEL_CALL_RECEIPT",
         "RUN_TERMINATED",
     ]
     reason_code: NonEmpty
@@ -53,6 +55,13 @@ class TraceEvent(Contract):
     normalized_field: str | None = Field(default=None, max_length=80)
     normalization_status: Literal["SUPPORTED", "UNSUPPORTED", "AMBIGUOUS", "UNKNOWN"] | None = None
     normalizer_version: str | None = Field(default=None, max_length=20)
+    receipt: ModelCallReceipt | None = Field(default=None, exclude_if=lambda value: value is None)
+
+    @model_validator(mode="after")
+    def receipt_belongs_only_to_receipt_events(self):
+        if (self.receipt is None) != (self.event != "MODEL_CALL_RECEIPT"):
+            raise ValueError("Receipt payload is required only for MODEL_CALL_RECEIPT")
+        return self
 
 
 class SourceCitation(Contract):
@@ -104,6 +113,10 @@ class AgentRunResult(Contract):
     contradictions: tuple[NonEmpty, ...]
     sources: Annotated[tuple[SourceCitation, ...], Field(max_length=10)] = ()
     boundary_events: Annotated[tuple[BoundaryEvent, ...], Field(max_length=160)] = ()
+    model_receipts: Annotated[
+        tuple[ModelCallReceipt, ...], Field(max_length=MAX_PLANNED_SLOTS)
+    ] = ()
+    section_observation_count: Annotated[StrictInt, Field(ge=0, le=18)] = 0
     bundle: SkipJsonSchema[RuntimeDecisionBundle | None] = None
 
     @model_validator(mode="after")

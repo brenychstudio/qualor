@@ -15,6 +15,7 @@ from .diagnostics import BoundaryEvent, reject, shape
 from .extraction import MAX_EXTRACTED_CLAIMS_PER_CALL
 from .handoff import compile_decision_bundle
 from .mode import ProviderBoundaryError, RuntimeMode
+from .model_receipts import MAX_PLANNED_SLOTS, ReceiptLedger
 from .normalization import ClaimNormalizationError
 from .providers import FetchRequest, SearchRequest
 from .run_models import AgentRunResult, SourceCitation, StudioInput, TraceEvent
@@ -96,9 +97,15 @@ class OpportunityRun:
         self.opportunity_version_resolver = opportunity_version_resolver
         self.contradictions = ()
         self.section_results = ()
+        self.receipt_ledger = ReceiptLedger()
+        self._receipts_emitted = False
         from .section_acquisition import SectionAcquisition
 
         self.section_acquisition = SectionAcquisition(self)
+        if self.mode == "LIVE" and hasattr(self.extractor.client, "bind_receipts"):
+            self.extractor.client.bind_receipts(
+                self.receipt_ledger, authority_revision=lambda: self._authority_revision
+            )
 
     def event(
         self,
@@ -111,6 +118,7 @@ class OpportunityRun:
         normalized_field=None,
         normalization_status=None,
         normalizer_version=None,
+        receipt=None,
     ):
         record = TraceEvent(
             event=event,
@@ -121,8 +129,10 @@ class OpportunityRun:
             normalized_field=normalized_field,
             normalization_status=normalization_status,
             normalizer_version=normalizer_version,
+            receipt=receipt,
         )
-        if len(self.trace) < 99:
+        trace_limit = 100 if event == "RUN_TERMINATED" else 99
+        if len(self.trace) < trace_limit:
             self.trace.append(record)
         # The sink observes what happened; it never decides what the run reports.
         self._notify(lambda: self.sink.trace_event(record, mode=self.mode))
@@ -664,7 +674,34 @@ class OpportunityRun:
             "termination_reason": self.termination_reason,
         }
 
+    def flush_model_receipts(self):
+        """Emit each slot's current terminal snapshot once, without evaluating authority."""
+
+        receipts = self.receipt_ledger.snapshot()
+        if self._receipts_emitted:
+            return receipts
+        ordinary_limit = 99 - min(len(receipts), MAX_PLANNED_SLOTS)
+        if len(self.trace) > ordinary_limit:
+            self.trace = self.trace[:ordinary_limit]
+        for receipt in receipts:
+            self.event(
+                "MODEL_CALL_RECEIPT",
+                "FINAL_MODEL_CALL_RECEIPT",
+                receipt=receipt,
+            )
+        self._receipts_emitted = True
+        return receipts
+
     def finish(self):
+        try:
+            return self._finish()
+        except Exception:
+            # A terminal persistence adapter still needs the final model accounting even
+            # when deterministic evaluation cannot construct AgentRunResult.
+            self.flush_model_receipts()
+            raise
+
+    def _finish(self):
         self.evaluate_current_state()
         self.stop("NO_PROGRESS")
         if not self.section_results and not any(
@@ -677,7 +714,10 @@ class OpportunityRun:
                 "EXTRACTION_NO_CRITICAL_CLAIMS",
                 "Run ended without an admitted critical claim; no evidence is fabricated.",
             )
+        receipts = self.flush_model_receipts()
         self.event("RUN_TERMINATED", self.termination_reason)
+        from .section_acquisition import retained_section_observation_count
+
         result = AgentRunResult(
             mode=self.mode,
             decision=self.decision,
@@ -697,6 +737,8 @@ class OpportunityRun:
                 )
             ),
             contradictions=self.contradictions,
+            model_receipts=receipts,
+            section_observation_count=retained_section_observation_count(self.section_results),
             boundary_events=tuple(self.boundary_events),
             sources=tuple(
                 SourceCitation.model_validate(

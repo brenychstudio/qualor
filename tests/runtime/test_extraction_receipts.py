@@ -121,6 +121,44 @@ def test_provider_error_has_safe_receipt_without_exception_text():
     assert "PRIVATE_MARKER" not in json.dumps(asdict(extractor.receipts[-1]))
 
 
+def test_valid_usage_cost_survives_later_malformed_extraction_output():
+    from qualor.runtime.agent import BudgetedBedrockClient
+    from qualor.runtime.budget import LiveBudgetGuard, LiveBudgetPolicy
+    from qualor.runtime.model_receipts import ReceiptLedger
+
+    poison = "PRIVATE_MODEL_OUTPUT_SENTINEL"
+
+    class MalformedJson:
+        def converse(self, **request):
+            return response('{"claims":[' + poison)
+
+    ledger = ReceiptLedger()
+    guard = LiveBudgetGuard(
+        LiveBudgetPolicy(cost_cap_usd=Decimal(".20"), authorization="QUALOR_03B3")
+    )
+    client = BudgetedBedrockClient(MalformedJson(), guard)
+    client.bind_receipts(ledger, authority_revision=lambda: 3)
+    _, source = adapter(None)
+    extractor = BedrockClaimExtractor(client)
+
+    with pytest.raises(ValueError, match="JSON_DECODE_FAILED"):
+        with client.extraction_receipt(
+            source_id=source.id,
+            section_id="section_" + "a" * 32,
+            categories=("LICENSE",),
+        ):
+            extractor.extract(source, "license")
+
+    receipt = ledger.snapshot()[0]
+    assert receipt.execution_state == "FAILED"
+    assert receipt.call_index == 1
+    assert receipt.cost_reserved is not None
+    assert receipt.cost_reconciled == Decimal(".00798")
+    assert receipt.rejection_codes == ("JSON_DECODE_FAILED",)
+    assert guard.open_reservation_count == 0
+    assert poison not in receipt.model_dump_json()
+
+
 def test_R13_independent_output_policies_and_shared_guard():
     from qualor.runtime.agent import BudgetedBedrockClient, live_extractor
     from qualor.runtime.budget import LiveBudgetGuard, LiveBudgetPolicy

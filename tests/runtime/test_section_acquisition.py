@@ -637,6 +637,49 @@ def test_invalid_source_is_operational_and_terminal_reason_is_sticky(harness):
     assert not client.requests
 
 
+def test_post_adaptation_failure_terminalizes_and_persists_receipt(
+    harness, monkeypatch, tmp_path
+):
+    from qualor.persistence import Database
+    from qualor.runtime.acquisition_coverage import CoverageLedger
+    from qualor.workspace import WorkspaceStore
+    from qualor.workspace.run_capture import WorkspaceRunCapture
+
+    run, _, _, _ = harness()
+    database = Database(tmp_path / "post-adaptation-failure.db")
+    capture = WorkspaceRunCapture(database, run_id="post-adaptation-failure", mode="LIVE")
+    run.sink = capture
+    source_id = fetch_source(run)
+
+    def fail_coverage_completion(self, section_id, outcomes, authority_revision):
+        del self, section_id, outcomes, authority_revision
+        raise RuntimeError("PRIVATE_POST_ADAPTATION_SENTINEL")
+
+    monkeypatch.setattr(CoverageLedger, "complete", fail_coverage_completion)
+
+    run.acquire_official_sections(source_id)
+    receipt = run.receipt_ledger.snapshot()[0]
+    assert receipt.execution_state == "FAILED"
+    assert receipt.cost_reserved is not None
+    assert receipt.cost_reconciled is not None
+    assert all(item.execution_state != "DISPATCHED" for item in run.receipt_ledger.snapshot())
+
+    result = run.finish()
+    capture.require_persisted()
+    assert result.model_receipts[0] == receipt
+
+    reopened = Database(tmp_path / "post-adaptation-failure.db")
+    with reopened.transaction() as connection:
+        events = WorkspaceStore(connection).runs.list_run_events("post-adaptation-failure")
+    persisted = [event for event in events if event.event_type == "MODEL_CALL_RECEIPT"]
+    assert len(persisted) == 1
+    assert persisted[0].payload.receipt == receipt
+    encoded = persisted[0].payload.model_dump_json()
+    assert '"execution_state":"FAILED"' in encoded
+    assert '"execution_state":"DISPATCHED"' not in encoded
+    assert "PRIVATE_POST_ADAPTATION_SENTINEL" not in encoded
+
+
 def test_partial_category_cannot_terminate_before_later_contradictory_section(
     harness, decision_spy
 ):

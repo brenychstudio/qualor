@@ -18,6 +18,7 @@ export type PublicRunEvent =
   | 'ELIGIBILITY_EVALUATED'
   | 'DECISION_EVALUATED'
   | 'HUMAN_REVIEW_NEEDED'
+  | 'MODEL_CALL_RECEIPT'
   | 'RUN_TERMINATED'
   // Written by the workspace fixture seeder rather than by the runtime loop. Without copy of
   // their own they reached the rail as spaced-out enum text next to properly presented events.
@@ -40,6 +41,7 @@ const EVENT_COPY: Record<PublicRunEvent, string> = {
   ELIGIBILITY_EVALUATED: 'Eligibility evaluated',
   DECISION_EVALUATED: 'Decision updated',
   HUMAN_REVIEW_NEEDED: 'Human review needed',
+  MODEL_CALL_RECEIPT: 'Model call accounting recorded',
   RUN_TERMINATED: 'Run ended',
   OPPORTUNITY_DISCOVERED: 'Opportunity discovered',
   DECISION_UPDATED: 'Decision updated',

@@ -615,8 +615,38 @@ export type Candidates1 =
 export type Reasons7 = string[];
 export type FetchedDocuments1 = number;
 export type Mode1 = "LIVE" | "FIXTURE" | "REPLAY";
+export type AmbiguousCount = number;
+export type AuthorityRevisionAfter = number;
+export type AuthorityRevisionBefore = number;
+export type CallIndex = number | null;
+export type CallSlot = number;
+export type ConditionalCount = number;
+export type CostReconciled = string | null;
+export type CostReserved = string | null;
+export type DuplicateCount = number;
+export type ExecutionState = "PLANNED" | "DISPATCHED" | "COMPLETED" | "FAILED" | "BUDGET_BLOCKED";
+export type ProposalCount = number;
+/**
+ * @maxItems 40
+ */
+export type RejectionCodes = string[];
+/**
+ * @maxItems 2
+ */
+export type RequestedCategories = [] | [Category] | [Category, Category];
+export type Role = "PLANNING" | "EXTRACTION";
+export type SectionId1 = string | null;
+export type SourceId3 = string | null;
+export type SupportedCount = number;
+export type UnknownCount = number;
+export type UnsupportedCount = number;
+/**
+ * @maxItems 24
+ */
+export type ModelReceipts = ModelCallReceipt[];
 export type OfficialSourceCount1 = number;
 export type SearchCalls1 = number;
+export type SectionObservationCount = number;
 /**
  * @maxItems 10
  */
@@ -691,6 +721,7 @@ export type Event1 =
   | "ELIGIBILITY_EVALUATED"
   | "DECISION_EVALUATED"
   | "HUMAN_REVIEW_NEEDED"
+  | "MODEL_CALL_RECEIPT"
   | "RUN_TERMINATED";
 export type NormalizationStatus1 = ("SUPPORTED" | "UNSUPPORTED" | "AMBIGUOUS" | "UNKNOWN") | null;
 export type NormalizedField = string | null;
@@ -1068,10 +1099,10 @@ export type EvidenceVersion = number;
 export type Excerpt1 = string;
 export type OriginalUrl1 = string;
 export type RetrievedAt2 = string;
-export type SourceId3 = string | null;
+export type SourceId4 = string | null;
 export type SourceVersion = string;
 export type PolicyVersion12 = number | null;
-export type SourceId4 = string | null;
+export type SourceId5 = string | null;
 export type Url = string;
 /**
  * @maxItems 100
@@ -1126,14 +1157,14 @@ export type NormalizedField1 =
   | "reward_conditions"
   | "deliverables";
 export type NotApplicableReason2 = string | null;
-export type SourceId5 = string;
+export type SourceId6 = string;
 export type SupportingSpanId = string;
 export type BoundedExcerpt = string;
 export type CandidateId = string;
 export type ContentLength = number;
 export type ContentType = string;
 export type RetrievedAt3 = string;
-export type SourceId6 = string;
+export type SourceId7 = string;
 export type SourceUrl1 = string;
 export type Title1 = string | null;
 export type Url1 = string;
@@ -1463,8 +1494,10 @@ export interface AgentRunResult {
   decision: DecisionOutput;
   fetched_documents: FetchedDocuments1;
   mode: Mode1;
+  model_receipts?: ModelReceipts;
   official_source_count: OfficialSourceCount1;
   search_calls: SearchCalls1;
+  section_observation_count?: SectionObservationCount;
   sources?: Sources;
   termination_reason: TerminationReason1;
   trace: Trace;
@@ -1726,6 +1759,27 @@ export interface ProjectSelection {
   candidates: Candidates1;
   reasons: Reasons7;
 }
+export interface ModelCallReceipt {
+  ambiguous_count?: AmbiguousCount;
+  authority_revision_after: AuthorityRevisionAfter;
+  authority_revision_before: AuthorityRevisionBefore;
+  call_index?: CallIndex;
+  call_slot: CallSlot;
+  conditional_count?: ConditionalCount;
+  cost_reconciled?: CostReconciled;
+  cost_reserved?: CostReserved;
+  duplicate_count?: DuplicateCount;
+  execution_state: ExecutionState;
+  proposal_count?: ProposalCount;
+  rejection_codes?: RejectionCodes;
+  requested_categories?: RequestedCategories;
+  role: Role;
+  section_id?: SectionId1;
+  source_id?: SourceId3;
+  supported_count?: SupportedCount;
+  unknown_count?: UnknownCount;
+  unsupported_count?: UnsupportedCount;
+}
 export interface SourceCitation {
   authority: SourceType;
   content_hash: ContentHash1;
@@ -1741,6 +1795,7 @@ export interface TraceEvent {
   normalized_field?: NormalizedField;
   normalizer_version?: NormalizerVersion1;
   reason_code: ReasonCode3;
+  receipt?: ModelCallReceipt | null;
   source_ids?: SourceIds2;
   span_ids?: SpanIds1;
 }
@@ -2306,7 +2361,7 @@ export interface EvidenceProofView {
   freshness: FreshnessStatus;
   original_url: OriginalUrl1;
   retrieved_at: RetrievedAt2;
-  source_id: SourceId3;
+  source_id: SourceId4;
   source_type: SourceType;
   source_version: SourceVersion;
   technical_provenance?: TechnicalProvenanceView | null;
@@ -2315,7 +2370,7 @@ export interface EvidenceProofView {
 export interface TechnicalProvenanceView {
   extraction_state: ExtractionState;
   policy_version: PolicyVersion12;
-  source_id: SourceId4;
+  source_id: SourceId5;
 }
 export interface RewardDeadlineWhyView {
   deadline: DeadlineView;
@@ -2341,7 +2396,7 @@ export interface ExtractedClaimTransport {
   extraction_state: ExtractionState1;
   normalized_field: NormalizedField1;
   not_applicable_reason?: NotApplicableReason2;
-  source_id: SourceId5;
+  source_id: SourceId6;
   supporting_span_id: SupportingSpanId;
 }
 export interface FetchedSourceRef {
@@ -2350,7 +2405,7 @@ export interface FetchedSourceRef {
   content_length: ContentLength;
   content_type: ContentType;
   retrieved_at: RetrievedAt3;
-  source_id: SourceId6;
+  source_id: SourceId7;
   source_type: SourceType;
   source_url: SourceUrl1;
   title?: Title1;

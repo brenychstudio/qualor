@@ -34,6 +34,7 @@ PHASES: dict[str, str | None] = {
     "ELIGIBILITY_EVALUATED": "EVALUATING",
     "HUMAN_REVIEW_NEEDED": "EVALUATING",
     "DECISION_EVALUATED": "DECISION_UPDATED",
+    "MODEL_CALL_RECEIPT": None,
     "RUN_TERMINATED": None,
 }
 
@@ -142,6 +143,7 @@ class WorkspaceRunCapture:
             count=event.count,
             normalized_field=event.normalized_field,
             normalization_status=event.normalization_status,
+            receipt=event.receipt,
         )
 
     def run_finished(
@@ -162,7 +164,7 @@ class WorkspaceRunCapture:
                 search_calls=result.search_calls,
                 fetched_documents=result.fetched_documents,
                 official_source_count=result.official_source_count,
-                verified_claim_count=len(result.claims),
+                verified_claim_count=len(result.claims) + result.section_observation_count,
                 reserved_cost_usd=reserved_cost_usd,
                 reported_cost_usd=reported_cost_usd,
                 result=result,
