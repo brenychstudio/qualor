@@ -5,7 +5,39 @@ from datetime import UTC, datetime
 
 import pytest
 
+from qualor.decisions.fixture import ProjectDecisionInput
+from qualor.domain.enums import Provenance
+from qualor.domain.profiles import FounderProfile, ProjectProfile
+from qualor.effort import EffortAssumptions
+from qualor.runtime.run_models import StudioInput
 from qualor.runtime.sources import SourceDocument
+
+
+@pytest.fixture
+def studio_inputs():
+    """Synthetic independent facts with no source-derived applicant state."""
+    now = datetime(2026, 9, 13, 12, tzinfo=UTC)
+    metadata = {
+        "schema_version": "1",
+        "version": 1,
+        "created_at": now,
+        "updated_at": now,
+        "provenance": Provenance.USER_ASSERTED,
+    }
+    founder = FounderProfile(id="independent-founder", **metadata)
+    project = ProjectProfile(
+        id="independent-project",
+        name="Synthetic independent project",
+        **metadata,
+    )
+    return StudioInput(
+        schema_version="1",
+        sanitized=True,
+        goal="Evaluate only independently supplied facts",
+        allowed_hosts=("example.org",),
+        founder=founder,
+        projects=(ProjectDecisionInput(project=project, effort=EffortAssumptions(items=())),),
+    )
 
 
 @pytest.fixture
