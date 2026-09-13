@@ -31,6 +31,11 @@ class AcquisitionState(StrEnum):
     EXHAUSTED = "EXHAUSTED"
 
 
+class AttemptTier(StrEnum):
+    EXPLICIT = "EXPLICIT"
+    FALLBACK = "FALLBACK"
+
+
 class AcquisitionOutcome(Contract):
     normalization_status: NormalizationStatus
     supported_rule_ids: tuple[NonEmpty, ...]
@@ -88,6 +93,7 @@ class CoverageLedger:
         }
         self._transitions: list[CoverageTransition] = []
         self._attempts: set[AttemptKey] = set()
+        self._attempt_tiers: dict[AttemptKey, AttemptTier] = {}
         self._outcomes: dict[AttemptKey, AcquisitionOutcome] = {}
         self._active_authority_revisions: dict[AttemptKey, int] = {}
         self._seen_revisions = {index.source_revision}
@@ -105,6 +111,10 @@ class CoverageLedger:
     def outcomes(self) -> Mapping[AttemptKey, AcquisitionOutcome]:
         return MappingProxyType(dict(self._outcomes))
 
+    @property
+    def attempt_tiers(self) -> Mapping[AttemptKey, AttemptTier]:
+        return MappingProxyType(dict(self._attempt_tiers))
+
     def state(self, category: Category) -> AcquisitionState:
         return self._states[category]
 
@@ -115,9 +125,7 @@ class CoverageLedger:
             category
             for category in Category
             if self._states[category] is AcquisitionState.UNSEEN
-            and not any(
-                self._is_relevant(section, category) for section in self._index.sections
-            )
+            and not any(self._is_relevant(section, category) for section in self._index.sections)
         )
         for category in absent:
             self._absence_exhausted.add((self._index.source_revision, category))
@@ -158,9 +166,15 @@ class CoverageLedger:
                 authority_revision=authority_revision,
                 cause="EXTRACTION_ATTEMPT_BEGUN",
             )
-            pending.append((key, category, transition))
-        for key, category, transition in pending:
+            tier = (
+                AttemptTier.EXPLICIT
+                if section.candidate_categories and category in section.candidate_categories
+                else AttemptTier.FALLBACK
+            )
+            pending.append((key, category, transition, tier))
+        for key, category, transition, tier in pending:
             self._attempts.add(key)
+            self._attempt_tiers[key] = tier
             self._active_authority_revisions[key] = authority_revision
             self._states[category] = AcquisitionState.EXTRACTION_ATTEMPTED
             self._transitions.append(transition)
@@ -214,9 +228,7 @@ class CoverageLedger:
                 authority_revision,
                 outcome.reason_code,
             )
-            self._record_aggregate_transition(
-                key, category, outcome, authority_revision
-            )
+            self._record_aggregate_transition(key, category, outcome, authority_revision)
 
     def operational_failure(
         self,
@@ -253,9 +265,7 @@ class CoverageLedger:
                 reason_code,
             )
 
-    def budget_blocked(
-        self, section_id: str, categories: tuple[Category, ...]
-    ) -> None:
+    def budget_blocked(self, section_id: str, categories: tuple[Category, ...]) -> None:
         section = self._section(section_id)
         if not categories or len(set(categories)) != len(categories):
             raise ValueError("INVALID_ACQUISITION_CATEGORIES")
@@ -271,6 +281,7 @@ class CoverageLedger:
             key = (self._index.source_revision, section_id, category)
             authority_revision = self._active_authority_revisions.pop(key)
             self._attempts.remove(key)
+            del self._attempt_tiers[key]
             self._record_transition(
                 key,
                 AcquisitionState.EXTRACTION_ATTEMPTED,
@@ -312,11 +323,7 @@ class CoverageLedger:
             changed = before_states[category] is not next_states[category]
             if not changed and not (restored and relevant):
                 continue
-            key = (
-                (index.source_revision, relevant[0].section_id, category)
-                if relevant
-                else None
-            )
+            key = (index.source_revision, relevant[0].section_id, category) if relevant else None
             self._record_transition(
                 key,
                 before_states[category],
@@ -387,17 +394,14 @@ class CoverageLedger:
         )
         if any(key not in self._attempts for key in relevant_keys):
             return AcquisitionState.SECTION_AVAILABLE
-        outcomes = tuple(
-            self._outcomes[key] for key in relevant_keys if key in self._outcomes
-        )
+        outcomes = tuple(self._outcomes[key] for key in relevant_keys if key in self._outcomes)
         sections_by_id = {section.section_id: section for section in self._index.sections}
         fully_interpreted = (
             len(outcomes) == len(relevant_keys)
             and all(outcome.context_complete for outcome in outcomes)
             and all(sections_by_id[key[1]].context_complete for key in relevant_keys)
             and all(
-                outcome.normalization_status not in {"AMBIGUOUS", "UNKNOWN"}
-                for outcome in outcomes
+                outcome.normalization_status not in {"AMBIGUOUS", "UNKNOWN"} for outcome in outcomes
             )
         )
         has_support = any(outcome.supported_rule_ids for outcome in outcomes)

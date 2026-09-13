@@ -9,7 +9,9 @@ from qualor.runtime.acquisition_coverage import (
     AcquisitionState,
     CoverageLedger,
 )
-from qualor.runtime.sections import index_source
+from qualor.runtime.live_cli import live_budget
+from qualor.runtime.section_scheduler import SectionScheduler
+from qualor.runtime.sections import SectionIndex, index_source
 from qualor.runtime.spans import EvidenceSpanRegistry
 
 
@@ -38,16 +40,137 @@ def _outcome(
 
 
 def _sections(index, category: Category):
-    return tuple(
-        section for section in index.sections if category in section.candidate_categories
+    return tuple(section for section in index.sections if category in section.candidate_categories)
+
+
+def _replace_categories(
+    index: SectionIndex, categories: dict[str, tuple[Category, ...]]
+) -> SectionIndex:
+    return SectionIndex(
+        source_id=index.source_id,
+        source_revision=index.source_revision,
+        indexer_version=index.indexer_version,
+        sections=tuple(
+            section.model_copy(
+                update={"candidate_categories": categories.get(section.section_id, ())}
+            )
+            for section in index.sections
+        ),
     )
+
+
+def test_same_revision_fallback_cannot_become_explicit_retroactively(document):
+    index = _index(document, "Ordinary background notes.\n" * 30)
+    section = index.sections[0]
+    ledger = CoverageLedger(index)
+    key = (index.source_revision, section.section_id, Category.DEADLINE)
+
+    ledger.begin(section.section_id, (Category.DEADLINE,), 0)
+    ledger.operational_failure(section.section_id, (Category.DEADLINE,), "PROVIDER_ERROR")
+    reclassified = _replace_categories(index, {section.section_id: (Category.DEADLINE,)})
+    ledger.replace_index(reclassified)
+    scheduler = SectionScheduler(reclassified, ledger, live_budget())
+
+    assert ledger.attempt_tiers[key].value == "FALLBACK"
+    assert scheduler._explicit_attempt_depth(Category.DEADLINE) == 0
+
+
+def test_explicit_and_fallback_tiers_are_recorded_at_begin(document):
+    explicit_index = _index(document, "License\nMIT is required.")
+    explicit_section = _sections(explicit_index, Category.LICENSE)[0]
+    explicit_ledger = CoverageLedger(explicit_index)
+    explicit_ledger.begin(explicit_section.section_id, (Category.LICENSE,), 0)
+
+    fallback_index = _index(document, "Ordinary background notes.\n" * 30)
+    fallback_section = fallback_index.sections[0]
+    fallback_ledger = CoverageLedger(fallback_index)
+    fallback_ledger.begin(fallback_section.section_id, (Category.LICENSE,), 0)
+
+    assert (
+        explicit_ledger.attempt_tiers[
+            (explicit_index.source_revision, explicit_section.section_id, Category.LICENSE)
+        ].value
+        == "EXPLICIT"
+    )
+    assert (
+        fallback_ledger.attempt_tiers[
+            (fallback_index.source_revision, fallback_section.section_id, Category.LICENSE)
+        ].value
+        == "FALLBACK"
+    )
+
+
+def test_explicit_tier_cannot_become_fallback_after_same_revision_refresh(document):
+    index = _index(document, "License\nMIT is required.")
+    section = _sections(index, Category.LICENSE)[0]
+    ledger = CoverageLedger(index)
+    key = (index.source_revision, section.section_id, Category.LICENSE)
+    ledger.begin(section.section_id, (Category.LICENSE,), 0)
+    ledger.complete(section.section_id, {Category.LICENSE: _outcome("UNKNOWN")}, 0)
+
+    ledger.replace_index(_replace_categories(index, {section.section_id: ()}))
+
+    assert ledger.attempt_tiers[key].value == "EXPLICIT"
+
+
+def test_budget_blocked_unwinds_attempt_tier_provenance(document):
+    index = _index(document, "License\nMIT is required.")
+    section = _sections(index, Category.LICENSE)[0]
+    ledger = CoverageLedger(index)
+    key = (index.source_revision, section.section_id, Category.LICENSE)
+    ledger.begin(section.section_id, (Category.LICENSE,), 0)
+
+    ledger.budget_blocked(section.section_id, (Category.LICENSE,))
+
+    assert key not in ledger.attempts
+    assert key not in ledger.attempt_tiers
+
+
+def test_attempt_tier_history_is_revision_scoped_and_aba_stable(document):
+    first_index = _index(document, "License\nMIT is required.")
+    first_section = _sections(first_index, Category.LICENSE)[0]
+    ledger = CoverageLedger(first_index)
+    first_key = (first_index.source_revision, first_section.section_id, Category.LICENSE)
+    ledger.begin(first_section.section_id, (Category.LICENSE,), 0)
+    ledger.operational_failure(first_section.section_id, (Category.LICENSE,), "PROVIDER_ERROR")
+
+    second_index = _index(
+        document,
+        "Ordinary background notes.\n" * 30,
+        content_hash="b" * 64,
+    )
+    second_section = second_index.sections[0]
+    second_key = (second_index.source_revision, second_section.section_id, Category.LICENSE)
+    ledger.replace_index(second_index)
+    ledger.begin(second_section.section_id, (Category.LICENSE,), 1)
+    ledger.operational_failure(second_section.section_id, (Category.LICENSE,), "PROVIDER_ERROR")
+    ledger.replace_index(first_index)
+
+    assert ledger.attempt_tiers[first_key].value == "EXPLICIT"
+    assert ledger.attempt_tiers[second_key].value == "FALLBACK"
+    assert all(
+        key[0] in {first_index.source_revision, second_index.source_revision}
+        for key in ledger.attempt_tiers
+    )
+
+
+def test_attempt_tier_snapshot_is_read_only(document):
+    index = _index(document, "License\nMIT is required.")
+    section = _sections(index, Category.LICENSE)[0]
+    ledger = CoverageLedger(index)
+    key = (index.source_revision, section.section_id, Category.LICENSE)
+    ledger.begin(section.section_id, (Category.LICENSE,), 0)
+
+    snapshot = ledger.attempt_tiers
+    with pytest.raises(TypeError):
+        snapshot[key] = "FALLBACK"
+    assert ledger.attempt_tiers[key].value == "EXPLICIT"
 
 
 def test_spec_states_and_ambiguous_unsupported_transitions(document):
     index = _index(
         document,
-        "Geography\nResidents of Spain may enter.\n"
-        "Residency\nLocal residence rules may apply.",
+        "Geography\nResidents of Spain may enter.\nResidency\nLocal residence rules may apply.",
     )
     first, second = _sections(index, Category.GEOGRAPHY)
     ledger = CoverageLedger(index)
@@ -104,25 +227,18 @@ def test_three_ambiguous_outcomes_are_not_operational_failures(document):
         ledger.begin(section.section_id, (Category.GEOGRAPHY,), authority_revision)
         ledger.complete(
             section.section_id,
-            {
-                Category.GEOGRAPHY: _outcome(
-                    "AMBIGUOUS", reason_code="SOURCE_LANGUAGE_AMBIGUOUS"
-                )
-            },
+            {Category.GEOGRAPHY: _outcome("AMBIGUOUS", reason_code="SOURCE_LANGUAGE_AMBIGUOUS")},
             authority_revision,
         )
 
     assert len(sections) == 3
     assert ledger.state(Category.GEOGRAPHY) is AcquisitionState.EXHAUSTED
     assert len(ledger.outcomes) == 3
-    assert all(
-        outcome.normalization_status == "AMBIGUOUS"
-        for outcome in ledger.outcomes.values()
+    assert all(outcome.normalization_status == "AMBIGUOUS" for outcome in ledger.outcomes.values())
+    assert (
+        sum(transition.after is AcquisitionState.AMBIGUOUS for transition in ledger.transitions)
+        == 3
     )
-    assert sum(
-        transition.after is AcquisitionState.AMBIGUOUS
-        for transition in ledger.transitions
-    ) == 3
 
 
 def test_partial_supported_rule_ids_survive_category_exhaustion(document):
@@ -137,11 +253,7 @@ def test_partial_supported_rule_ids_survive_category_exhaustion(document):
     ledger.begin(first.section_id, (Category.GEOGRAPHY,), 0)
     ledger.complete(
         first.section_id,
-        {
-            Category.GEOGRAPHY: _outcome(
-                "SUPPORTED", rule_ids=("rule_geography_residence",)
-            )
-        },
+        {Category.GEOGRAPHY: _outcome("SUPPORTED", rule_ids=("rule_geography_residence",))},
         0,
     )
     assert ledger.state(Category.GEOGRAPHY) is AcquisitionState.SECTION_AVAILABLE
@@ -149,28 +261,20 @@ def test_partial_supported_rule_ids_survive_category_exhaustion(document):
     ledger.begin(second.section_id, (Category.GEOGRAPHY,), 0)
     ledger.complete(
         second.section_id,
-        {
-            Category.GEOGRAPHY: _outcome(
-                "UNKNOWN", reason_code="SOURCE_UNRESOLVED"
-            )
-        },
+        {Category.GEOGRAPHY: _outcome("UNKNOWN", reason_code="SOURCE_UNRESOLVED")},
         0,
     )
 
     first_key = (index.source_revision, first.section_id, Category.GEOGRAPHY)
     assert ledger.state(Category.GEOGRAPHY) is AcquisitionState.EXHAUSTED
-    assert ledger.outcomes[first_key].supported_rule_ids == (
-        "rule_geography_residence",
-    )
+    assert ledger.outcomes[first_key].supported_rule_ids == ("rule_geography_residence",)
 
 
 def test_unknown_survives_exhaustion(document):
     index = _index(document, "Geography\nEligibility depends on local law.")
     ledger = CoverageLedger(index)
     section = next(
-        section
-        for section in index.sections
-        if Category.GEOGRAPHY in section.candidate_categories
+        section for section in index.sections if Category.GEOGRAPHY in section.candidate_categories
     )
     ledger.begin(section.section_id, (Category.GEOGRAPHY,), 0)
     result = AcquisitionOutcome(
@@ -205,9 +309,7 @@ def test_new_source_revision_reopens_but_same_revision_does_not(document):
     assert ledger.state(Category.LICENSE) is AcquisitionState.EXHAUSTED
     transition_snapshot = ledger.transitions
 
-    regenerated = index_source(
-        document(text), EvidenceSpanRegistry(secret=b"b" * 32)
-    )
+    regenerated = index_source(document(text), EvidenceSpanRegistry(secret=b"b" * 32))
     ledger.replace_index(regenerated)
     assert ledger.state(Category.LICENSE) is AcquisitionState.EXHAUSTED
     with pytest.raises(ValueError, match="DUPLICATE_SECTION_CATEGORY_ATTEMPT"):
@@ -327,9 +429,7 @@ def test_supported_conditional_rule_does_not_claim_applicant_compliance(document
         7,
     )
 
-    outcome = ledger.outcomes[
-        (index.source_revision, section.section_id, Category.ENTRANT_TYPE)
-    ]
+    outcome = ledger.outcomes[(index.source_revision, section.section_id, Category.ENTRANT_TYPE)]
     assert ledger.state(Category.ENTRANT_TYPE) is AcquisitionState.SUPPORTED
     assert outcome.conditional is True
     assert not hasattr(outcome, "applicant_compliance")

@@ -8,7 +8,7 @@ from pydantic import Field, StrictBool, StrictInt
 from qualor.domain.base import Contract, NonEmpty
 from qualor.domain.enums import Category
 
-from .acquisition_coverage import AcquisitionState, CoverageLedger
+from .acquisition_coverage import AcquisitionState, AttemptTier, CoverageLedger
 from .budget import BudgetSnapshot, LiveBudgetGuard
 from .sections import SectionIndex, SourceSection
 
@@ -94,13 +94,19 @@ class SectionScheduler:
                         continue
                     safe_sections.append(section)
                 candidates[category] = tuple(safe_sections)
-        candidates = (
-            explicit_candidates if any(explicit_candidates.values()) else fallback_candidates
-        )
-        selected = next(
-            (sections[0] for category in Category if (sections := candidates.get(category))),
-            None,
-        )
+        use_explicit = any(explicit_candidates.values())
+        candidates = explicit_candidates if use_explicit else fallback_candidates
+        primary_categories = tuple(category for category in Category if candidates.get(category))
+        selected = None
+        if primary_categories:
+            primary_category = min(
+                primary_categories,
+                key=lambda category: (
+                    self._explicit_attempt_depth(category) if use_explicit else 0,
+                    tuple(Category).index(category),
+                ),
+            )
+            selected = candidates[primary_category][0]
         if selected is None:
             reason = "CONTEXT_UNRESOLVED" if context_unresolved else "SOURCE_EXHAUSTED"
             return NoExtractionJob(reason_code=reason, pivot_eligible=True)
@@ -154,6 +160,18 @@ class SectionScheduler:
         return (
             tuple(section for section in relevant if section.candidate_categories),
             tuple(section for section in relevant if not section.candidate_categories),
+        )
+
+    def _explicit_attempt_depth(self, category: Category) -> int:
+        return sum(
+            source_revision == self._index.source_revision
+            and attempted_category is category
+            and tier is AttemptTier.EXPLICIT
+            for (
+                source_revision,
+                _section_id,
+                attempted_category,
+            ), tier in self._ledger.attempt_tiers.items()
         )
 
     def _context_for(self, target: SourceSection) -> tuple[tuple[str, ...], tuple[str, ...]] | None:

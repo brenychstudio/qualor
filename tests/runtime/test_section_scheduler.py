@@ -42,6 +42,25 @@ def _replace_contexts(
     )
 
 
+def _replace_categories(
+    index: SectionIndex, categories: dict[int, tuple[Category, ...]]
+) -> SectionIndex:
+    return SectionIndex(
+        source_id=index.source_id,
+        source_revision=index.source_revision,
+        indexer_version=index.indexer_version,
+        sections=tuple(
+            section.model_copy(update={"candidate_categories": categories.get(position, ())})
+            for position, section in enumerate(index.sections)
+        ),
+    )
+
+
+def _consume(scheduler: SectionScheduler, ledger: CoverageLedger, job: ExtractionJob) -> None:
+    scheduler.begin(job)
+    ledger.operational_failure(job.section_id, job.categories, "EXTRACTION_PROVIDER_ERROR")
+
+
 def _priority_index(document) -> SectionIndex:
     return _index(
         document,
@@ -102,14 +121,194 @@ def test_all_explicit_pairs_are_ordered_before_unclassified_fallback(document):
 
     assert scheduled == [
         (index.sections[3].section_id, (Category.GEOGRAPHY,)),
-        (index.sections[4].section_id, (Category.GEOGRAPHY,)),
         (index.sections[1].section_id, (Category.LICENSE,)),
         (index.sections[2].section_id, (Category.REQUIRED_TECHNOLOGY,)),
+        (index.sections[4].section_id, (Category.GEOGRAPHY,)),
     ]
     assert len(ledger.attempts) == len(set(ledger.attempts)) == 4
     assert isinstance(fallback, ExtractionJob)
     assert fallback.section_id == index.sections[0].section_id
     assert fallback.categories == (Category.DEADLINE, Category.ENTRANT_TYPE)
+
+
+def test_unseen_explicit_category_precedes_second_explicit_attempt(document):
+    index = _index(
+        document,
+        "Deadline A\nSubmit by September 1.\n"
+        "Deadline B\nSubmit by September 2.\n"
+        "License\nAn MIT license is required.\n"
+        "Technology\nWidget SDK is required.",
+    )
+    ledger = CoverageLedger(index)
+    scheduler = SectionScheduler(index, ledger, live_budget())
+
+    first = scheduler.next_job(authority_revision=0, steps_remaining=24, terminated=False)
+    assert isinstance(first, ExtractionJob)
+    assert first.categories == (Category.DEADLINE,)
+    _consume(scheduler, ledger, first)
+
+    second = scheduler.next_job(authority_revision=1, steps_remaining=23, terminated=False)
+
+    assert isinstance(second, ExtractionJob)
+    assert second.categories == (Category.LICENSE,)
+
+
+def test_every_explicit_category_gets_first_attempt_before_second_attempt(document):
+    index = _replace_categories(
+        _index(
+            document,
+            "Deadline\nA\nLicense\nB\nTechnology\nC\nFinancial Support\nD\nPrize\nE",
+        ),
+        {
+            0: (Category.DEADLINE,),
+            1: (Category.LICENSE,),
+            2: (Category.REQUIRED_TECHNOLOGY,),
+            3: (Category.FINANCIAL_SUPPORT, Category.REWARD_CONDITIONS),
+        },
+    )
+    ledger = CoverageLedger(index)
+    scheduler = SectionScheduler(index, ledger, live_budget())
+
+    scheduled = []
+    for revision in range(4):
+        job = scheduler.next_job(
+            authority_revision=revision,
+            steps_remaining=24 - revision,
+            terminated=False,
+        )
+        assert isinstance(job, ExtractionJob)
+        scheduled.append(job.categories)
+        _consume(scheduler, ledger, job)
+
+    assert scheduled == [
+        (Category.DEADLINE,),
+        (Category.LICENSE,),
+        (Category.REQUIRED_TECHNOLOGY,),
+        (Category.FINANCIAL_SUPPORT, Category.REWARD_CONDITIONS),
+    ]
+
+
+def test_category_order_breaks_equal_explicit_attempt_depth_ties(document):
+    index = _replace_categories(
+        _index(document, "License\nA\nTechnology\nB"),
+        {0: (Category.LICENSE,), 1: (Category.REQUIRED_TECHNOLOGY,)},
+    )
+    scheduler = SectionScheduler(index, CoverageLedger(index), live_budget())
+
+    job = scheduler.next_job(authority_revision=0, steps_remaining=24, terminated=False)
+
+    assert isinstance(job, ExtractionJob)
+    assert job.categories == (Category.LICENSE,)
+
+
+def test_second_explicit_round_reuses_category_order_after_first_round(document):
+    index = _replace_categories(
+        _index(
+            document,
+            "Deadline A\nA\nDeadline B\nB\nLicense A\nC\nLicense B\nD\n"
+            "Technology A\nE\nTechnology B\nF",
+        ),
+        {
+            0: (Category.DEADLINE,),
+            1: (Category.DEADLINE,),
+            2: (Category.LICENSE,),
+            3: (Category.LICENSE,),
+            4: (Category.REQUIRED_TECHNOLOGY,),
+            5: (Category.REQUIRED_TECHNOLOGY,),
+        },
+    )
+    ledger = CoverageLedger(index)
+    scheduler = SectionScheduler(index, ledger, live_budget())
+
+    scheduled = []
+    for revision in range(4):
+        job = scheduler.next_job(
+            authority_revision=revision,
+            steps_remaining=24 - revision,
+            terminated=False,
+        )
+        assert isinstance(job, ExtractionJob)
+        scheduled.append(job.categories)
+        _consume(scheduler, ledger, job)
+
+    assert scheduled == [
+        (Category.DEADLINE,),
+        (Category.LICENSE,),
+        (Category.REQUIRED_TECHNOLOGY,),
+        (Category.DEADLINE,),
+    ]
+
+
+def test_same_section_packing_survives_explicit_breadth_selection(document):
+    index = _replace_categories(
+        _index(document, "Project requirements\nA new project with an MIT license is required."),
+        {0: (Category.PROJECT_POLICY, Category.LICENSE)},
+    )
+    scheduler = SectionScheduler(index, CoverageLedger(index), live_budget())
+
+    job = scheduler.next_job(authority_revision=0, steps_remaining=24, terminated=False)
+
+    assert isinstance(job, ExtractionJob)
+    assert job.categories == (Category.PROJECT_POLICY, Category.LICENSE)
+
+
+def test_operational_failure_consumes_explicit_attempt_depth(document):
+    index = _index(
+        document,
+        "Deadline A\nSubmit by September 1.\n"
+        "Deadline B\nSubmit by September 2.\n"
+        "License\nAn MIT license is required.",
+    )
+    ledger = CoverageLedger(index)
+    scheduler = SectionScheduler(index, ledger, live_budget())
+    first = scheduler.next_job(authority_revision=0, steps_remaining=24, terminated=False)
+    assert isinstance(first, ExtractionJob)
+    _consume(scheduler, ledger, first)
+
+    next_job = scheduler.next_job(authority_revision=1, steps_remaining=23, terminated=False)
+
+    assert isinstance(next_job, ExtractionJob)
+    assert next_job.categories == (Category.LICENSE,)
+
+
+def test_budget_blocked_unwinds_explicit_attempt_depth(document):
+    index = _index(
+        document,
+        "Deadline A\nSubmit by September 1.\nLicense\nAn MIT license is required.",
+    )
+    ledger = CoverageLedger(index)
+    scheduler = SectionScheduler(index, ledger, live_budget())
+    first = scheduler.next_job(authority_revision=0, steps_remaining=24, terminated=False)
+    assert isinstance(first, ExtractionJob)
+    scheduler.begin(first)
+    ledger.budget_blocked(first.section_id, first.categories)
+
+    retry = scheduler.next_job(authority_revision=1, steps_remaining=23, terminated=False)
+
+    assert isinstance(retry, ExtractionJob)
+    assert retry.categories == (Category.DEADLINE,)
+
+
+def test_explicit_attempt_depth_is_isolated_by_source_revision(document):
+    first_index = _index(
+        document, "Deadline\nSubmit by September 1.\nLicense\nAn MIT license is required."
+    )
+    ledger = CoverageLedger(first_index)
+    first_scheduler = SectionScheduler(first_index, ledger, live_budget())
+    first = first_scheduler.next_job(authority_revision=0, steps_remaining=24, terminated=False)
+    assert isinstance(first, ExtractionJob)
+    _consume(first_scheduler, ledger, first)
+
+    revised_index = _index(
+        document, "Deadline\nSubmit by September 2.\nLicense\nAn MIT license is required."
+    )
+    ledger.replace_index(revised_index)
+    revised_scheduler = SectionScheduler(revised_index, ledger, live_budget())
+
+    revised = revised_scheduler.next_job(authority_revision=1, steps_remaining=23, terminated=False)
+
+    assert isinstance(revised, ExtractionJob)
+    assert revised.categories == (Category.DEADLINE,)
 
 
 def test_category_enumeration_precedes_source_offsets(document):
