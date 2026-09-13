@@ -1,9 +1,12 @@
 """Deterministic runtime test factories with no external side effects."""
 
 import hashlib
+import os
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
+from archived_compiler_support import ArchiveInputError, load_archived_rules
 
 from qualor.decisions.fixture import ProjectDecisionInput
 from qualor.domain.enums import Provenance
@@ -11,6 +14,28 @@ from qualor.domain.profiles import FounderProfile, ProjectProfile
 from qualor.effort import EffortAssumptions
 from qualor.runtime.run_models import StudioInput
 from qualor.runtime.sources import SourceDocument
+
+
+@pytest.fixture
+def archived_source():
+    """Optional local archive fixture; required mode never converts absence into a skip."""
+
+    selected = os.environ.get("QUALOR_ARCHIVE_DIR")
+    required = os.environ.get("QUALOR_REQUIRE_ARCHIVE") == "1"
+    if not selected:
+        if required:
+            raise ArchiveInputError("ARCHIVE_DIRECTORY_INVALID")
+        pytest.skip("ARCHIVE_SOURCE_UNAVAILABLE")
+    try:
+        return load_archived_rules(Path(selected))
+    except ArchiveInputError as exc:
+        if required or str(exc) not in {
+            "ARCHIVE_DIRECTORY_INVALID",
+            "ARCHIVE_MANIFEST_MISSING",
+            "ARCHIVE_RAW_ARTIFACT_MISSING",
+        }:
+            raise
+        pytest.skip("ARCHIVE_SOURCE_UNAVAILABLE")
 
 
 @pytest.fixture

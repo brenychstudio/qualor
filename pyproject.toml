@@ -31,6 +31,7 @@ packages = ["src/qualor"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["archived_source: requires the locally archived hash-bound official source"]
 
 [tool.ruff]
 target-version = "py312"
