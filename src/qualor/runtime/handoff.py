@@ -12,13 +12,21 @@ from qualor.domain.rules import RuleCandidate
 from qualor.domain.values import BoolValue, TextValue
 from qualor.effort import ParticipationCosts
 
+from .canonical_compilation import (
+    compile_section_authority,
+    merge_records,
+    merge_rules,
+    require_consistent_sources,
+    section_owns_evidence,
+)
 from .claims import FIELD_CATEGORY, HARD_AUTHORITIES, normalize
+from .fact_authority import independent_decision_facts
 from .normalization import parse_absolute_deadline
 from .run_models import RuntimeDecisionBundle
 from .sources import AUTHORITY_PRIORITY
 
 
-def _authoritative_claims(run, field):
+def _authoritative_claims(run, field, section=None):
     return tuple(
         admitted
         for admitted in run.claims.values()
@@ -26,6 +34,7 @@ def _authoritative_claims(run, field):
         and admitted.evidence.source_type in HARD_AUTHORITIES
         and admitted.normalization_status == "SUPPORTED"
         and admitted.normalized_value is not None
+        and (section is None or not section_owns_evidence(admitted.evidence, section))
     )
 
 
@@ -47,21 +56,23 @@ def _single_text_sequence(run, field):
     return next(iter(values.values())) if len(values) == 1 else ()
 
 
-def _deadline_values(run):
+def _deadline_values(run, section=None):
     values = {
         parsed
-        for admitted in _authoritative_claims(run, "deadline")
+        for admitted in _authoritative_claims(run, "deadline", section)
         if isinstance(admitted.normalized_value, str)
         and (parsed := parse_absolute_deadline(admitted.normalized_value)) is not None
     }
     return tuple(values) if len(values) == 1 else ()
 
 
-def _compile_rules(run, now):
+def _compile_rules(run, now, section=None):
     rules = []
     technologies = []
     technology_refs = []
     for admitted in run.claims.values():
+        if section is not None and section_owns_evidence(admitted.evidence, section):
+            continue
         field = admitted.claim.field
         if field not in FIELD_CATEGORY:
             continue
@@ -145,8 +156,24 @@ def compile_decision_bundle(run) -> RuntimeDecisionBundle:
                 tuple(sorted({normalize(term) for term in terms}))
             )
     run.contradictions = tuple(field for field, values in observed.items() if len(values) > 1)
-    rules, requirements = _compile_rules(run, now)
+    section_results = tuple(getattr(run, "section_results", ()))
+    section = compile_section_authority(section_results) if section_results else None
+    if section is not None:
+        assertions = tuple(
+            (result.category, result.normalized_value)
+            for result in section_results
+            if result.normalization_status == "SUPPORTED"
+        ) + tuple(
+            (FIELD_CATEGORY[field], admitted.normalized_value)
+            for field in FIELD_CATEGORY
+            for admitted in _authoritative_claims(run, field, section)
+        )
+        require_consistent_sources(assertions)
+    rules, requirements = _compile_rules(run, now, section)
     evidence = tuple(claim.evidence for claim in run.claims.values())
+    if section is not None:
+        evidence = merge_records((*evidence, *section.evidence))
+        rules = merge_rules((*rules, *section.rules))
     authority_rank = {authority: index for index, authority in enumerate(AUTHORITY_PRIORITY)}
     admitted_sources = sorted(
         evidence,
@@ -183,7 +210,9 @@ def compile_decision_bundle(run) -> RuntimeDecisionBundle:
     organizer = _single_text_value(run, "organizer") or "UNKNOWN"
     program = _single_text_value(run, "program") or "UNKNOWN"
     edition = _single_text_value(run, "edition") or "UNKNOWN"
-    deadlines = _deadline_values(run)
+    deadlines = _deadline_values(run, section)
+    if section is not None:
+        deadlines = tuple(sorted(set((*deadlines, *section.deadlines))))
     deliverables = _single_text_sequence(run, "deliverables")
     documented = any(
         (
@@ -216,12 +245,13 @@ def compile_decision_bundle(run) -> RuntimeDecisionBundle:
     resolver = getattr(run, "opportunity_version_resolver", None)
     if resolver is not None:
         opportunity = OpportunityRecord.model_validate(resolver(opportunity))
+    founder, projects = independent_decision_facts(run.inputs)
     decision_input = DecisionInput(
         schema_version="1",
         mode=run.mode,
-        founder=run.inputs.founder,
+        founder=founder,
         opportunity=opportunity,
-        projects=run.inputs.projects,
+        projects=projects,
         eligibility_rules=rules,
         evidence=evidence,
         conflict_rules=(),
