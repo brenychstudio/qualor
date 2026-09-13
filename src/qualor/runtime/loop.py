@@ -95,6 +95,10 @@ class OpportunityRun:
         self._bundle_revision = -1
         self.opportunity_version_resolver = opportunity_version_resolver
         self.contradictions = ()
+        self.section_results = ()
+        from .section_acquisition import SectionAcquisition
+
+        self.section_acquisition = SectionAcquisition(self)
 
     def event(
         self,
@@ -419,6 +423,8 @@ class OpportunityRun:
             return result
 
     def extract_official_claims(self, source_id: str, focus: str):
+        if self.mode == "LIVE" and self.section_acquisition.index is not None:
+            return self.acquire_official_sections(source_id)
         if not isinstance(source_id, str) or not source_id:
             return self.failure(
                 ValueError("SOURCE_REFERENCE_NOT_FOUND"),
@@ -531,6 +537,9 @@ class OpportunityRun:
                 event="EXTRACTION_RESULT",
                 input_value={"source_id": source_id, "focus": focus},
             )
+
+    def acquire_official_sections(self, source_id: str) -> dict:
+        return self.section_acquisition.drain(source_id)
 
     def record_evidence(self, claim: dict):
         if not self.enter("claim:" + str(claim)):
@@ -658,7 +667,9 @@ class OpportunityRun:
     def finish(self):
         self.evaluate_current_state()
         self.stop("NO_PROGRESS")
-        if not any(c.claim.field in FIELD_CATEGORY for c in self.claims.values()):
+        if not self.section_results and not any(
+            c.claim.field in FIELD_CATEGORY for c in self.claims.values()
+        ):
             self.diagnostic(
                 "EXTRACTION_RESULT",
                 "extraction",
