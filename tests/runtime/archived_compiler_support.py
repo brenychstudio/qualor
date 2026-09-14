@@ -30,7 +30,7 @@ ARCHIVE_SHA256 = "e3f7640c0bd1e78e3858d7d5a2dfb78bb560cac9b7982c29c5e57796116794
 _EXTERNAL_IO_DENIED = False
 # The Task 11 canonical archive path; a sequence missing any of it is not costable.
 CANONICAL_PLANNING_REQUESTS = 2
-CANONICAL_EXTRACTION_REQUESTS = 7
+MAX_CANONICAL_EXTRACTION_REQUESTS = 7
 BUDGET_EVENT_LABELS = ("INFERENCE", "SEARCH", "FETCH")
 
 
@@ -64,6 +64,11 @@ class ArchivedCompilerReport:
     receipts: tuple[object, ...]
     request_sequence: tuple[MappingProxyType, ...]
     gate_values: MappingProxyType
+    plan_id: str
+    plan_items: tuple[MappingProxyType, ...]
+    plan_activations: tuple[MappingProxyType, ...]
+    plan_overflows: tuple[MappingProxyType, ...]
+    accounting_states: MappingProxyType
     # Test-memory only: exact captured production requests, never persisted, never
     # serialized into a report, and kept out of repr so prompts cannot be printed.
     model_requests: tuple[dict, ...] = field(default=(), repr=False)
@@ -642,6 +647,9 @@ def run_archived_compiler(directory: Path, *, sink=None) -> ArchivedCompilerRepo
 
     index = run.section_acquisition.index
     ledger = run.section_acquisition.ledger
+    plan = run.section_acquisition.plan
+    if index is None or ledger is None or plan is None:
+        _fail("ARCHIVE_PLAN_DIAGNOSTICS_UNAVAILABLE")
     # The compiler's retained observations, before the coverage guard is applied.
     raw_section_results = tuple(run.section_acquisition._observations)
     # The authority actually admitted for deterministic evaluation.
@@ -650,14 +658,77 @@ def run_archived_compiler(directory: Path, *, sink=None) -> ArchivedCompilerRepo
     coverage_states = MappingProxyType(
         {category.value: ledger.state(category).value for category in Category}
     )
-    deadline_relevant = tuple(
-        section
-        for section in index.sections
-        if not section.candidate_categories or Category.DEADLINE in section.candidate_categories
+    accounting_states = MappingProxyType(
+        {
+            category.value: ledger.accounting_state(category).value
+            for category in Category
+        }
     )
-    deadline_attempted = sum(
-        (index.source_revision, section.section_id, Category.DEADLINE) in ledger.attempts
-        for section in deadline_relevant
+    sections_by_id = {section.section_id: section for section in index.sections}
+    context_dependency_ids = {
+        context_id for item in plan.items for context_id in item.context_section_ids
+    }
+
+    def plan_item_state(item):
+        states = tuple(
+            ledger.plan_item_states[(plan.plan_id, item.item_id, category)].value
+            for category in item.categories
+        )
+        if not states:
+            return "RESERVE_FALLBACK"
+        return states[0] if len(set(states)) == 1 else "MIXED"
+
+    plan_items = tuple(
+        MappingProxyType(
+            {
+                "item_id": item.item_id,
+                "section_id": item.section_id,
+                "start_offset": sections_by_id[item.section_id].start_offset,
+                "end_offset": sections_by_id[item.section_id].end_offset,
+                "tier": item.tier.value,
+                "categories": tuple(category.value for category in item.categories),
+                "rule_like": sections_by_id[item.section_id].routing.rule_like,
+                "rule_like_category_hints": tuple(
+                    category.value
+                    for category in sections_by_id[item.section_id].routing.rule_like_category_hints
+                ),
+                "child_local_unclassified": not sections_by_id[
+                    item.section_id
+                ].routing.body_categories,
+                "is_context_dependency": item.section_id in context_dependency_ids,
+                "plan_item_state": plan_item_state(item),
+                "accounting_states": MappingProxyType(
+                    {
+                        category.value: ledger.accounting_state(category).value
+                        for category in item.categories
+                    }
+                ),
+            }
+        )
+        for item in plan.items
+    )
+    plan_activations = tuple(
+        MappingProxyType(
+            {
+                "item_id": activation.item_id,
+                "categories": tuple(category.value for category in activation.categories),
+                "reason": activation.reason.value,
+                "caused_by_item_ids": activation.caused_by_item_ids,
+                "authority_revision": activation.authority_revision,
+            }
+        )
+        for activation in ledger.activations
+    )
+    plan_overflows = tuple(
+        MappingProxyType(
+            {
+                "item_id": overflow.item_id,
+                "categories": tuple(category.value for category in overflow.categories),
+                "reason_code": overflow.reason_code,
+                "dispatches_used": overflow.dispatches_used,
+            }
+        )
+        for overflow in ledger.overflows
     )
     evidence = tuple(record for item in section_results for record in item.evidence)
     rules = tuple(rule for item in section_results for rule in item.rules)
@@ -684,6 +755,48 @@ def run_archived_compiler(directory: Path, *, sink=None) -> ArchivedCompilerRepo
     extraction_requests = [
         item for item in request_sequence if item["request_kind"] == "EXTRACTION"
     ]
+    planning_calls = sum(item["request_kind"] == "PLANNING" for item in request_sequence)
+    discoverable_categories = {
+        category for item in plan.items for category in item.categories
+    }
+    raw_deadline_results = tuple(
+        item for item in raw_section_results if item.category is Category.DEADLINE
+    )
+    raw_deadline_rules = tuple(
+        rule for item in raw_deadline_results for rule in item.rules
+    )
+    potential_hidden = tuple(
+        item
+        for item in plan_items
+        if item["child_local_unclassified"]
+        and item["rule_like"]
+        and item["rule_like_category_hints"]
+        and item["tier"] in {"MANDATORY_ANCHOR", "CONDITIONAL_DISCOVERY"}
+    )
+    accounted_hidden_states = {
+        "ACCOUNTED",
+        "CONTEXT_UNRESOLVED",
+        "OVERFLOW_UNDISPATCHED",
+    }
+    hidden_by_section = {
+        section_id: tuple(
+            item for item in potential_hidden if item["section_id"] == section_id
+        )
+        for section_id in {item["section_id"] for item in potential_hidden}
+    }
+    task15_hidden_by_section = {
+        section_id: items
+        for section_id, items in hidden_by_section.items()
+        if not any(item["is_context_dependency"] for item in items)
+    }
+    hidden_clause_skips = sum(
+        any(
+            item["plan_item_state"] not in accounted_hidden_states
+            and not item["is_context_dependency"]
+            for item in items
+        )
+        for items in hidden_by_section.values()
+    )
     gate_values = MappingProxyType(
         {
             "DEFAULT_9KB_WINDOW_ONLY": bool(extraction_requests)
@@ -733,9 +846,34 @@ def run_archived_compiler(directory: Path, *, sink=None) -> ArchivedCompilerRepo
             "COVERAGE_GUARDED_SUPPORTED_CLAIMS": _coverage_guarded_supported_claims(
                 raw_section_results, effective_section_results
             ),
-            "DEADLINE_RELEVANT_SECTIONS": len(deadline_relevant),
-            "DEADLINE_ATTEMPTED_RELEVANT": deadline_attempted,
-            "DEADLINE_RELEVANT_UNATTEMPTED_REMAINS": len(deadline_relevant) - deadline_attempted,
+            "PLANNING_CALLS": planning_calls,
+            "EXTRACTION_CALLS": len(extraction_requests),
+            "TOTAL_MODEL_CALLS": len(request_sequence),
+            "OVER_BROAD_RELEVANCE_BUDGET_EXHAUSTED": (
+                result.termination_reason == "BUDGET_EXHAUSTED"
+                and len(extraction_requests) > plan.max_extraction_jobs
+                and any(item.get("budget_blocked") for item in extraction_requests)
+            ),
+            "ALL_NINE_CATEGORIES_DISCOVERABLE": discoverable_categories == set(Category),
+            "ALL_NINE_CATEGORIES_ACCOUNTED_OR_EXPLICITLY_UNRESOLVED": all(
+                ledger.accounting_state(category).value != "PENDING" for category in Category
+            ),
+            "DEADLINE_RAW_AUTHORITY_SUPPORTED": any(
+                item.normalization_status == "SUPPORTED" for item in raw_deadline_results
+            ),
+            "DEADLINE_RAW_AUTHORITY_EXECUTABLE": any(
+                rule.supported
+                and rule.operator.value == "DATE_BETWEEN"
+                and rule.subject_reference is not None
+                and rule.operands
+                for rule in raw_deadline_rules
+            ),
+            "UNKNOWN_CATEGORIES_REMAIN_UNRESOLVED": any(
+                item.normalization_status in {"UNKNOWN", "AMBIGUOUS", "UNSUPPORTED"}
+                for item in effective_section_results
+            ),
+            "HIDDEN_RULELIKE_SECTIONS": len(task15_hidden_by_section),
+            "HIDDEN_GOVERNING_CLAUSE_SILENTLY_SKIPPED": hidden_clause_skips,
         }
     )
     # Task 11 accepts the canonical compiler, so its headline counts are the raw view.
@@ -759,6 +897,11 @@ def run_archived_compiler(directory: Path, *, sink=None) -> ArchivedCompilerRepo
         receipts=tuple(result.model_receipts),
         request_sequence=tuple(request_sequence),
         gate_values=gate_values,
+        plan_id=plan.plan_id,
+        plan_items=plan_items,
+        plan_activations=plan_activations,
+        plan_overflows=plan_overflows,
+        accounting_states=accounting_states,
         model_requests=tuple(model_requests),
         budget_events=tuple(budget_events),
     )
@@ -806,10 +949,10 @@ def simulate_request_sequence(report: ArchivedCompilerReport) -> CostSimulationR
         _fail("COMPILER_COST_SEQUENCE_INCOMPLETE")
     kinds = [_validated_model_request(item, guard.policy) for item in requests]
     if (
-        kinds.count("PLANNING") < CANONICAL_PLANNING_REQUESTS
-        or kinds.count("EXTRACTION") < CANONICAL_EXTRACTION_REQUESTS
-        or not events.count("SEARCH")
-        or not events.count("FETCH")
+        kinds.count("PLANNING") != CANONICAL_PLANNING_REQUESTS
+        or not 1 <= kinds.count("EXTRACTION") <= MAX_CANONICAL_EXTRACTION_REQUESTS
+        or events.count("SEARCH") != 1
+        or events.count("FETCH") != 1
     ):
         _fail("COMPILER_COST_SEQUENCE_INCOMPLETE")
 
