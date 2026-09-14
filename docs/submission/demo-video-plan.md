@@ -38,6 +38,10 @@ it is for, and why it matters. Segment 1 carries the pitch; segments 3–8 carry
 the agent refusing to rubber-stamp its own submission. If a later re-run truthfully returns
 `APPLY`, only segments 4 and 9 need re-recording.
 
+This is a historical `REPLAY` decision. It is separate from the later controlled `LIVE`-path
+compiler acceptance, which truthfully ended `NO_PROGRESS` with `REVIEW_REQUIRED` / `WATCH`.
+Do not substitute that verification result for the recorded PREPARE story.
+
 ---
 
 ## 1 · 00:00 – 00:15 · Hook — the whole product in one sentence

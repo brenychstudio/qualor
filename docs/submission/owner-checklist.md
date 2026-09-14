@@ -62,10 +62,10 @@ defects found and corrected. It is defensible and arguably a strength; it is sti
 
 ## Demo state decision
 
-The truthful decision today is **PREPARE**, because items 1, 4, 5 and 6 above are the exact
-readiness gaps the engine found. Once they close, re-running the decision may truthfully move
-it to **APPLY**.
+The recorded demo decision is historical **REPLAY / PREPARE**: it preserves the readiness gaps
+the engine found at that time. The later controlled LIVE-path compiler acceptance is separate:
+it ended `NO_PROGRESS` with `REVIEW_REQUIRED` / `WATCH` and preserved a reviewable graph without
+claiming successful completion.
 
-Either is a good demo. `PREPARE` is the more distinctive story — the agent declining to
-rubber-stamp its own submission — and the video plan is written for it. Decide before
-recording, because segments 4 and 9 depend on it.
+Use the recorded PREPARE story for the video. Do not back-date it or replace it with the separate
+compiler verification result. Decide before recording, because segments 4 and 9 depend on it.

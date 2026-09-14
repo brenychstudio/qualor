@@ -69,8 +69,9 @@ interface is hand-maintained on either side.
 
 The verification gate runs Ruff, the Python suite, schema and type drift checks, the frontend
 suite, typecheck, build, a canonical-document hash and a secret scan, and refuses to pass on a
-dirty worktree. Current state: **1060 Python tests, 312 frontend tests, 27 browser end-to-end
-tests**, all green.
+dirty worktree. Fresh offline closeout: **1592 Python passed, 1 skipped; 338 frontend unit
+passed; 51 accessibility passed; 27 default browser end-to-end passed; 1 controlled LIVE browser
+end-to-end passed; and 1 controlled Task4 browser end-to-end passed.**
 
 The browser tests drive the real API against a real database. Nothing is stubbed, and no test
 asserts a value it supplied itself.
@@ -104,6 +105,9 @@ The agent decides *what to go and read*. It never decides *what the answer is*.
 - **Nothing is ever submitted externally.** There is no code path that submits an application.
 - Runtime mode is fail-closed: `LIVE`, `REPLAY` and `FIXTURE` are distinct, a run gets exactly
   one, and the mode the product displays is the mode that actually ran.
+- Acquisition is bounded: at most two planning calls and seven extraction calls run under the
+  nine-call budget. `UNKNOWN`, `AMBIGUOUS` and `UNSUPPORTED` never become PASS; deterministic
+  code remains the decision authority.
 - Action tokens never reach the browser.
 - The prepared pack is immutable and fully attributed.
 
@@ -189,7 +193,9 @@ exactly the class of drift that turns a quotation into a paraphrase.
 - A human approval boundary with real version binding, expiry and single use.
 - A judge-ready decision workspace: inbox, decision, evidence reader, activity trail,
   approval, application pack.
-- 1060 Python tests, 312 frontend tests, 27 browser end-to-end tests against the real stack.
+- Fresh offline verification: 1592 Python passed (1 skipped), 338 frontend unit passed, 51
+  accessibility passed, 27 default browser end-to-end passed, plus one controlled LIVE and one
+  controlled Task4 browser end-to-end run.
 - An agent that returned PREPARE about its own submission when APPLY would have been easier.
 
 ## What we learned
@@ -221,13 +227,14 @@ Recorded so a reviewer can check this document against the repository.
 | Strands `Agent`, 4 tools, `SequentialToolExecutor`, 3 hooks | `src/qualor/runtime/agent.py` | VERIFIED |
 | `BedrockModel` with budget-guarded `converse` | `src/qualor/runtime/agent.py`, `runtime/budget.py` | VERIFIED |
 | Deterministic engines, no model in the decision path | `src/qualor/{eligibility,matching,conflicts,effort,strategy,decisions}` | VERIFIED |
-| 1060 / 312 / 27 tests green | `scripts/verify.ps1`, `npm run test:e2e` | VERIFIED |
+| 1592 Python passed / 1 skipped; 338 frontend unit; 51 accessibility; 27 + 1 + 1 browser runs | offline closeout: `scripts/verify.ps1`, frontend and controlled browser suites | VERIFIED |
 | 42 exported schemas generate frontend types | `schemas/`, `apps/web/src/generated/domain.ts` | VERIFIED |
 | Version-bound, expiring, single-use approval | `src/qualor/workspace/approval.py` | VERIFIED |
 | No external submission path exists | repository-wide; asserted in browser tests | VERIFIED |
 | LIVE / REPLAY / FIXTURE fail-closed | `src/qualor/runtime/mode.py` | VERIFIED |
 | Real-source run returned PREPARE | `.qualor/local/killer-demo-real-source/task2c-result.json` | VERIFIED |
 | Demonstration runs in REPLAY over captured official source | persisted run mode; `runtime/replay.py` | VERIFIED |
+| Controlled LIVE compiler acceptance stays bounded and preserves a truthful REVIEW_REQUIRED graph | archive acceptance and workspace persistence tests | VERIFIED |
 | LIVE provider integrates Amazon Bedrock AgentCore search | `src/qualor/runtime/search.py` | VERIFIED |
 | AgentCore **Runtime** deployment | none exists | NOT CLAIMED |
 | Live hosted demo | none exists | NOT CLAIMED |
