@@ -90,6 +90,22 @@ def _fail(code: str) -> None:
     raise ArchiveInputError(code)
 
 
+def over_broad_relevance_budget_exhausted(
+    *,
+    termination_reason: str | None,
+    extraction_calls: int,
+    max_extraction_jobs: int,
+    unresolved_obligations: object,
+) -> bool:
+    """Classify a bounded-plan budget stop without inspecting model payloads."""
+
+    return (
+        termination_reason == "BUDGET_EXHAUSTED"
+        and extraction_calls >= max_extraction_jobs
+        and bool(unresolved_obligations)
+    )
+
+
 def _deny_audited_external_io(event: str, _args: tuple[object, ...]) -> None:
     if _EXTERNAL_IO_DENIED and event in {
         "socket.connect",
@@ -849,10 +865,11 @@ def run_archived_compiler(directory: Path, *, sink=None) -> ArchivedCompilerRepo
             "PLANNING_CALLS": planning_calls,
             "EXTRACTION_CALLS": len(extraction_requests),
             "TOTAL_MODEL_CALLS": len(request_sequence),
-            "OVER_BROAD_RELEVANCE_BUDGET_EXHAUSTED": (
-                result.termination_reason == "BUDGET_EXHAUSTED"
-                and len(extraction_requests) > plan.max_extraction_jobs
-                and any(item.get("budget_blocked") for item in extraction_requests)
+            "OVER_BROAD_RELEVANCE_BUDGET_EXHAUSTED": over_broad_relevance_budget_exhausted(
+                termination_reason=result.termination_reason,
+                extraction_calls=len(extraction_requests),
+                max_extraction_jobs=plan.max_extraction_jobs,
+                unresolved_obligations=ledger.unresolved_obligations(),
             ),
             "ALL_NINE_CATEGORIES_DISCOVERABLE": discoverable_categories == set(Category),
             "ALL_NINE_CATEGORIES_ACCOUNTED_OR_EXPLICITLY_UNRESOLVED": all(

@@ -9,6 +9,7 @@ from archived_compiler_support import (
     ArchiveInputError,
     deny_external_io,
     load_archived_rules,
+    over_broad_relevance_budget_exhausted,
     run_archived_compiler,
 )
 
@@ -49,6 +50,35 @@ def _deny_external_io_with_loopback_runtime(monkeypatch):
 
     monkeypatch.setattr(socket, "socketpair", asyncio_socketpair)
     return loopback_sockets
+
+
+def test_over_broad_budget_exhaustion_diagnostic_is_true_and_false_sensitive():
+    """A full bounded plan may stop on budget only when work remains unresolved."""
+
+    assert over_broad_relevance_budget_exhausted(
+        termination_reason="BUDGET_EXHAUSTED",
+        extraction_calls=7,
+        max_extraction_jobs=7,
+        unresolved_obligations=("planned-item",),
+    )
+    assert not over_broad_relevance_budget_exhausted(
+        termination_reason="BUDGET_EXHAUSTED",
+        extraction_calls=7,
+        max_extraction_jobs=7,
+        unresolved_obligations=(),
+    )
+    assert not over_broad_relevance_budget_exhausted(
+        termination_reason="NO_PROGRESS",
+        extraction_calls=7,
+        max_extraction_jobs=7,
+        unresolved_obligations=("planned-item",),
+    )
+    assert not over_broad_relevance_budget_exhausted(
+        termination_reason="BUDGET_EXHAUSTED",
+        extraction_calls=6,
+        max_extraction_jobs=7,
+        unresolved_obligations=("planned-item",),
+    )
 
 
 @pytest.mark.archived_source
