@@ -218,9 +218,7 @@ class WorkspaceRunCapture:
             reserved_cost_usd = self.budget.snapshot().reserved_cost_usd
         completed_at = self.clock()
         started_at = self._started_at or completed_at
-        graph = None
-        if state == RunState.COMPLETED and result is not None and self.inputs is not None:
-            graph = self._validated_graph(result)
+        graph = self._graph_for_persistence(state, result)
         opportunity_id = graph.opportunity.id if graph is not None else self.opportunity_id
         opportunity_version = (
             graph.opportunity.version if graph is not None else self.opportunity_version
@@ -265,9 +263,32 @@ class WorkspaceRunCapture:
                 )
         self._persisted = True
 
-    def _validated_graph(self, result: AgentRunResult):
+    def _graph_for_persistence(self, state: RunState, result: AgentRunResult | None):
+        if result is None or self.inputs is None:
+            return None
+        if state == RunState.COMPLETED:
+            return self._validated_graph(result, require_selected_decision=True)
+        if self._is_reviewable_partial_graph(state, result):
+            return self._validated_graph(result, require_selected_decision=False)
+        return None
+
+    def _is_reviewable_partial_graph(self, state: RunState, result: AgentRunResult) -> bool:
+        """Allow one runtime-owned REVIEW graph without changing run completion."""
+
+        return (
+            self.mode == "LIVE"
+            and result.mode == "LIVE"
+            and state == RunState.PARTIAL
+            and result.termination_reason == "NO_PROGRESS"
+            and result.bundle is not None
+            and result.decision.eligibility == "REVIEW_REQUIRED"
+        )
+
+    def _validated_graph(self, result: AgentRunResult, *, require_selected_decision: bool):
         graph = result.bundle
-        if graph is None or graph.decision.selected_decision is None:
+        if graph is None or (
+            require_selected_decision and graph.decision.selected_decision is None
+        ):
             raise ValueError("Completed LIVE workspace capture requires a selected graph")
         if result.mode != self.mode or graph.decision != result.decision:
             raise ValueError("Runtime result and persisted graph diverge")

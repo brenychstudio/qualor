@@ -219,6 +219,25 @@ def _classify(
             next_action="OWNER_REVIEW_FOR_FOURTH_PAID_RUN",
         )
 
+    selected = report.result.decision.selected_decision
+    graph_linked = (
+        (persisted_run.opportunity_id, persisted_run.opportunity_version)
+        == (report.result.bundle.opportunity.id, report.result.bundle.opportunity.version)
+        and opportunity_count == 1
+        and decision_count == len(report.result.bundle.decision.candidates)
+        and (
+            (
+                selected is None
+                and persisted_run.decision_id is None
+                and persisted_run.decision_version is None
+            )
+            or (
+                selected is not None
+                and (persisted_run.decision_id, persisted_run.decision_version)
+                == (selected.id, selected.version)
+            )
+        )
+    )
     graph_absent = (
         persisted_run.opportunity_id is None
         and persisted_run.decision_id is None
@@ -228,15 +247,14 @@ def _classify(
     if (
         termination == "NO_PROGRESS"
         and report.result.decision.eligibility == "REVIEW_REQUIRED"
-        and graph_absent
+        and persisted_run.state.value == "PARTIAL"
+        and graph_linked
     ):
         return CompletionDiagnostic(
             case="CASE_B",
-            existing_completion_policy_can_persist_truthful_graph=False,
-            fourth_paid_run_candidate=False,
-            next_action=(
-                "QUALOR-LIVE-PRODUCTION-TASK-5G-COMPLETION-SEMANTICS-DESIGN"
-            ),
+            existing_completion_policy_can_persist_truthful_graph=True,
+            fourth_paid_run_candidate=True,
+            next_action="OWNER_REVIEW_FOR_FOURTH_PAID_RUN",
         )
 
     blocker = (
@@ -253,18 +271,21 @@ def _classify(
     )
 
 
-def _assert_case_a_graph_identity(store, report, persisted_run, inputs) -> None:
+def _assert_runtime_graph_identity(store, report, persisted_run, inputs) -> None:
     bundle = report.result.bundle
     selected = report.result.decision.selected_decision
-    assert selected is not None
     assert (persisted_run.opportunity_id, persisted_run.opportunity_version) == (
         bundle.opportunity.id,
         bundle.opportunity.version,
     )
-    assert (persisted_run.decision_id, persisted_run.decision_version) == (
-        selected.id,
-        selected.version,
-    )
+    if selected is None:
+        assert persisted_run.decision_id is None
+        assert persisted_run.decision_version is None
+    else:
+        assert (persisted_run.decision_id, persisted_run.decision_version) == (
+            selected.id,
+            selected.version,
+        )
 
     workspace = store.load_opportunity_workspace(
         bundle.opportunity.id, bundle.opportunity.version
@@ -284,13 +305,17 @@ def _assert_case_a_graph_identity(store, report, persisted_run, inputs) -> None:
     }
 
     input_projects = {item.project.id: item.project for item in inputs.projects}
-    selected_snapshot = next(
-        item
+    snapshots = {
+        (item.decision.id, item.decision.version): item
         for item in workspace.decision_snapshots
-        if (item.decision.id, item.decision.version) == (selected.id, selected.version)
-    )
-    assert selected_snapshot.founder_profile == inputs.founder
-    assert selected_snapshot.project_profile == input_projects[selected.project_id]
+    }
+    assert snapshots.keys() == {
+        (item.id, item.version) for item in bundle.decision.candidates
+    }
+    for decision in bundle.decision.candidates:
+        snapshot = snapshots[(decision.id, decision.version)]
+        assert snapshot.founder_profile == inputs.founder
+        assert snapshot.project_profile == input_projects[decision.project_id]
 
 
 @pytest.mark.archived_source
@@ -372,6 +397,7 @@ def test_archived_compiler_result_obeys_existing_completion_and_persistence_poli
         diagnostic = _classify(
             report, persisted_run, opportunity_count, decision_count
         )
+        assert diagnostic.case == "CASE_B"
 
         if diagnostic.case in {"CASE_A", "CASE_B"}:
             assert _compiler_correctness_blocker(report) is None
@@ -383,21 +409,37 @@ def test_archived_compiler_result_obeys_existing_completion_and_persistence_poli
                 == report.result.decision.selected_decision.id
             )
             assert diagnostic.fourth_paid_run_candidate is True
-            _assert_case_a_graph_identity(store, report, persisted_run, inputs)
+            _assert_runtime_graph_identity(store, report, persisted_run, inputs)
         elif diagnostic.case == "CASE_B":
             assert report.result.decision.eligibility == "REVIEW_REQUIRED"
-            assert persisted_run.opportunity_id is None
-            assert persisted_run.decision_id is None
-            assert opportunity_count == decision_count == 0
-            assert diagnostic.fourth_paid_run_candidate is False
+            assert report.result.decision.selected_decision is not None
+            assert persisted_run.state.value == "PARTIAL"
+            assert persisted_run.state.value != "COMPLETED"
+            assert report.result.termination_reason not in SUCCESS_TERMINATIONS
+            assert persisted_run.opportunity_id is not None
+            assert opportunity_count == 1
+            assert decision_count == len(report.result.bundle.decision.candidates)
+            assert diagnostic.fourth_paid_run_candidate is True
+            _assert_runtime_graph_identity(store, report, persisted_run, inputs)
         else:
             assert diagnostic.blocker is not None
             assert diagnostic.fourth_paid_run_candidate is False
 
-    if report.result.termination_reason not in SUCCESS_TERMINATIONS:
+    if report.result.termination_reason not in SUCCESS_TERMINATIONS and diagnostic.case != "CASE_B":
         assert persisted_run.opportunity_id is None
         assert persisted_run.decision_id is None
         assert opportunity_count == decision_count == 0
+    if diagnostic.case == "CASE_B":
+        with pytest.raises(RuntimeError, match="already persisted"):
+            sink.run_finished(report.result)
+        with reopened.transaction() as connection:
+            store = WorkspaceStore(connection)
+            assert len(store.opportunities.list_versions(persisted_run.opportunity_id)) == 1
+            assert len(
+                store.decisions.list_for_opportunity(
+                    persisted_run.opportunity_id, persisted_run.opportunity_version
+                )
+            ) == decision_count
     assert events
     assert events[-1].event_type == "RUN_TERMINATED"
     assert events[-1].mode.value == report.result.mode

@@ -173,6 +173,7 @@ def test_completed_live_result_persists_one_linked_authoritative_graph(tmp_path,
     (
         ("NO_PROGRESS", "PARTIAL"),
         ("BUDGET_EXHAUSTED", "BUDGET_STOPPED"),
+        ("MAX_STEPS", "PARTIAL"),
         ("TOOL_FAILURE_BOUND_REACHED", "PARTIAL"),
     ),
 )
