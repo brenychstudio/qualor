@@ -1,8 +1,158 @@
 import hashlib
+import importlib
+import inspect
 
 import pytest
 
 from qualor.domain.enums import Category
+
+
+def test_sibling_body_category_does_not_smear_across_bounded_children(document):
+    from qualor.runtime.sections import index_source
+    from qualor.runtime.spans import EvidenceSpanRegistry
+
+    source = document(
+        "Rules\n"
+        + ("General explanatory material. " * 50)
+        + "\nAn MIT license is required.\n"
+        + ("Operational background. " * 50)
+        + "\nProjects must use Widget SDK."
+    )
+    index = index_source(source, EvidenceSpanRegistry(secret=b"r" * 32))
+    license_child = next(
+        section
+        for section in index.sections
+        if "MIT license" in source.text[section.start_offset : section.end_offset]
+    )
+    technology_child = next(
+        section
+        for section in index.sections
+        if "Widget SDK" in source.text[section.start_offset : section.end_offset]
+    )
+
+    assert Category.LICENSE in license_child.routing.body_categories
+    assert Category.REQUIRED_TECHNOLOGY not in license_child.routing.body_categories
+    assert Category.REQUIRED_TECHNOLOGY in technology_child.routing.body_categories
+    assert Category.LICENSE not in technology_child.routing.body_categories
+
+
+def test_logical_heading_routes_every_child_but_is_not_child_zero_body(document):
+    from qualor.runtime.sections import index_source
+    from qualor.runtime.spans import EvidenceSpanRegistry
+
+    source = document("License\n" + ("General details. " * 120))
+    index = index_source(source, EvidenceSpanRegistry(secret=b"h" * 32))
+
+    assert len(index.sections) > 1
+    assert all(Category.LICENSE in s.routing.heading_categories for s in index.sections)
+    assert Category.LICENSE not in index.sections[0].routing.body_categories
+    assert all(s.candidate_categories == (Category.LICENSE,) for s in index.sections)
+
+
+@pytest.mark.parametrize(
+    ("text", "marker", "category"),
+    [
+        ("Participants must be eligible.", "OBLIGATION", Category.ENTRANT_TYPE),
+        ("Residents may not enter.", "PROHIBITION", Category.GEOGRAPHY),
+        ("Only incorporated companies qualify.", "LIMITATION", Category.LEGAL_ENTITY),
+        (
+            "Projects must use an API or SDK.",
+            "TECHNOLOGY_OR_LICENSE",
+            Category.REQUIRED_TECHNOLOGY,
+        ),
+        (
+            "Copyright license is required.",
+            "TECHNOLOGY_OR_LICENSE",
+            Category.LICENSE,
+        ),
+        (
+            "Funding support is prohibited.",
+            "FINANCIAL_OR_REWARD",
+            Category.FINANCIAL_SUPPORT,
+        ),
+        (
+            "Award winners are subject to verification.",
+            "FINANCIAL_OR_REWARD",
+            Category.REWARD_CONDITIONS,
+        ),
+        ("Submit before the deadline.", "SUBMISSION_OR_TIME", Category.DEADLINE),
+        (
+            "Judging criteria use points and tie rules.",
+            "EVALUATION_OR_SELECTION",
+            Category.REWARD_CONDITIONS,
+        ),
+    ],
+)
+def test_rule_like_detector_is_generic_and_category_bounded(text, marker, category):
+    from qualor.runtime.sections import RuleLikeMarker, detect_rule_like_routing
+
+    routed = detect_rule_like_routing(heading_text=None, body_text=text)
+
+    assert routed.rule_like
+    assert RuleLikeMarker(marker) in routed.marker_codes
+    assert category in routed.category_hints
+
+
+def test_rule_like_without_category_hint_remains_unclassified():
+    from qualor.runtime.sections import detect_rule_like_routing
+
+    routed = detect_rule_like_routing(
+        heading_text=None,
+        body_text="Unless otherwise specified, this condition applies.",
+    )
+
+    assert routed.rule_like
+    assert routed.category_hints == ()
+
+
+def test_structural_rule_item_and_definition_entry_are_recorded(document):
+    from qualor.runtime.sections import (
+        RuleLikeMarker,
+        SectionRoutingReason,
+        detect_rule_like_routing,
+        index_source,
+    )
+    from qualor.runtime.spans import EvidenceSpanRegistry
+
+    source = document("License\n- License: MIT is required.\n")
+    section = index_source(source, EvidenceSpanRegistry(secret=b"s" * 32)).sections[0]
+
+    assert RuleLikeMarker.STRUCTURAL_RULE_ITEM in detect_rule_like_routing(
+        heading_text="License", body_text="- License: MIT is required."
+    ).marker_codes
+    assert Category.LICENSE in section.routing.body_categories
+    assert SectionRoutingReason.RULE_LIKE_MARKER in section.routing.reason_codes
+
+
+def test_routing_source_has_no_archive_or_contest_specific_branches():
+    source = inspect.getsource(
+        importlib.import_module("qualor.runtime.sections")
+    ).casefold()
+    forbidden = (
+        "devpost",
+        "agents for humans",
+        "official-rules.raw",
+        "e3f7640c",
+        "agentsforhumans",
+        "aws.amazon.com",
+    )
+
+    assert not any(value in source for value in forbidden)
+
+
+def test_candidate_categories_must_equal_local_body_heading_union(document):
+    from qualor.runtime.sections import SourceSection, index_source
+    from qualor.runtime.spans import EvidenceSpanRegistry
+
+    section = index_source(
+        document("License\nGeneral details."),
+        EvidenceSpanRegistry(secret=b"v" * 32),
+    ).sections[0]
+    payload = section.model_dump()
+    payload["candidate_categories"] = [Category.DEADLINE]
+
+    with pytest.raises(ValueError, match="CANDIDATE_CATEGORY_ROUTING_MISMATCH"):
+        SourceSection.model_validate(payload)
 
 
 def _stable_section_fields(index):
