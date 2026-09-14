@@ -87,6 +87,7 @@ def grounded_candidate(document):
     """Ground supplied exact test substrings; never manufacture rule authority."""
 
     from qualor.domain.enums import Category
+    from qualor.runtime.acquisition_plan import build_acquisition_plan
     from qualor.runtime.section_extraction import SectionCandidateTransport, ground_section_claim
     from qualor.runtime.section_scheduler import ExtractionJob
     from qualor.runtime.sections import SectionIndex, index_source
@@ -105,7 +106,22 @@ def grounded_candidate(document):
     ):
         quotes = (quote,) if isinstance(quote, str) else tuple(quote)
         excerpts = (*quotes, *qualifiers, *exceptions)
-        source = document(text if text is not None else "\n".join(excerpts))
+        category_value = Category(category)
+        category_labels = {
+            Category.DEADLINE: "SUBMISSION PERIOD",
+            Category.ENTRANT_TYPE: "ELIGIBLE ENTRANTS",
+            Category.GEOGRAPHY: "GEOGRAPHY",
+            Category.LEGAL_ENTITY: "LEGAL ENTITY",
+            Category.PROJECT_POLICY: "PROJECT REQUIREMENTS",
+            Category.LICENSE: "LICENSE",
+            Category.REQUIRED_TECHNOLOGY: "TECHNOLOGY",
+            Category.FINANCIAL_SUPPORT: "FINANCIAL SUPPORT",
+            Category.REWARD_CONDITIONS: "PRIZE CONDITIONS",
+        }
+        source_text = text if text is not None else "\n".join(excerpts)
+        # Keep original fixture quotations intact while giving the target section
+        # a real generic local routing term.  No post-index routing is fabricated.
+        source = document(f"{category_labels[category_value]}; {source_text}")
         registry = EvidenceSpanRegistry(secret=b"fixture-section-capabilities-0000")
         index = index_source(source, registry)
         ranges = {}
@@ -148,7 +164,9 @@ def grounded_candidate(document):
                 raise ValueError("TEST_EXCERPT_MUST_FIT_ONE_EXACT_SPAN")
             exact_ids[excerpt] = matches[0]
         target = next(s for s in sections if exact_ids[quotes[0]] in s.span_ids)
-        contexts = tuple(s.section_id for s in sections if s.section_id != target.section_id)
+        contexts = tuple(
+            section.section_id for section in sections if section.section_id != target.section_id
+        )
         target = target.model_copy(update={"context_section_ids": contexts})
         index = SectionIndex(
             source_id=index.source_id,
@@ -156,7 +174,15 @@ def grounded_candidate(document):
             indexer_version=index.indexer_version,
             sections=tuple(target if s.section_id == target.section_id else s for s in sections),
         )
-        context_sections = tuple(s for s in index.sections if s.section_id != target.section_id)
+        plan = build_acquisition_plan(index)
+        item = next(
+            item
+            for item in plan.items
+            if item.section_id == target.section_id and category_value in item.categories
+        )
+        context_sections = tuple(
+            section for section in index.sections if section.section_id in contexts
+        )
         job = ExtractionJob(
             job_id="extraction_job_" + "f" * 32,
             source_id=source.id,
@@ -166,6 +192,9 @@ def grounded_candidate(document):
             span_ids=tuple(sid for s in (target, *context_sections) for sid in s.span_ids),
             context_section_ids=contexts,
             authority_revision=0,
+            plan_id=plan.plan_id,
+            plan_item_id=item.item_id,
+            tier=item.tier,
         )
 
         def ids(values):

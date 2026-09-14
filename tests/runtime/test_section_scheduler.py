@@ -1,626 +1,143 @@
-import pytest
+"""Plan-driven section scheduling contracts."""
 
-from qualor.domain.enums import Category
-from qualor.runtime.acquisition_coverage import AcquisitionState, CoverageLedger
+from qualor.runtime.acquisition_coverage import AcquisitionOutcome, CoverageLedger
+from qualor.runtime.acquisition_plan import AcquisitionTier, build_acquisition_plan
 from qualor.runtime.budget import LiveCallKind
 from qualor.runtime.live_cli import live_budget
-from qualor.runtime.section_scheduler import (
-    ExtractionJob,
-    NoExtractionJob,
-    SectionScheduler,
-)
-from qualor.runtime.sections import SectionIndex, index_source
+from qualor.runtime.section_scheduler import ExtractionJob, NoExtractionJob, SectionScheduler
+from qualor.runtime.sections import index_source
 from qualor.runtime.spans import EvidenceSpanRegistry
 
 
-def _index(document, text: str) -> SectionIndex:
-    return index_source(document(text), EvidenceSpanRegistry(secret=b"s" * 32))
+def _scheduled(document, text):
+    index = index_source(document(text), EvidenceSpanRegistry(secret=b"s" * 32))
+    plan = build_acquisition_plan(index)
+    ledger = CoverageLedger(index, plan)
+    return index, plan, ledger, SectionScheduler(index, plan, ledger, live_budget())
 
 
-def _replace_contexts(
-    index: SectionIndex,
-    contexts: dict[int, tuple[int, ...]],
-    *,
-    incomplete: tuple[int, ...] = (),
-) -> SectionIndex:
-    sections = tuple(
-        section.model_copy(
-            update={
-                "context_section_ids": tuple(
-                    index.sections[target].section_id for target in contexts.get(position, ())
-                ),
-                "context_complete": position not in incomplete,
-            }
-        )
-        for position, section in enumerate(index.sections)
-    )
-    return SectionIndex(
-        source_id=index.source_id,
-        source_revision=index.source_revision,
-        indexer_version=index.indexer_version,
-        sections=sections,
+def _unknown():
+    return AcquisitionOutcome(
+        normalization_status="UNKNOWN",
+        supported_rule_ids=(),
+        conditional=False,
+        context_complete=False,
+        reason_code="CONTROLLED_UNKNOWN",
     )
 
 
-def _replace_categories(
-    index: SectionIndex, categories: dict[int, tuple[Category, ...]]
-) -> SectionIndex:
-    return SectionIndex(
-        source_id=index.source_id,
-        source_revision=index.source_revision,
-        indexer_version=index.indexer_version,
-        sections=tuple(
-            section.model_copy(update={"candidate_categories": categories.get(position, ())})
-            for position, section in enumerate(index.sections)
-        ),
-    )
-
-
-def _consume(scheduler: SectionScheduler, ledger: CoverageLedger, job: ExtractionJob) -> None:
-    scheduler.begin(job)
-    ledger.operational_failure(job.section_id, job.categories, "EXTRACTION_PROVIDER_ERROR")
-
-
-def _priority_index(document) -> SectionIndex:
-    return _index(
+def test_scheduler_uses_real_plan_identity_and_mandatory_rank(document):
+    index, plan, ledger, scheduler = _scheduled(
         document,
-        "Ordinary introduction with general background notes.\n"
-        "License\nMIT license terms apply.\n"
-        "Technology\nThe Widget SDK is required.\n"
-        "Geography\nResidents of Spain may enter.\n"
-        "Residency\nLocal residents may enter.",
+        "Ordinary background.\n"
+        "License\nProjects must use an MIT license.\n"
+        "Technology\nProjects must use Widget SDK.",
     )
 
-
-def _record_operational_failure(
-    scheduler: SectionScheduler,
-    ledger: CoverageLedger,
-    job: ExtractionJob,
-) -> None:
-    scheduler.begin(job)
-    ledger.operational_failure(job.section_id, job.categories, "EXTRACTION_PROVIDER_ERROR")
-
-
-def test_later_explicit_license_precedes_earlier_unclassified_fallback(document):
-    index = _index(
-        document,
-        "Ordinary introduction with general background notes.\n"
-        "License\nMIT license terms apply.\n"
-        "Technology\nThe Widget SDK is required.",
-    )
-    scheduler = SectionScheduler(index, CoverageLedger(index), live_budget())
-
-    job = scheduler.next_job(authority_revision=0, steps_remaining=24, terminated=False)
+    job = scheduler.next_job(authority_revision=3, steps_remaining=24, terminated=False)
 
     assert isinstance(job, ExtractionJob)
-    assert job.section_id == index.sections[1].section_id
-    assert job.categories == (Category.LICENSE,)
+    item = next(item for item in plan.items if item.item_id == job.plan_item_id)
+    assert job.plan_id == plan.plan_id
+    assert job.tier is AcquisitionTier.MANDATORY_ANCHOR
+    assert item.section_id == job.section_id
+    assert job.categories == item.categories
+    assert ledger.active_items()[0][0].item_id == item.item_id
+    assert index.source_revision == job.source_revision
 
 
-def test_all_explicit_pairs_are_ordered_before_unclassified_fallback(document):
-    index = _priority_index(document)
-    ledger = CoverageLedger(index)
-    scheduler = SectionScheduler(index, ledger, live_budget())
-    scheduled = []
+def test_scheduler_never_multiplies_reserve_sections_by_category(document):
+    _index, plan, ledger, scheduler = _scheduled(document, "Ordinary background notes.")
 
-    for authority_revision in range(4):
-        job = scheduler.next_job(
-            authority_revision=authority_revision,
-            steps_remaining=24 - authority_revision,
-            terminated=False,
-        )
-        assert isinstance(job, ExtractionJob)
-        scheduled.append((job.section_id, job.categories))
-        _record_operational_failure(scheduler, ledger, job)
-
-    fallback = scheduler.next_job(
-        authority_revision=4,
-        steps_remaining=20,
-        terminated=False,
+    assert all(item.tier is AcquisitionTier.RESERVE_FALLBACK for item in plan.items)
+    assert all(item.categories == () for item in plan.items)
+    assert ledger.unresolved_obligations() == ()
+    assert (
+        scheduler.next_job(authority_revision=0, steps_remaining=24, terminated=False).reason_code
+        == "PLAN_EXHAUSTED"
     )
 
-    assert scheduled == [
-        (index.sections[3].section_id, (Category.GEOGRAPHY,)),
-        (index.sections[1].section_id, (Category.LICENSE,)),
-        (index.sections[2].section_id, (Category.REQUIRED_TECHNOLOGY,)),
-        (index.sections[4].section_id, (Category.GEOGRAPHY,)),
-    ]
-    assert len(ledger.attempts) == len(set(ledger.attempts)) == 4
-    assert isinstance(fallback, ExtractionJob)
-    assert fallback.section_id == index.sections[0].section_id
-    assert fallback.categories == (Category.DEADLINE, Category.ENTRANT_TYPE)
 
-
-def test_unseen_explicit_category_precedes_second_explicit_attempt(document):
-    index = _index(
+def test_scheduler_marks_eighth_slot_as_plan_exhausted_before_budget_reservation(document):
+    _index, plan, ledger, scheduler = _scheduled(
         document,
-        "Deadline A\nSubmit by September 1.\n"
-        "Deadline B\nSubmit by September 2.\n"
-        "License\nAn MIT license is required.\n"
-        "Technology\nWidget SDK is required.",
+        "Deadline\nSubmit by September 1.\n"
+        "License\nProjects must use an MIT license.\n"
+        "Technology\nProjects must use Widget SDK.\n"
+        "Financial Support\nProjects may not accept sponsor support.\n"
+        "Prize\nWinners must satisfy judging rules.\n"
+        "Entrants\nEntrants must be individuals.\n"
+        "Geography\nResidents must be eligible.\n"
+        "Project\nProjects must be new.\n"
+        "Entity\nCompanies may not enter.",
     )
-    ledger = CoverageLedger(index)
-    scheduler = SectionScheduler(index, ledger, live_budget())
 
-    first = scheduler.next_job(authority_revision=0, steps_remaining=24, terminated=False)
-    assert isinstance(first, ExtractionJob)
-    assert first.categories == (Category.DEADLINE,)
-    _consume(scheduler, ledger, first)
-
-    second = scheduler.next_job(authority_revision=1, steps_remaining=23, terminated=False)
-
-    assert isinstance(second, ExtractionJob)
-    assert second.categories == (Category.LICENSE,)
-
-
-def test_every_explicit_category_gets_first_attempt_before_second_attempt(document):
-    index = _replace_categories(
-        _index(
-            document,
-            "Deadline\nA\nLicense\nB\nTechnology\nC\nFinancial Support\nD\nPrize\nE",
-        ),
-        {
-            0: (Category.DEADLINE,),
-            1: (Category.LICENSE,),
-            2: (Category.REQUIRED_TECHNOLOGY,),
-            3: (Category.FINANCIAL_SUPPORT, Category.REWARD_CONDITIONS),
-        },
-    )
-    ledger = CoverageLedger(index)
-    scheduler = SectionScheduler(index, ledger, live_budget())
-
-    scheduled = []
-    for revision in range(4):
+    for revision in range(7):
         job = scheduler.next_job(
-            authority_revision=revision,
-            steps_remaining=24 - revision,
-            terminated=False,
+            authority_revision=revision, steps_remaining=24 - revision, terminated=False
         )
         assert isinstance(job, ExtractionJob)
-        scheduled.append(job.categories)
-        _consume(scheduler, ledger, job)
+        scheduler.begin(job)
+        ledger.complete_item(
+            job.plan_item_id,
+            job.categories,
+            {category: _unknown() for category in job.categories},
+            revision,
+        )
+        scheduler._budget.reserve(  # noqa: SLF001 - mirrors the real request boundary
+            LiveCallKind.INFERENCE,
+            estimated_cost_usd=scheduler._budget.policy.cost_cap_usd / 10,
+        )
 
-    assert scheduled == [
-        (Category.DEADLINE,),
-        (Category.LICENSE,),
-        (Category.REQUIRED_TECHNOLOGY,),
-        (Category.FINANCIAL_SUPPORT, Category.REWARD_CONDITIONS),
-    ]
+    stopped = scheduler.next_job(authority_revision=7, steps_remaining=17, terminated=False)
+    assert isinstance(stopped, NoExtractionJob)
+    assert stopped.reason_code == "PLAN_EXHAUSTED"
+    assert len({key[1] for key in ledger.attempts}) <= 7
+    assert all(overflow.dispatches_used == 7 for overflow in ledger.overflows)
 
 
-def test_category_order_breaks_equal_explicit_attempt_depth_ties(document):
-    index = _replace_categories(
-        _index(document, "License\nA\nTechnology\nB"),
-        {0: (Category.LICENSE,), 1: (Category.REQUIRED_TECHNOLOGY,)},
+def test_scheduler_capacity_uses_real_inference_reservations_not_logical_begins(document):
+    _index, _plan, ledger, scheduler = _scheduled(
+        document, "License\nProjects must use an MIT license."
     )
-    scheduler = SectionScheduler(index, CoverageLedger(index), live_budget())
 
-    job = scheduler.next_job(authority_revision=0, steps_remaining=24, terminated=False)
-
-    assert isinstance(job, ExtractionJob)
-    assert job.categories == (Category.LICENSE,)
-
-
-def test_second_explicit_round_reuses_category_order_after_first_round(document):
-    index = _replace_categories(
-        _index(
-            document,
-            "Deadline A\nA\nDeadline B\nB\nLicense A\nC\nLicense B\nD\n"
-            "Technology A\nE\nTechnology B\nF",
-        ),
-        {
-            0: (Category.DEADLINE,),
-            1: (Category.DEADLINE,),
-            2: (Category.LICENSE,),
-            3: (Category.LICENSE,),
-            4: (Category.REQUIRED_TECHNOLOGY,),
-            5: (Category.REQUIRED_TECHNOLOGY,),
-        },
-    )
-    ledger = CoverageLedger(index)
-    scheduler = SectionScheduler(index, ledger, live_budget())
-
-    scheduled = []
-    for revision in range(4):
+    for revision in range(7):
         job = scheduler.next_job(
-            authority_revision=revision,
-            steps_remaining=24 - revision,
-            terminated=False,
+            authority_revision=revision, steps_remaining=24 - revision, terminated=False
         )
         assert isinstance(job, ExtractionJob)
-        scheduled.append(job.categories)
-        _consume(scheduler, ledger, job)
+        scheduler.begin(job)
+        ledger.budget_blocked_item(job.plan_item_id, job.categories)
 
-    assert scheduled == [
-        (Category.DEADLINE,),
-        (Category.LICENSE,),
-        (Category.REQUIRED_TECHNOLOGY,),
-        (Category.DEADLINE,),
-    ]
-
-
-def test_same_section_packing_survives_explicit_breadth_selection(document):
-    index = _replace_categories(
-        _index(document, "Project requirements\nA new project with an MIT license is required."),
-        {0: (Category.PROJECT_POLICY, Category.LICENSE)},
-    )
-    scheduler = SectionScheduler(index, CoverageLedger(index), live_budget())
-
-    job = scheduler.next_job(authority_revision=0, steps_remaining=24, terminated=False)
-
-    assert isinstance(job, ExtractionJob)
-    assert job.categories == (Category.PROJECT_POLICY, Category.LICENSE)
-
-
-def test_operational_failure_consumes_explicit_attempt_depth(document):
-    index = _index(
-        document,
-        "Deadline A\nSubmit by September 1.\n"
-        "Deadline B\nSubmit by September 2.\n"
-        "License\nAn MIT license is required.",
-    )
-    ledger = CoverageLedger(index)
-    scheduler = SectionScheduler(index, ledger, live_budget())
-    first = scheduler.next_job(authority_revision=0, steps_remaining=24, terminated=False)
-    assert isinstance(first, ExtractionJob)
-    _consume(scheduler, ledger, first)
-
-    next_job = scheduler.next_job(authority_revision=1, steps_remaining=23, terminated=False)
+    next_job = scheduler.next_job(authority_revision=7, steps_remaining=17, terminated=False)
 
     assert isinstance(next_job, ExtractionJob)
-    assert next_job.categories == (Category.LICENSE,)
 
 
-def test_budget_blocked_unwinds_explicit_attempt_depth(document):
-    index = _index(
-        document,
-        "Deadline A\nSubmit by September 1.\nLicense\nAn MIT license is required.",
+def test_physical_budget_refusal_precedes_first_permitted_plan_job(document):
+    _index, _plan, ledger, scheduler = _scheduled(
+        document, "License\nProjects must use an MIT license."
     )
-    ledger = CoverageLedger(index)
-    scheduler = SectionScheduler(index, ledger, live_budget())
-    first = scheduler.next_job(authority_revision=0, steps_remaining=24, terminated=False)
-    assert isinstance(first, ExtractionJob)
-    scheduler.begin(first)
-    ledger.budget_blocked(first.section_id, first.categories)
-
-    retry = scheduler.next_job(authority_revision=1, steps_remaining=23, terminated=False)
-
-    assert isinstance(retry, ExtractionJob)
-    assert retry.categories == (Category.DEADLINE,)
-
-
-def test_explicit_attempt_depth_is_isolated_by_source_revision(document):
-    first_index = _index(
-        document, "Deadline\nSubmit by September 1.\nLicense\nAn MIT license is required."
-    )
-    ledger = CoverageLedger(first_index)
-    first_scheduler = SectionScheduler(first_index, ledger, live_budget())
-    first = first_scheduler.next_job(authority_revision=0, steps_remaining=24, terminated=False)
-    assert isinstance(first, ExtractionJob)
-    _consume(first_scheduler, ledger, first)
-
-    revised_index = _index(
-        document, "Deadline\nSubmit by September 2.\nLicense\nAn MIT license is required."
-    )
-    ledger.replace_index(revised_index)
-    revised_scheduler = SectionScheduler(revised_index, ledger, live_budget())
-
-    revised = revised_scheduler.next_job(authority_revision=1, steps_remaining=23, terminated=False)
-
-    assert isinstance(revised, ExtractionJob)
-    assert revised.categories == (Category.DEADLINE,)
-
-
-def test_category_enumeration_precedes_source_offsets(document):
-    index = _index(
-        document,
-        "License\nAn MIT license is required.\nSubmission Deadline\nSubmit by September 30.",
-    )
-    scheduler = SectionScheduler(index, CoverageLedger(index), live_budget())
-
-    job = scheduler.next_job(authority_revision=0, steps_remaining=24, terminated=False)
-
-    assert isinstance(job, ExtractionJob)
-    assert job.categories == (Category.DEADLINE,)
-    assert job.section_id == index.sections[1].section_id
-
-
-def test_source_offsets_break_category_ties(document):
-    index = _index(
-        document,
-        "Geography\nResidents of Spain may enter.\nResidency\nLocal residents may enter.",
-    )
-    scheduler = SectionScheduler(index, CoverageLedger(index), live_budget())
-
-    job = scheduler.next_job(authority_revision=0, steps_remaining=24, terminated=False)
-
-    assert isinstance(job, ExtractionJob)
-    assert job.categories == (Category.GEOGRAPHY,)
-    assert job.section_id == index.sections[0].section_id
-
-
-def test_scheduler_packs_at_most_two_categories(document):
-    index = _index(
-        document,
-        "Eligibility\nResidents and incorporated companies may enter.",
-    )
-    scheduler = SectionScheduler(index, CoverageLedger(index), live_budget())
-
-    job = scheduler.next_job(authority_revision=4, steps_remaining=24, terminated=False)
-
-    assert isinstance(job, ExtractionJob)
-    assert job.categories == (Category.ENTRANT_TYPE, Category.GEOGRAPHY)
-    assert len(job.categories) == 2
-
-
-def test_scheduler_cannot_repeat_pair(document):
-    index = _index(document, "License\nAn MIT license is required.")
-    scheduler = SectionScheduler(index, CoverageLedger(index), live_budget())
-    job = scheduler.next_job(authority_revision=0, steps_remaining=24, terminated=False)
-    assert isinstance(job, ExtractionJob)
-
-    scheduler.begin(job)
-
-    with pytest.raises(ValueError, match="DUPLICATE_SECTION_CATEGORY_ATTEMPT"):
-        scheduler.begin(job)
-
-
-def test_operational_failure_consumes_pair_and_advances_by_offset(document):
-    index = _index(
-        document,
-        "Geography\nResidents of Spain may enter.\nResidency\nLocal residents may enter.",
-    )
-    ledger = CoverageLedger(index)
-    scheduler = SectionScheduler(index, ledger, live_budget())
-    first = scheduler.next_job(authority_revision=3, steps_remaining=24, terminated=False)
-    assert isinstance(first, ExtractionJob)
-    scheduler.begin(first)
-    ledger.operational_failure(first.section_id, first.categories, "EXTRACTION_PROVIDER_ERROR")
-
-    second = scheduler.next_job(authority_revision=4, steps_remaining=23, terminated=False)
-
-    assert isinstance(second, ExtractionJob)
-    assert second.section_id == index.sections[1].section_id
-    assert second.categories == (Category.GEOGRAPHY,)
-
-
-def test_unclassified_sections_have_deterministic_fallback(document):
-    index = _index(
-        document,
-        "Ordinary background notes without a classified rule.\n" * 30,
-    )
-    ledger = CoverageLedger(index)
-    scheduler = SectionScheduler(index, ledger, live_budget())
-
-    first = scheduler.next_job(authority_revision=2, steps_remaining=24, terminated=False)
-    repeated = scheduler.next_job(authority_revision=2, steps_remaining=24, terminated=False)
-
-    assert first == repeated
-    assert isinstance(first, ExtractionJob)
-    assert first.section_id == index.sections[0].section_id
-    assert first.categories == (Category.DEADLINE, Category.ENTRANT_TYPE)
-    assert all(
-        ledger.state(category) is AcquisitionState.SECTION_AVAILABLE for category in Category
-    )
-
-
-def test_scheduler_attempts_all_relevant_source_sections_before_pivot(document):
-    index = _index(
-        document,
-        "License\nAn MIT license is required.\nGeography\nResidents of Spain may enter.",
-    )
-    ledger = CoverageLedger(index)
-    scheduler = SectionScheduler(index, ledger, live_budget())
-
-    scheduled = []
-    for authority_revision in range(2):
-        job = scheduler.next_job(
-            authority_revision=authority_revision,
-            steps_remaining=24 - authority_revision,
-            terminated=False,
+    for _ in range(scheduler._budget.policy.inference_max_calls):
+        scheduler._budget.reserve(  # noqa: SLF001 - controlled real budget boundary
+            LiveCallKind.INFERENCE,
+            estimated_cost_usd=scheduler._budget.policy.cost_cap_usd / 10,
         )
-        assert isinstance(job, ExtractionJob)
-        scheduled.append((job.section_id, job.categories))
-        scheduler.begin(job)
-        ledger.operational_failure(job.section_id, job.categories, "EXTRACTION_PROVIDER_ERROR")
-
-    exhausted = scheduler.next_job(authority_revision=2, steps_remaining=22, terminated=False)
-
-    assert scheduled == [
-        (index.sections[1].section_id, (Category.GEOGRAPHY,)),
-        (index.sections[0].section_id, (Category.LICENSE,)),
-    ]
-    assert isinstance(exhausted, NoExtractionJob)
-    assert exhausted.reason_code == "SOURCE_EXHAUSTED"
-    assert exhausted.pivot_eligible is True
-
-
-def test_source_exhaustion_reconciles_categories_absent_from_index(document):
-    index = _index(document, "Geography\nResidents of Spain may enter.")
-    ledger = CoverageLedger(index)
-    scheduler = SectionScheduler(index, ledger, live_budget())
-
-    job = scheduler.next_job(authority_revision=7, steps_remaining=24, terminated=False)
-    assert isinstance(job, ExtractionJob)
-    scheduler.begin(job)
-    ledger.operational_failure(job.section_id, job.categories, "EXTRACTION_PROVIDER_ERROR")
-
-    exhausted = scheduler.next_job(authority_revision=8, steps_remaining=23, terminated=False)
-
-    assert isinstance(exhausted, NoExtractionJob)
-    assert exhausted.reason_code == "SOURCE_EXHAUSTED"
-    assert all(ledger.state(category) is AcquisitionState.EXHAUSTED for category in Category)
-    license_transition = next(
-        transition for transition in ledger.transitions if transition.category is Category.LICENSE
-    )
-    assert license_transition.key is None
-    assert license_transition.source_revision == index.source_revision
-    assert license_transition.before is AcquisitionState.UNSEEN
-    assert license_transition.after is AcquisitionState.EXHAUSTED
-    assert license_transition.outcome is None
-    assert license_transition.authority_revision == 7
-    assert license_transition.cause == "NO_RELEVANT_SECTION_INDEXED"
-    assert dict(ledger.outcomes) == {}
-
-
-def test_absence_exhaustion_survives_source_revision_aba(document):
-    geography = _index(document, "Geography\nResidents of Spain may enter.")
-    ledger = CoverageLedger(geography)
-    first_scheduler = SectionScheduler(geography, ledger, live_budget())
-    first = first_scheduler.next_job(authority_revision=3, steps_remaining=24, terminated=False)
-    assert isinstance(first, ExtractionJob)
-    assert ledger.state(Category.LICENSE) is AcquisitionState.EXHAUSTED
-
-    license_index = _index(document, "License\nAn MIT license is required.")
-    ledger.replace_index(license_index)
-    second_scheduler = SectionScheduler(license_index, ledger, live_budget())
-    second = second_scheduler.next_job(authority_revision=4, steps_remaining=24, terminated=False)
-    assert isinstance(second, ExtractionJob)
-    assert ledger.state(Category.LICENSE) is AcquisitionState.SECTION_AVAILABLE
-
-    ledger.replace_index(geography)
-
-    assert ledger.state(Category.LICENSE) is AcquisitionState.EXHAUSTED
-    restored = [
-        transition
-        for transition in ledger.transitions
-        if transition.category is Category.LICENSE
-        and transition.source_revision == geography.source_revision
-    ][-1]
-    assert restored.after is AcquisitionState.EXHAUSTED
-    assert restored.cause == "SOURCE_REVISION_RESTORED"
-
-
-def test_budget_refusal_records_zero_inspections(document):
-    index = _index(document, "License\nAn MIT license is required.")
-    ledger = CoverageLedger(index)
-    budget = live_budget()
-    for _ in range(budget.policy.inference_max_calls):
-        budget.reserve(LiveCallKind.INFERENCE)
-    scheduler = SectionScheduler(index, ledger, budget)
 
     result = scheduler.next_job(authority_revision=0, steps_remaining=24, terminated=False)
 
     assert isinstance(result, NoExtractionJob)
     assert result.reason_code == "BUDGET_BLOCKED"
-    assert result.pivot_eligible is False
-    assert ledger.attempts == frozenset()
-    assert dict(ledger.outcomes) == {}
-    assert ledger.transitions == ()
+    assert not ledger.attempts
 
 
-@pytest.mark.parametrize(
-    ("terminated", "steps_remaining", "reason_code"),
-    [(True, 24, "RUN_TERMINATED"), (False, 0, "STEP_BOUND")],
-)
-def test_terminal_bounds_precede_selection(
-    document, terminated: bool, steps_remaining: int, reason_code: str
-):
-    index = _index(document, "License\nAn MIT license is required.")
-    ledger = CoverageLedger(index)
-    scheduler = SectionScheduler(index, ledger, live_budget())
-
-    result = scheduler.next_job(
-        authority_revision=0,
-        steps_remaining=steps_remaining,
-        terminated=terminated,
+def test_context_incomplete_plan_item_is_not_dispatched(document):
+    _index, _plan, ledger, scheduler = _scheduled(
+        document, "License\nProjects must use an MIT license unless otherwise specified."
     )
-
-    assert isinstance(result, NoExtractionJob)
-    assert result.reason_code == reason_code
-    assert result.pivot_eligible is False
-    assert ledger.attempts == frozenset()
-
-
-def test_context_closure_is_transitive_cycle_safe_and_span_bounded(document):
-    index = _index(
-        document,
-        "License A\nMIT applies.\nLicense B\nApache applies.\nLicense C\nBSD applies.",
-    )
-    index = _replace_contexts(index, {0: (1,), 1: (2,), 2: (0,)})
-    scheduler = SectionScheduler(index, CoverageLedger(index), live_budget())
-
-    job = scheduler.next_job(authority_revision=7, steps_remaining=24, terminated=False)
-
-    assert isinstance(job, ExtractionJob)
-    assert job.context_section_ids == (
-        index.sections[1].section_id,
-        index.sections[2].section_id,
-    )
-    assert job.span_ids == (
-        *index.sections[0].span_ids,
-        *index.sections[1].span_ids,
-        *index.sections[2].span_ids,
-    )
-    assert len(job.span_ids) <= 12
-
-
-def test_incomplete_transitive_context_fails_closed(document):
-    index = _index(
-        document,
-        "License A\nMIT applies.\nLicense B\nApache applies.\nLicense C\nBSD applies.",
-    )
-    index = _replace_contexts(index, {0: (1,), 1: (2,)}, incomplete=(2,))
-    scheduler = SectionScheduler(index, CoverageLedger(index), live_budget())
 
     result = scheduler.next_job(authority_revision=0, steps_remaining=24, terminated=False)
 
     assert isinstance(result, NoExtractionJob)
     assert result.reason_code == "CONTEXT_UNRESOLVED"
-    assert result.pivot_eligible is True
-
-
-def test_safe_current_source_section_is_scheduled_before_context_pivot(document):
-    index = _index(
-        document,
-        "License A\nMIT applies.\nLicense B\nApache applies.",
-    )
-    index = _replace_contexts(index, {}, incomplete=(0,))
-    scheduler = SectionScheduler(index, CoverageLedger(index), live_budget())
-
-    job = scheduler.next_job(authority_revision=0, steps_remaining=24, terminated=False)
-
-    assert isinstance(job, ExtractionJob)
-    assert job.section_id == index.sections[1].section_id
-
-
-def test_context_that_exceeds_job_span_bound_fails_closed(document):
-    text = "".join(f"License {position}\nMIT applies.\n" for position in range(13))
-    index = _index(document, text)
-    contexts = {
-        position: tuple(target for target in range(13) if target != position)
-        for position in range(13)
-    }
-    index = _replace_contexts(index, contexts)
-    scheduler = SectionScheduler(index, CoverageLedger(index), live_budget())
-
-    result = scheduler.next_job(authority_revision=0, steps_remaining=24, terminated=False)
-
-    assert isinstance(result, NoExtractionJob)
-    assert result.reason_code == "CONTEXT_UNRESOLVED"
-    assert result.pivot_eligible is True
-
-
-def test_context_without_an_exact_span_capability_fails_closed(document):
-    index = _index(
-        document,
-        "License A\nMIT applies.\nLicense B\nApache applies.",
-    )
-    sections = (
-        index.sections[0].model_copy(
-            update={"context_section_ids": (index.sections[1].section_id,)}
-        ),
-        index.sections[1].model_copy(update={"span_ids": ()}),
-    )
-    index = SectionIndex(
-        source_id=index.source_id,
-        source_revision=index.source_revision,
-        indexer_version=index.indexer_version,
-        sections=sections,
-    )
-    scheduler = SectionScheduler(index, CoverageLedger(index), live_budget())
-
-    result = scheduler.next_job(authority_revision=0, steps_remaining=24, terminated=False)
-
-    assert isinstance(result, NoExtractionJob)
-    assert result.reason_code == "CONTEXT_UNRESOLVED"
+    assert not ledger.attempts

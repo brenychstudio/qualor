@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from qualor.domain.enums import Category
 from qualor.runtime.acquisition_coverage import AcquisitionOutcome, CoverageLedger
+from qualor.runtime.acquisition_plan import build_acquisition_plan
 from qualor.runtime.extraction import BedrockClaimExtractor
 from qualor.runtime.live_cli import live_budget
 from qualor.runtime.section_scheduler import ExtractionJob, NoExtractionJob, SectionScheduler
@@ -29,6 +30,32 @@ def setup_job(document, text="License\nAn MIT license is required.", *, registry
     registry = registry or EvidenceSpanRegistry(secret=b"s" * 32)
     index = index_source(source, registry)
     target = index.sections[0]
+    plan = build_acquisition_plan(index)
+    item = next(
+        (
+            item
+            for item in plan.items
+            if item.section_id == target.section_id and Category.LICENSE in item.categories
+        ),
+        None,
+    )
+    if item is None:
+        # Preserve the test's byte layout while replacing only synthetic padding
+        # with a real generic routing term.  The direct job is then bound to an
+        # actual plan item, without injecting routing metadata after indexing.
+        offset = text.find("Ordinary")
+        width = len("Ordinary") if offset >= 0 else len("license")
+        offset = 0 if offset < 0 else offset
+        routed_text = text[:offset] + "license".ljust(width) + text[offset + width :]
+        source = document(routed_text)
+        index = index_source(source, registry)
+        target = index.sections[0]
+        plan = build_acquisition_plan(index)
+        item = next(
+            item
+            for item in plan.items
+            if item.section_id == target.section_id and Category.LICENSE in item.categories
+        )
     required = set()
     pending = list(target.context_section_ids)
     while pending:
@@ -49,6 +76,9 @@ def setup_job(document, text="License\nAn MIT license is required.", *, registry
         span_ids=tuple(sid for section in (target, *context) for sid in section.span_ids),
         context_section_ids=tuple(section.section_id for section in context),
         authority_revision=0,
+        plan_id=plan.plan_id,
+        plan_item_id=item.item_id,
+        tier=item.tier,
     )
     assert isinstance(job, ExtractionJob)
     return source, index, job, registry
@@ -459,8 +489,9 @@ def test_remote_governing_text_is_retained_without_condition_keywords(document):
 def _scheduled_license(index, heading):
     """Reach the requested section through real scheduler and ledger transitions."""
 
-    ledger = CoverageLedger(index)
-    scheduler = SectionScheduler(index, ledger, live_budget())
+    plan = build_acquisition_plan(index)
+    ledger = CoverageLedger(index, plan)
+    scheduler = SectionScheduler(index, plan, ledger, live_budget())
     target = next(section for section in index.sections if section.heading == heading)
     for step in range(24):
         job = scheduler.next_job(authority_revision=0, steps_remaining=24 - step, terminated=False)
@@ -469,8 +500,9 @@ def _scheduled_license(index, heading):
         if job.section_id == target.section_id and Category.LICENSE in job.categories:
             return job
         scheduler.begin(job)
-        ledger.complete(
-            job.section_id,
+        ledger.complete_item(
+            job.plan_item_id,
+            job.categories,
             {
                 category: AcquisitionOutcome(
                     normalization_status="UNKNOWN",

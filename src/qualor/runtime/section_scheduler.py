@@ -1,4 +1,4 @@
-"""Deterministic, bounded scheduling of section extraction work."""
+"""Deterministic, bounded execution of an immutable acquisition plan."""
 
 import hashlib
 from typing import Annotated, Literal
@@ -8,9 +8,10 @@ from pydantic import Field, StrictBool, StrictInt
 from qualor.domain.base import Contract, NonEmpty
 from qualor.domain.enums import Category
 
-from .acquisition_coverage import AcquisitionState, AttemptTier, CoverageLedger
+from .acquisition_coverage import CategoryAccountingState, CoverageLedger
+from .acquisition_plan import AcquisitionPlan, AcquisitionPlanItem, AcquisitionTier
 from .budget import BudgetSnapshot, LiveBudgetGuard
-from .sections import SectionIndex, SourceSection
+from .sections import SectionIndex
 
 MAX_EXTRACTION_JOB_SPAN_IDS = 12
 
@@ -18,7 +19,7 @@ NoExtractionReason = Literal[
     "RUN_TERMINATED",
     "STEP_BOUND",
     "BUDGET_BLOCKED",
-    "SOURCE_EXHAUSTED",
+    "PLAN_EXHAUSTED",
     "CONTEXT_UNRESOLVED",
 ]
 
@@ -34,6 +35,9 @@ class ExtractionJob(Contract):
     ]
     context_section_ids: tuple[str, ...]
     authority_revision: Annotated[StrictInt, Field(ge=0)]
+    plan_id: str = Field(pattern=r"^acquisition_plan_[a-f0-9]{32}$")
+    plan_item_id: str = Field(pattern=r"^plan_item_[a-f0-9]{32}$")
+    tier: AcquisitionTier
 
 
 class NoExtractionJob(Contract):
@@ -42,21 +46,30 @@ class NoExtractionJob(Contract):
 
 
 class SectionScheduler:
-    """Choose one stable, unattempted section/category extraction job."""
+    """Schedule only active, finite plan obligations in their stored rank order."""
 
     def __init__(
         self,
         index: SectionIndex,
+        plan: AcquisitionPlan,
         ledger: CoverageLedger,
         budget: LiveBudgetGuard,
     ) -> None:
+        if (
+            plan.source_id != index.source_id
+            or plan.source_revision != index.source_revision
+            or plan.indexer_version != index.indexer_version
+        ):
+            raise ValueError("ACQUISITION_PLAN_INDEX_MISMATCH")
         self._index = index
+        self._plan = plan
         self._ledger = ledger
         self._budget = budget
         self._sections_by_id = {section.section_id: section for section in index.sections}
-        self._ordered_sections = tuple(
-            sorted(index.sections, key=lambda section: (section.start_offset, section.section_id))
-        )
+        # Planning calls may already have been reserved on this shared run budget.
+        # Capacity is therefore the actual inference reservations made after this
+        # scheduler was constructed, never logical attempts or plan-item count.
+        self._initial_inference_calls = budget.snapshot().inference_calls
 
     def next_job(
         self,
@@ -69,112 +82,80 @@ class SectionScheduler:
             return NoExtractionJob(reason_code="RUN_TERMINATED", pivot_eligible=False)
         if steps_remaining <= 0:
             return NoExtractionJob(reason_code="STEP_BOUND", pivot_eligible=False)
-        snapshot = self._budget.snapshot()
-        if not self._inference_available(snapshot):
-            return NoExtractionJob(reason_code="BUDGET_BLOCKED", pivot_eligible=False)
-        self._ledger.reconcile_index_absence(authority_revision)
-
-        contexts: dict[str, tuple[tuple[str, ...], tuple[str, ...]] | None] = {}
-        explicit_candidates: dict[Category, tuple[SourceSection, ...]] = {}
-        fallback_candidates: dict[Category, tuple[SourceSection, ...]] = {}
-        context_unresolved = False
-        for category in Category:
-            if self._ledger.state(category) is not AcquisitionState.SECTION_AVAILABLE:
-                continue
-            explicit_sections, fallback_sections = self._unattempted_sections(category)
-            for sections, candidates in (
-                (explicit_sections, explicit_candidates),
-                (fallback_sections, fallback_candidates),
-            ):
-                safe_sections = []
-                for section in sections:
-                    context = contexts.setdefault(section.section_id, self._context_for(section))
-                    if context is None:
-                        context_unresolved = True
-                        continue
-                    safe_sections.append(section)
-                candidates[category] = tuple(safe_sections)
-        use_explicit = any(explicit_candidates.values())
-        candidates = explicit_candidates if use_explicit else fallback_candidates
-        primary_categories = tuple(category for category in Category if candidates.get(category))
-        selected = None
-        if primary_categories:
-            primary_category = min(
-                primary_categories,
-                key=lambda category: (
-                    self._explicit_attempt_depth(category) if use_explicit else 0,
-                    tuple(Category).index(category),
-                ),
+        dispatches_used = self._extraction_dispatches_used()
+        if dispatches_used == self._plan.max_extraction_jobs:
+            self._ledger.mark_plan_overflow(
+                dispatches_used=dispatches_used, authority_revision=authority_revision
             )
-            selected = candidates[primary_category][0]
-        if selected is None:
-            reason = "CONTEXT_UNRESOLVED" if context_unresolved else "SOURCE_EXHAUSTED"
-            return NoExtractionJob(reason_code=reason, pivot_eligible=True)
+            return NoExtractionJob(reason_code="PLAN_EXHAUSTED", pivot_eligible=False)
+        if not self._inference_available(self._budget.snapshot()):
+            return NoExtractionJob(reason_code="BUDGET_BLOCKED", pivot_eligible=False)
 
-        context = contexts[selected.section_id]
-        assert context is not None
-        context_section_ids, span_ids = context
-        categories = tuple(
-            category
-            for category in Category
-            if candidates.get(category)
-            and candidates[category][0].section_id == selected.section_id
-        )[:2]
-        return ExtractionJob(
-            job_id=self._job_id(selected, categories, authority_revision),
-            source_id=self._index.source_id,
-            source_revision=self._index.source_revision,
-            section_id=selected.section_id,
-            categories=categories,
-            span_ids=span_ids,
-            context_section_ids=context_section_ids,
-            authority_revision=authority_revision,
+        self._ledger.reconcile_plan(authority_revision)
+        context_unresolved = False
+        for item, categories in self._ledger.active_items():
+            context = self._context_for(item)
+            if context is None:
+                self._ledger.mark_context_unresolved(
+                    item.item_id, categories, authority_revision
+                )
+                context_unresolved = True
+                continue
+            context_section_ids, span_ids = context
+            return ExtractionJob(
+                job_id=self._job_id(item, categories, authority_revision),
+                source_id=self._index.source_id,
+                source_revision=self._index.source_revision,
+                section_id=item.section_id,
+                categories=categories,
+                span_ids=span_ids,
+                context_section_ids=context_section_ids,
+                authority_revision=authority_revision,
+                plan_id=self._plan.plan_id,
+                plan_item_id=item.item_id,
+                tier=item.tier,
+            )
+        return NoExtractionJob(
+            reason_code=(
+                "CONTEXT_UNRESOLVED"
+                if context_unresolved
+                or any(
+                    self._ledger.accounting_state(category)
+                    is CategoryAccountingState.CONTEXT_UNRESOLVED
+                    for category in Category
+                )
+                else "PLAN_EXHAUSTED"
+            ),
+            pivot_eligible=False,
         )
 
     def begin(self, job: ExtractionJob) -> None:
         if (
             job.source_id != self._index.source_id
             or job.source_revision != self._index.source_revision
+            or job.plan_id != self._plan.plan_id
             or job.section_id not in self._sections_by_id
         ):
             raise ValueError("EXTRACTION_JOB_SOURCE_MISMATCH")
-        if job.job_id != self._job_id(
-            self._sections_by_id[job.section_id], job.categories, job.authority_revision
-        ):
+        item = next((item for item in self._plan.items if item.item_id == job.plan_item_id), None)
+        if item is None or item.section_id != job.section_id or item.tier is not job.tier:
+            raise ValueError("EXTRACTION_JOB_PLAN_MISMATCH")
+        if job.categories != item.categories:
+            raise ValueError("EXTRACTION_JOB_PLAN_CATEGORIES_MISMATCH")
+        if job.job_id != self._job_id(item, job.categories, job.authority_revision):
             raise ValueError("EXTRACTION_JOB_ID_MISMATCH")
-        self._ledger.begin(job.section_id, job.categories, job.authority_revision)
+        self._ledger.begin_item(item.item_id, job.categories, job.authority_revision)
+
+    def _extraction_dispatches_used(self) -> int:
+        return self._budget.snapshot().inference_calls - self._initial_inference_calls
 
     def _inference_available(self, snapshot: BudgetSnapshot) -> bool:
         return snapshot.inference_calls < self._budget.policy.inference_max_calls
 
-    def _unattempted_sections(
-        self, category: Category
-    ) -> tuple[tuple[SourceSection, ...], tuple[SourceSection, ...]]:
-        attempts = self._ledger.attempts
-        relevant = tuple(
-            section
-            for section in self._ordered_sections
-            if (not section.candidate_categories or category in section.candidate_categories)
-            and (self._index.source_revision, section.section_id, category) not in attempts
-        )
-        return (
-            tuple(section for section in relevant if section.candidate_categories),
-            tuple(section for section in relevant if not section.candidate_categories),
-        )
-
-    def _explicit_attempt_depth(self, category: Category) -> int:
-        return sum(
-            source_revision == self._index.source_revision
-            and attempted_category is category
-            and tier is AttemptTier.EXPLICIT
-            for (
-                source_revision,
-                _section_id,
-                attempted_category,
-            ), tier in self._ledger.attempt_tiers.items()
-        )
-
-    def _context_for(self, target: SourceSection) -> tuple[tuple[str, ...], tuple[str, ...]] | None:
+    def _context_for(
+        self, item: AcquisitionPlanItem
+    ) -> tuple[tuple[str, ...], tuple[str, ...]] | None:
+        target = self._sections_by_id[item.section_id]
         pending = list(target.context_section_ids)
         required_ids: set[str] = set()
         visited = {target.section_id}
@@ -190,7 +171,6 @@ class SectionScheduler:
             pending.extend(section.context_section_ids)
         if not target.context_complete:
             return None
-
         context_sections = tuple(
             sorted(
                 (self._sections_by_id[section_id] for section_id in required_ids),
@@ -209,14 +189,15 @@ class SectionScheduler:
 
     def _job_id(
         self,
-        section: SourceSection,
+        item: AcquisitionPlanItem,
         categories: tuple[Category, ...],
         authority_revision: int,
     ) -> str:
         material = "\0".join(
             (
+                self._plan.plan_id,
+                item.item_id,
                 self._index.source_revision,
-                section.section_id,
                 *(category.value for category in categories),
                 str(authority_revision),
             )

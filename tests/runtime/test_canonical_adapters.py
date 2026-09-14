@@ -1093,6 +1093,7 @@ def test_technology_bare_if_retains_base_only_under_unknown_applicability(
 
 
 def test_compiler_same_quote_at_distinct_grounded_positions_has_distinct_identity(document):
+    from qualor.runtime.acquisition_plan import build_acquisition_plan
     from qualor.runtime.section_extraction import SectionCandidateTransport, ground_section_claim
     from qualor.runtime.section_scheduler import ExtractionJob
     from qualor.runtime.sections import index_source
@@ -1109,6 +1110,12 @@ def test_compiler_same_quote_at_distinct_grounded_positions_has_distinct_identit
     assert first.span_id != second.span_id and first.start_offset != second.start_offset
     section = index.sections[0].model_copy(update={"span_ids": (first.span_id, second.span_id)})
     index = index.model_copy(update={"sections": (section,)})
+    plan = build_acquisition_plan(index)
+    item = next(
+        item
+        for item in plan.items
+        if item.section_id == section.section_id and Category.REQUIRED_TECHNOLOGY in item.categories
+    )
     job = ExtractionJob(
         job_id="extraction_job_" + "a" * 32,
         source_id=source.id,
@@ -1118,6 +1125,9 @@ def test_compiler_same_quote_at_distinct_grounded_positions_has_distinct_identit
         span_ids=section.span_ids,
         context_section_ids=(),
         authority_revision=0,
+        plan_id=plan.plan_id,
+        plan_item_id=item.item_id,
+        tier=item.tier,
     )
     results = []
     for span in (first, second):
@@ -1235,22 +1245,42 @@ def test_structural_heading_quote_parses_like_one_joined_quote(
 
 
 @pytest.mark.parametrize(
-    "first,second",
+    "first,second,family,value",
     [
-        ("Projects must use Widget SDK.", "Projects must use Silver API."),
-        ("Submission Period:", "Submissions close on January 2, 2026, 5:00 PM UTC."),
-        ("Judging Period:", "Judging closes on January 9, 2026, 5:00 PM UTC."),
-        ("Financial or Preferential Support", "Projects must have sponsor support."),
+        (
+            "Projects must use Widget SDK.",
+            "Projects must use Silver API.",
+            "REQUIRED_TECHNOLOGY",
+            "Widget SDK",
+        ),
+        (
+            "Submission Period:",
+            "Submissions close on January 2, 2026, 5:00 PM UTC.",
+            "DEADLINE",
+            "January 2, 2026",
+        ),
+        (
+            "Judging Period:",
+            "Judging closes on January 9, 2026, 5:00 PM UTC.",
+            "REWARD_CONDITIONS",
+            "Judging",
+        ),
+        (
+            "Financial or Preferential Support",
+            "Projects must have sponsor support.",
+            "FINANCIAL_SUPPORT",
+            "support",
+        ),
     ],
 )
 def test_first_structural_quote_is_only_stripped_when_it_is_a_known_heading(
-    grounded_candidate, first, second
+    grounded_candidate, first, second, family, value
 ):
     """Only the bounded heading vocabulary may be dropped from the parsing view."""
 
     from qualor.runtime.adapters.base import body
 
-    candidate = grounded_candidate("LICENSE", "MIT", (first, second))
+    candidate = grounded_candidate(family, value, (first, second))
 
     assert body(candidate).startswith(first.rstrip("."))
 
@@ -1267,9 +1297,7 @@ def real_timezone_database(monkeypatch):
 
 SUBMISSION_OPENING = "Monday, August 10, 2026 (9:00 am Pacific Time)"
 SUBMISSION_CLOSING = "Monday, September 14, 2026 (5:00 pm Pacific Time)"
-SUBMISSION_VALUE = (
-    SUBMISSION_OPENING + " – " + SUBMISSION_CLOSING + " (“Submission Period”)."
-)
+SUBMISSION_VALUE = SUBMISSION_OPENING + " – " + SUBMISSION_CLOSING + " (“Submission Period”)."
 
 
 @pytest.mark.parametrize(
@@ -1334,9 +1362,7 @@ def test_submission_period_interval_compiles_to_executable_authority(
 def test_other_labelled_periods_are_not_submission_authority(
     grounded_candidate, real_timezone_database, label, term
 ):
-    value = (
-        SUBMISSION_OPENING + " – " + SUBMISSION_CLOSING + f" (“{term}”)."
-    )
+    value = SUBMISSION_OPENING + " – " + SUBMISSION_CLOSING + f" (“{term}”)."
     candidate = grounded_candidate(
         "DEADLINE", (SUBMISSION_OPENING, SUBMISSION_CLOSING), (label, value)
     )
@@ -1344,9 +1370,7 @@ def test_other_labelled_periods_are_not_submission_authority(
     assert compile_candidate(candidate).normalization_status != "SUPPORTED"
 
 
-def test_winners_announced_is_not_submission_authority(
-    grounded_candidate, real_timezone_database
-):
+def test_winners_announced_is_not_submission_authority(grounded_candidate, real_timezone_database):
     candidate = grounded_candidate(
         "DEADLINE",
         SUBMISSION_CLOSING,

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from qualor.domain.enums import ExtractionState, Operator
 
 from .acquisition_coverage import AcquisitionOutcome, AcquisitionState, CoverageLedger
+from .acquisition_plan import build_acquisition_plan
 from .adapters import adapt_candidate
 from .adapters.base import AdapterResult
 from .budget import BudgetLimitExceeded
@@ -60,6 +61,7 @@ class SectionAcquisition:
     def __init__(self, run: "OpportunityRun"):
         self.run = run
         self.index = None
+        self.plan = None
         self.ledger = None
         self.scheduler = None
         self._observations = ()
@@ -235,8 +237,11 @@ class SectionAcquisition:
                 raise ValueError("SOURCE_REFERENCE_NOT_FOUND")
             if self.index is None:
                 self.index = index_source(source, run.extractor.span_registry)
-                self.ledger = CoverageLedger(self.index)
-                self.scheduler = SectionScheduler(self.index, self.ledger, run.budget)
+                self.plan = build_acquisition_plan(self.index)
+                self.ledger = CoverageLedger(self.index, self.plan)
+                self.scheduler = SectionScheduler(
+                    self.index, self.plan, self.ledger, run.budget
+                )
             elif source_id != self.index.source_id:
                 raise ValueError("EXTRACTION_SOURCE_REFERENCE_MISMATCH")
         except Exception as exc:
@@ -355,7 +360,12 @@ class SectionAcquisition:
                                     ),
                                 )
                             )
-                    self.ledger.complete(job.section_id, outcomes, job.authority_revision)
+                    self.ledger.complete_item(
+                        job.plan_item_id,
+                        job.categories,
+                        outcomes,
+                        job.authority_revision,
+                    )
                     coverage_completed = True
                     changed = self._admit(results)
                     receipt_context.complete(
@@ -366,10 +376,12 @@ class SectionAcquisition:
                     isinstance(exc, BudgetLimitExceeded)
                     and run.budget.snapshot().inference_calls == dispatched_before
                 ):
-                    self.ledger.budget_blocked(job.section_id, job.categories)
+                    self.ledger.budget_blocked_item(job.plan_item_id, job.categories)
                 elif not coverage_completed:
-                    self.ledger.operational_failure(
-                        job.section_id, job.categories, "SECTION_OPERATION_FAILED"
+                    self.ledger.operational_failure_item(
+                        job.plan_item_id,
+                        job.categories,
+                        "SECTION_OPERATION_FAILED",
                     )
                 run.failure(exc, component="extract_official_claims", event="EXTRACTION_RESULT")
                 continue
