@@ -7,8 +7,11 @@ from qualor.domain.enums import Category
 from qualor.runtime.acquisition_coverage import (
     AcquisitionOutcome,
     AcquisitionState,
+    CategoryAccountingState,
     CoverageLedger,
+    PlanItemState,
 )
+from qualor.runtime.acquisition_plan import AcquisitionTier, build_acquisition_plan
 from qualor.runtime.live_cli import live_budget
 from qualor.runtime.section_scheduler import SectionScheduler
 from qualor.runtime.sections import SectionIndex, index_source
@@ -39,6 +42,179 @@ def _outcome(
     )
 
 
+def _planned(document, text: str):
+    index = _index(document, text)
+    plan = build_acquisition_plan(index)
+    return index, plan, CoverageLedger(index, plan)
+
+
+def test_inactive_conditional_is_not_unfinished_mandatory(document):
+    index, plan, ledger = _planned(
+        document,
+        "License\nGeneral background.\n"
+        "Project Requirements\nAn MIT license is required.",
+    )
+    conditional = next(
+        item
+        for item in plan.items
+        if item.tier is AcquisitionTier.CONDITIONAL_DISCOVERY
+        and Category.LICENSE in item.categories
+    )
+
+    assert ledger.plan_item_states[
+        (plan.plan_id, conditional.item_id, Category.LICENSE)
+    ] is PlanItemState.INACTIVE
+    assert all(
+        item.item_id != conditional.item_id
+        for item, _categories in ledger.active_items(AcquisitionTier.MANDATORY_ANCHOR)
+    )
+    assert ledger.accounting_state(Category.LICENSE) is CategoryAccountingState.PENDING
+    assert index.source_revision == plan.source_revision
+
+
+def test_reserve_is_discoverable_without_nine_category_obligations(document):
+    index, plan, ledger = _planned(document, "Ordinary background notes.")
+
+    assert len(plan.items) == len(index.sections)
+    assert ledger.unresolved_obligations() == ()
+    assert all(
+        ledger.state(category) is not AcquisitionState.SUPPORTED for category in Category
+    )
+
+
+def test_supported_waits_for_every_active_mandatory_obligation(document):
+    _index_value, plan, ledger = _planned(
+        document,
+        "License\nAn MIT license is required.\nLicense\nApache license is required.",
+    )
+    mandatory = [
+        item
+        for item in plan.items
+        if item.tier is AcquisitionTier.MANDATORY_ANCHOR
+        and Category.LICENSE in item.categories
+    ]
+    assert len(mandatory) == 2
+
+    first = mandatory[0]
+    ledger.begin_item(first.item_id, first.categories, 0)
+    ledger.complete_item(
+        first.item_id,
+        first.categories,
+        {
+            Category.LICENSE: _outcome(
+                "SUPPORTED", rule_ids=("rule_license",)
+            )
+        },
+        0,
+    )
+
+    assert ledger.state(Category.LICENSE) is AcquisitionState.SECTION_AVAILABLE
+    assert ledger.accounting_state(Category.LICENSE) is CategoryAccountingState.PENDING
+    assert len(ledger.unresolved_obligations(Category.LICENSE)) == 1
+
+
+@pytest.mark.parametrize("status", ["UNKNOWN", "AMBIGUOUS", "UNSUPPORTED"])
+def test_non_supported_outcomes_are_retained_and_never_supported(document, status):
+    index, plan, ledger = _planned(document, "License\nAn MIT license is required.")
+    item = next(
+        item
+        for item in plan.items
+        if item.tier is AcquisitionTier.MANDATORY_ANCHOR
+        and Category.LICENSE in item.categories
+    )
+    ledger.begin_item(item.item_id, item.categories, 0)
+    ledger.complete_item(
+        item.item_id,
+        item.categories,
+        {Category.LICENSE: _outcome(status)},
+        0,
+    )
+
+    key = (index.source_revision, item.section_id, Category.LICENSE)
+    assert ledger.outcomes[key].normalization_status == status
+    assert ledger.state(Category.LICENSE) is not AcquisitionState.SUPPORTED
+    assert ledger.accounting_state(Category.LICENSE) is not CategoryAccountingState.SUPPORTED
+
+
+def test_supported_requires_complete_context(document):
+    _index_value, plan, ledger = _planned(
+        document,
+        "License\nAn MIT license is required unless otherwise specified.",
+    )
+    item = next(
+        item for item in plan.items if Category.LICENSE in item.categories
+    )
+
+    assert not item.context_complete
+    ledger.mark_context_unresolved(item.item_id, item.categories, 0)
+    assert ledger.accounting_state(
+        Category.LICENSE
+    ) is CategoryAccountingState.CONTEXT_UNRESOLVED
+    assert ledger.state(Category.LICENSE) is AcquisitionState.EXHAUSTED
+
+
+def test_plan_overflow_preserves_each_active_undispatched_obligation(document):
+    _index_value, plan, ledger = _planned(
+        document,
+        "License\nAn MIT license is required.\n"
+        "Technology\nProjects must use Widget SDK.",
+    )
+    before = set(ledger.unresolved_obligations())
+
+    overflows = ledger.mark_plan_overflow(dispatches_used=7, authority_revision=0)
+
+    assert len(overflows) == len(before)
+    assert all(
+        ledger.plan_item_states[key] is PlanItemState.OVERFLOW_UNDISPATCHED
+        for key in before
+    )
+    assert {
+        ledger.accounting_state(category)
+        for category in (Category.LICENSE, Category.REQUIRED_TECHNOLOGY)
+    } == {CategoryAccountingState.OVERFLOW_UNRESOLVED}
+
+
+def test_plan_mode_never_calls_cartesian_relevance(document, monkeypatch):
+    index = _index(document, "License\nAn MIT license is required.")
+    plan = build_acquisition_plan(index)
+
+    monkeypatch.setattr(
+        CoverageLedger,
+        "_is_relevant",
+        staticmethod(lambda *_args: (_ for _ in ()).throw(AssertionError("cartesian"))),
+    )
+    ledger = CoverageLedger(index, plan)
+
+    assert ledger.active_items(AcquisitionTier.MANDATORY_ANCHOR)
+
+
+def test_plan_revision_cannot_reuse_stale_attempts(document):
+    first_index, first_plan, ledger = _planned(
+        document, "License\nAn MIT license is required."
+    )
+    first_item = next(item for item in first_plan.items if item.categories)
+    ledger.begin_item(first_item.item_id, first_item.categories, 0)
+    ledger.complete_item(
+        first_item.item_id,
+        first_item.categories,
+        {Category.LICENSE: _outcome("UNSUPPORTED")},
+        0,
+    )
+    second_index = _index(
+        document,
+        "License\nAn MIT license is required.",
+        content_hash="b" * 64,
+    )
+    second_plan = build_acquisition_plan(second_index)
+
+    ledger.replace_index(second_index, second_plan)
+
+    assert first_index.source_revision != second_index.source_revision
+    assert ledger.attempts
+    assert all(key[0] == first_index.source_revision for key in ledger.attempts)
+    assert ledger.active_items(AcquisitionTier.MANDATORY_ANCHOR)
+
+
 def _sections(index, category: Category):
     return tuple(section for section in index.sections if category in section.candidate_categories)
 
@@ -52,7 +228,15 @@ def _replace_categories(
         indexer_version=index.indexer_version,
         sections=tuple(
             section.model_copy(
-                update={"candidate_categories": categories.get(section.section_id, ())}
+                update={
+                    "candidate_categories": categories.get(section.section_id, ()),
+                    "routing": section.routing.model_copy(
+                        update={
+                            "body_categories": categories.get(section.section_id, ()),
+                            "heading_categories": (),
+                        }
+                    ),
+                }
             )
             for section in index.sections
         ),
