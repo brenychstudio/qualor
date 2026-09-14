@@ -5,6 +5,12 @@ import inspect
 import pytest
 
 from qualor.domain.enums import Category
+from qualor.runtime.sections import index_source
+from qualor.runtime.spans import EvidenceSpanRegistry
+
+
+def _index(document, text: str):
+    return index_source(document(text), EvidenceSpanRegistry(secret=b"r" * 32))
 
 
 def test_sibling_body_category_does_not_smear_across_bounded_children(document):
@@ -103,6 +109,47 @@ def test_rule_like_without_category_hint_remains_unclassified():
 
     assert routed.rule_like
     assert routed.category_hints == ()
+
+
+@pytest.mark.parametrize(
+    ("text", "category"),
+    [
+        ("Widget SDK documentation is available.", Category.REQUIRED_TECHNOLOGY),
+        ("Eligible teams participate in the event.", Category.ENTRANT_TYPE),
+        ("Prize judging criteria are described below.", Category.REWARD_CONDITIONS),
+    ],
+)
+def test_broad_rule_like_discovery_is_not_a_local_mandatory_signal(
+    document, text, category
+):
+    from qualor.runtime.sections import SectionRoutingReason
+
+    section = _index(document, text).sections[0]
+
+    assert section.routing.rule_like
+    assert category in section.routing.body_categories
+    assert category in section.routing.rule_like_category_hints
+    assert SectionRoutingReason.RULE_LIKE_MARKER not in section.routing.reason_codes
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Projects must use Widget SDK.",
+        "Applicants may not be incorporated companies.",
+        "Only residents of Spain may enter.",
+        "Technology\n- Widget SDK integration details.",
+        "License: MIT.",
+    ],
+)
+def test_exact_local_mandatory_predicates_are_recorded(document, text):
+    from qualor.runtime.sections import SectionRoutingReason
+
+    section = _index(document, text).sections[-1]
+
+    assert section.routing.body_categories
+    assert section.routing.rule_like
+    assert SectionRoutingReason.RULE_LIKE_MARKER in section.routing.reason_codes
 
 
 def test_structural_rule_item_and_definition_entry_are_recorded(document):

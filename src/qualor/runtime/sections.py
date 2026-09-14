@@ -156,6 +156,7 @@ class RuleLikeMarker(StrEnum):
     SUBMISSION_OR_TIME = "SUBMISSION_OR_TIME"
     EVALUATION_OR_SELECTION = "EVALUATION_OR_SELECTION"
     STRUCTURAL_RULE_ITEM = "STRUCTURAL_RULE_ITEM"
+    DEFINITION_ENTRY = "DEFINITION_ENTRY"
 
 
 class RuleLikeRouting(Contract):
@@ -283,8 +284,10 @@ def detect_rule_like_routing(
         if _RULE_CATEGORY_TERMS[category].search(normalized_body)
     )
     definition_entry = bool(_DEFINITION_ENTRY.match(body_text))
+    if definition_entry:
+        marker_codes += (RuleLikeMarker.DEFINITION_ENTRY,)
     return RuleLikeRouting(
-        rule_like=bool(marker_codes or definition_entry),
+        rule_like=bool(marker_codes),
         category_hints=category_hints,
         marker_codes=marker_codes,
     )
@@ -558,6 +561,15 @@ def index_source(source: SourceDocument, registry: EvidenceSpanRegistry) -> Sect
                 heading_text=heading,
                 body_text=body_text,
             )
+            local_mandatory_signal = _has_governing_marker(
+                rule_like.marker_codes
+            ) or any(
+                marker in rule_like.marker_codes
+                for marker in (
+                    RuleLikeMarker.STRUCTURAL_RULE_ITEM,
+                    RuleLikeMarker.DEFINITION_ENTRY,
+                )
+            )
             candidate_categories = tuple(
                 category
                 for category in Category
@@ -576,7 +588,7 @@ def index_source(source: SourceDocument, registry: EvidenceSpanRegistry) -> Sect
                 ),
                 *(
                     (SectionRoutingReason.RULE_LIKE_MARKER,)
-                    if rule_like.rule_like
+                    if local_mandatory_signal
                     else ()
                 ),
             }

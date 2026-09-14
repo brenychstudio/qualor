@@ -179,7 +179,10 @@ def _ordered_categories(categories: tuple[Category, ...]) -> tuple[Category, ...
 
 
 def _local_mandatory(section: SourceSection, category: Category) -> bool:
-    return category in section.routing.body_categories and section.routing.rule_like
+    return (
+        category in section.routing.body_categories
+        and SectionRoutingReason.RULE_LIKE_MARKER in section.routing.reason_codes
+    )
 
 
 def _local_signal_rank(
@@ -187,7 +190,7 @@ def _local_signal_rank(
 ) -> int:
     if tier is AcquisitionTier.RESERVE_FALLBACK:
         return 3
-    if category in section.routing.body_categories and section.routing.rule_like:
+    if _local_mandatory(section, category):
         return 0
     if category in section.routing.body_categories:
         return 1

@@ -64,6 +64,47 @@ def test_local_governing_body_signal_is_mandatory(document):
     assert item.tier is AcquisitionTier.MANDATORY_ANCHOR
 
 
+@pytest.mark.parametrize(
+    ("text", "category"),
+    [
+        ("Widget SDK documentation is available.", Category.REQUIRED_TECHNOLOGY),
+        ("Eligible teams participate in the event.", Category.ENTRANT_TYPE),
+        ("Prize judging criteria are described below.", Category.REWARD_CONDITIONS),
+    ],
+)
+def test_broad_discovery_without_local_governing_predicate_is_conditional(
+    document, text, category
+):
+    index = _index(document, text)
+    section = index.sections[0]
+    item = next(
+        item
+        for item in build_acquisition_plan(index).items
+        if category in item.categories
+    )
+
+    assert section.routing.rule_like
+    assert category in section.routing.body_categories
+    assert item.tier is AcquisitionTier.CONDITIONAL_DISCOVERY
+
+
+@pytest.mark.parametrize(
+    ("text", "category"),
+    [
+        ("Projects must use Widget SDK.", Category.REQUIRED_TECHNOLOGY),
+        ("Applicants may not be incorporated companies.", Category.LEGAL_ENTITY),
+        ("Only residents of Spain may enter.", Category.GEOGRAPHY),
+        ("Technology\n- Widget SDK integration details.", Category.REQUIRED_TECHNOLOGY),
+        ("License: MIT.", Category.LICENSE),
+    ],
+)
+def test_exact_local_governing_predicates_are_mandatory(document, text, category):
+    plan = build_acquisition_plan(_index(document, text))
+    item = next(item for item in plan.items if category in item.categories)
+
+    assert item.tier is AcquisitionTier.MANDATORY_ANCHOR
+
+
 def test_no_category_is_derived_from_a_sibling_body(document):
     index = _index(
         document,
