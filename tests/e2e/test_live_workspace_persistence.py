@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -109,7 +110,9 @@ def controlled_live_result(capture, inputs):
         contradictions=(),
         opportunity_version_resolver=capture.resolve_opportunity_version,
     )
-    bundle = compile_decision_bundle(run)
+    with patch("qualor.runtime.handoff.datetime", wraps=datetime) as runtime_datetime:
+        runtime_datetime.now.return_value = NOW
+        bundle = compile_decision_bundle(run)
     assert bundle.decision.eligibility == "FAIL"
     assert bundle.decision.selected_decision is not None
     result = AgentRunResult(
