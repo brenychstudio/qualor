@@ -12,7 +12,7 @@ on it has been completed on the owner's behalf.
 
 | # | Item | State | Notes |
 | --- | --- | --- | --- |
-| 1 | **Make the repository public** | NOT DONE | `github.com/brenychstudio/qualor` is `PRIVATE`; an anonymous fetch returns 404. Required: *"Provide a PUBLIC URL to your code repository"*. |
+| 1 | **Make the repository public** | DONE | `https://github.com/brenychstudio/qualor` is PUBLIC; Task 19 verified anonymous repository access. Required: *"Provide a PUBLIC URL to your code repository"*. |
 | 2 | **Push the current branch** | DONE | `origin/main` contains the verified production package. No force push was used. |
 | 3 | **Verify the AWS Builder ID** | **UNKNOWN** | Listed as a submission requirement. Cannot be checked from the repository — this is an account-side fact only the owner can confirm. Do not assume it is in place. |
 | 4 | **Record and publish the demo video** | NOT DONE | Maximum 5 minutes, public on YouTube or Vimeo. Plan: [`demo-video-plan.md`](demo-video-plan.md). |
@@ -41,7 +41,7 @@ Agents.
 
 ---
 
-## Before making the repository public
+## Publication audit record
 
 The publication audit for this commit found **no secrets** in the tracked tree and **none in
 any of the 702 blobs in git history** — no AWS keys, tokens, private keys, ARNs, account IDs or
@@ -55,10 +55,9 @@ Two hygiene items were corrected in this commit:
   false and would have misled a judge. It now describes what actually exists and explains how
   to run the real decision workspace rather than only the bootstrap shell.
 
-One thing to confirm yourself before flipping visibility: that you are comfortable publishing
-the full `docs/superpowers/` planning and specification history. It contains no secrets and no
-personal data, but it is a candid internal record of how the project was built — including
-defects found and corrected. It is defensible and arguably a strength; it is still your call.
+The repository is public. The full `docs/superpowers/` planning and specification history remains
+intentionally visible; it contains no secrets or personal data and records defects found and
+corrected.
 
 ## Demo state decision
 
