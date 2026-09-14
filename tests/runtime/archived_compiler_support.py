@@ -967,9 +967,9 @@ def simulate_request_sequence(report: ArchivedCompilerReport) -> CostSimulationR
     kinds = [_validated_model_request(item, guard.policy) for item in requests]
     if (
         kinds.count("PLANNING") != CANONICAL_PLANNING_REQUESTS
-        or kinds.count("EXTRACTION") < 1
-        or events.count("SEARCH") < 1
-        or events.count("FETCH") < 1
+        or not 1 <= kinds.count("EXTRACTION") <= MAX_CANONICAL_EXTRACTION_REQUESTS
+        or events.count("SEARCH") != 1
+        or events.count("FETCH") != 1
     ):
         _fail("COMPILER_COST_SEQUENCE_INCOMPLETE")
 

@@ -174,19 +174,6 @@ def test_tenth_inference_request_is_refused(archived_report):
     )
 
     extra = copy.deepcopy(archived_report.model_requests[-1])
-    overflowing = _altered(
-        archived_report,
-        requests=(*archived_report.model_requests, extra),
-        events=(*archived_report.budget_events, "INFERENCE"),
-    )
-
-    costs = simulate_request_sequence(overflowing)
-
-    assert costs.expected_live_calls == EXPECTED_LIVE_CALLS + 1
-    assert costs.admitted is False
-    assert costs.blocked_slot == EXPECTED_LIVE_CALLS + 1
-    assert costs.projected_worst_case_cost == canonical.projected_worst_case_cost
-
     guard = live_budget()
     for item in archived_report.model_requests:
         guard.commit(
@@ -206,6 +193,22 @@ def test_tenth_inference_request_is_refused(archived_report):
     assert str(refused.value) == "INFERENCE call cap reached"
     assert refused.value.cost_cap_usd is None
     assert refused.value.attempted_cost_usd is None
+
+
+@pytest.mark.archived_source
+def test_eighth_extraction_request_invalidates_the_canonical_sequence(archived_report):
+    """A canonical replay may not contain more than seven extraction requests."""
+
+    extra = copy.deepcopy(archived_report.model_requests[-1])
+    overflowing = _altered(
+        archived_report,
+        requests=(*archived_report.model_requests, extra),
+        events=(*archived_report.budget_events, "INFERENCE"),
+    )
+
+    with pytest.raises(ArchiveInputError) as refused:
+        simulate_request_sequence(overflowing)
+    assert str(refused.value) == "COMPILER_COST_SEQUENCE_INCOMPLETE"
 
 
 @pytest.mark.archived_source
@@ -282,8 +285,8 @@ def test_search_reservation_is_the_production_authority(archived_report, monkeyp
 
 
 @pytest.mark.archived_source
-def test_fetch_consumes_one_production_fetch_slot(archived_report):
-    """The single archive fetch occupies a FETCH slot at the production default reservation."""
+def test_noncanonical_extra_non_model_event_invalidates_the_sequence(archived_report):
+    """A canonical replay has exactly one SEARCH and one FETCH event."""
 
     assert archived_report.budget_events.count("FETCH") == 1
 
@@ -295,14 +298,11 @@ def test_fetch_consumes_one_production_fetch_slot(archived_report):
     assert after.fetched_documents - before.fetched_documents == 1
     assert after.reserved_cost_usd - before.reserved_cost_usd == FETCH_RESERVATION_DEFAULT
 
-    # Slots really are consumed: exceeding the production fetch cap must block.
-    exhausting = _altered(
-        archived_report,
-        events=(
-            *("FETCH",) * (guard.policy.fetch_max_documents + 1),
-            *archived_report.budget_events,
-        ),
-    )
-    with pytest.raises(ArchiveInputError) as refused:
-        simulate_request_sequence(exhausting)
-    assert str(refused.value).startswith("COMPILER_COST_NON_MODEL_RESERVATION_BLOCKED")
+    for event in ("SEARCH", "FETCH"):
+        noncanonical = _altered(
+            archived_report,
+            events=(event, *archived_report.budget_events),
+        )
+        with pytest.raises(ArchiveInputError) as refused:
+            simulate_request_sequence(noncanonical)
+        assert str(refused.value) == "COMPILER_COST_SEQUENCE_INCOMPLETE"
