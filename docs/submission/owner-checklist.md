@@ -13,7 +13,7 @@ on it has been completed on the owner's behalf.
 | # | Item | State | Notes |
 | --- | --- | --- | --- |
 | 1 | **Make the repository public** | NOT DONE | `github.com/brenychstudio/qualor` is `PRIVATE`; an anonymous fetch returns 404. Required: *"Provide a PUBLIC URL to your code repository"*. |
-| 2 | **Push the current branch** | NOT DONE | `origin/main` is 41 commits behind. A judge must be able to see and run the code that the video shows. |
+| 2 | **Push the current branch** | DONE | `origin/main` contains the verified production package. No force push was used. |
 | 3 | **Verify the AWS Builder ID** | **UNKNOWN** | Listed as a submission requirement. Cannot be checked from the repository — this is an account-side fact only the owner can confirm. Do not assume it is in place. |
 | 4 | **Record and publish the demo video** | NOT DONE | Maximum 5 minutes, public on YouTube or Vimeo. Plan: [`demo-video-plan.md`](demo-video-plan.md). |
 | 5 | **Write the Devpost text description** | DRAFT READY | Source: [`devpost-narrative.md`](devpost-narrative.md). Needs owner review before pasting. |
